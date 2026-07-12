@@ -95,7 +95,7 @@ const int Buzz = 8;
 
 void setup(){
  //Serial.begin(9600);
-// Declaro el zumbador
+// Declare the buzzer
   pinMode(Buzz, OUTPUT);
 
 }
@@ -124,7 +124,7 @@ void loop(){
  */
 
 
-//Teclado
+// Keyboard
  if( ((analogRead(0)+analogRead(0)+analogRead(0)+analogRead(0))/4) <=1019){
   tone(Buzz, NOTE_C3, 150);    
  }

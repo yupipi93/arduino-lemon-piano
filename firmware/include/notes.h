@@ -1,4 +1,7 @@
-#define NOTE_H   0
+/* Musical note frequencies (Hz) for tone()/buzz().
+   Translated from the rescued Notas.h — NOTE_H (silence) renamed to NOTE_REST. */
+
+#define NOTE_REST 0
 #define NOTE_B0  31
 #define NOTE_C1  33
 #define NOTE_CS1 35

@@ -108,8 +108,8 @@
  */
 
 //NOTE_E7 NOTE_C7 NOTE_G7 NOTE_G6 NOTE_E6 NOTE_A6 NOTE_B6
-//Mario main theme melody
-int melody_cut[] = {//-7 columnas
+// Mario main theme melody
+int melody_cut[] = {// -7 columns
   0, NOTE_AS6, NOTE_A6, 0,
  
   NOTE_G6, NOTE_E7, NOTE_G7,
@@ -128,7 +128,7 @@ int melody_cut[] = {//-7 columnas
   NOTE_D7, NOTE_B6, 0, 0
 };
 
-int tempo_cut[] = {//-7 columnas
+int tempo_cut[] = {// -7 columns
   12, 12, 12, 12,
  
   9, 9, 9,
@@ -148,7 +148,7 @@ int tempo_cut[] = {//-7 columnas
 };
 
 
-//Mario main theme melody
+// Mario main theme melody
 int melody[] = {
   NOTE_E7, NOTE_E7, 0, NOTE_E7,
   0, NOTE_C7, NOTE_E7, 0,
@@ -175,7 +175,7 @@ int melody[] = {
   0, NOTE_E7, 0, NOTE_C7,
   NOTE_D7, NOTE_B6, 0, 0
 };
-//Mario main them tempo
+// Mario main theme tempo
 int tempo[] = {
   12, 12, 12, 12,
   12, 12, 12, 12,
@@ -202,7 +202,7 @@ int tempo[] = {
   12, 12, 12, 12,
   12, 12, 12, 12,
 };
-//Underworld melody
+// Underworld melody
 int underworld_melody[] = {
   NOTE_C4, NOTE_C5, NOTE_A3, NOTE_A4,
   NOTE_AS3, NOTE_AS4, 0,
@@ -224,7 +224,7 @@ int underworld_melody[] = {
   NOTE_AS3, NOTE_A3, NOTE_GS3,
   0, 0, 0
 };
-//Underwolrd tempo
+// Underworld tempo
 int underworld_tempo[] = {
   12, 12, 12, 12,
   12, 12, 6,
@@ -249,7 +249,7 @@ int underworld_tempo[] = {
 
 
 
-int underworld_melody_cut[] = {//-4filas
+int underworld_melody_cut[] = {// -4 rows
   
   NOTE_AS3, NOTE_AS4, 0,
   0,
@@ -267,8 +267,8 @@ int underworld_melody_cut[] = {//-4filas
   NOTE_AS3, NOTE_A3, NOTE_GS3,
   0, 0, 0
 };
-//Underwolrd tempo
-int underworld_tempo_cut[] = {//-4filas
+// Underworld tempo
+int underworld_tempo_cut[] = {// -4 rows
   12, 12, 6,
   3,
   12, 12, 12, 12,
@@ -288,49 +288,49 @@ int underworld_tempo_cut[] = {//-4filas
  
 
 
-//PINES
-const int LedRojo = 2;
-const int LedVerde = 3;
-const int botonJuego1 = 4;
-const int relee = 5;
+// PINS
+const int redLed = 2;
+const int greenLed = 3;
+const int gameButton = 4;
+const int relay = 5;
 
 
-//CONTADOR DE TIEMPO
+// TIME COUNTER
 int count;
 
 
-  //SECUENCIA 1  
-  int secuencia_1 [10]= {NOTE_E7,NOTE_C7,NOTE_E7,NOTE_G7,NOTE_G6,NOTE_C7,NOTE_G6,NOTE_E6,NOTE_A6,NOTE_B6};
-  //NOTAS de la 0 a la 6 para juego 1 y de la 7 a la 13 para juego 2
-  int tecla[14] = {NOTE_E6,NOTE_G6,NOTE_A6,NOTE_B6,NOTE_C7,NOTE_E7,NOTE_G7,NOTE_A3,NOTE_AS3,NOTE_C4,NOTE_A4,NOTE_AS4,NOTE_C5,NOTE_D5}; 
+  // SECRET SEQUENCE 1  
+  int sequence_1 [10]= {NOTE_E7,NOTE_C7,NOTE_E7,NOTE_G7,NOTE_G6,NOTE_C7,NOTE_G6,NOTE_E6,NOTE_A6,NOTE_B6};
+  // KEY NOTES: 0 to 6 for game 1, 7 to 13 for game 2
+  int keys[14] = {NOTE_E6,NOTE_G6,NOTE_A6,NOTE_B6,NOTE_C7,NOTE_E7,NOTE_G7,NOTE_A3,NOTE_AS3,NOTE_C4,NOTE_A4,NOTE_AS4,NOTE_C5,NOTE_D5}; 
 
-  //SECUENCIA 2
-  int secuencia_2 [10]= {NOTE_C4,NOTE_C5,NOTE_A3,NOTE_A4,NOTE_AS3,NOTE_AS4,NOTE_C4,NOTE_C5,NOTE_A3,NOTE_A4};  
-  //NOTAS 2
+  // SECRET SEQUENCE 2
+  int sequence_2 [10]= {NOTE_C4,NOTE_C5,NOTE_A3,NOTE_A4,NOTE_AS3,NOTE_AS4,NOTE_C4,NOTE_C5,NOTE_A3,NOTE_A4};  
+  // NOTES 2
   //int teclas_2[7] = {NOTE_A3,NOTE_AS3,NOTE_C4,NOTE_A4,NOTE_AS4,NOTE_C5,NOTE_D5};
  
 
 
 
-int tamSecuencia = 9;//tam secuencia -1
-int numNota;
-int nota;
-int juego;
-int selectorTeclado;
-int notaSecuencia;
+int sequenceLength = 9;// sequence length - 1
+int noteIndex;
+int pressedNote;
+int game;
+int keyboardOffset;
+int expectedNote;
 bool start;
 
 void setup(){
  //Serial.begin(9600);
-// Declaro el zumbador
+// Declare the buzzer
   pinMode(Buzz, OUTPUT);
-  pinMode(LedRojo, OUTPUT);
-  pinMode(LedVerde, OUTPUT);
-  pinMode(botonJuego1, INPUT);
-  pinMode(relee, OUTPUT);  
+  pinMode(redLed, OUTPUT);
+  pinMode(greenLed, OUTPUT);
+  pinMode(gameButton, INPUT);
+  pinMode(relay, OUTPUT);  
   count = 0;
-  numNota = -1;
-  nota  = 0;
+  noteIndex = -1;
+  pressedNote  = 0;
   
   start = false;
   
@@ -362,159 +362,159 @@ void loop(){
  
 */
 /*
-digitalWrite(relee, HIGH);
+digitalWrite(relay, HIGH);
 delay(300);
-digitalWrite(relee, LOW);
+digitalWrite(relay, LOW);
 */
 
 
-//ELEJIR JUEGO
+// PICK THE GAME
 if(!start){
   start = true;
-  if(digitalRead(botonJuego1)== HIGH){
-    juego = 1;
-    numNota = -1;
-    nota  = 0;
+  if(digitalRead(gameButton)== HIGH){
+    game = 1;
+    noteIndex = -1;
+    pressedNote  = 0;
   }else{
-    juego = 2;
-    numNota = -1;
-    nota  = 0;
+    game = 2;
+    noteIndex = -1;
+    pressedNote  = 0;
   }
 }
 
 
 
 
-if(juego > 0){
-  if(juego == 1){
-    selectorTeclado = 0;
+if(game > 0){
+  if(game == 1){
+    keyboardOffset = 0;
   }else{
-     selectorTeclado = 7;
+     keyboardOffset = 7;
   }
 
 //################################
-//#######  LECTURA DATA ##########
+//########  READ INPUT ###########
 //################################
   
-  if(juego)
-  //Teclado
+  if(game)
+  // Keyboard
    if( ((analogRead(0)+analogRead(0)+analogRead(0)+analogRead(0))/4) <=1019){
-    tone(Buzz, tecla[0+selectorTeclado], 150);    
+    tone(Buzz, keys[0+keyboardOffset], 150);    
     count = 0;
-    if(nota != tecla[0+selectorTeclado]){
-      numNota++; 
+    if(pressedNote != keys[0+keyboardOffset]){
+      noteIndex++; 
     }  
-    nota = tecla[0+selectorTeclado];
+    pressedNote = keys[0+keyboardOffset];
    }
   
    if( ((analogRead(1)+analogRead(1)+analogRead(1)+analogRead(1))/4)<= 1019){  
-     tone(Buzz, tecla[1+selectorTeclado], 150);   
+     tone(Buzz, keys[1+keyboardOffset], 150);   
       count = 0;  
-      if(nota != tecla[1+selectorTeclado]){
-      numNota++; 
+      if(pressedNote != keys[1+keyboardOffset]){
+      noteIndex++; 
     }
-      nota = tecla[1+selectorTeclado];
+      pressedNote = keys[1+keyboardOffset];
    }
   
   if( ((analogRead(2)+analogRead(2)+analogRead(2)+analogRead(2))/4)<= 1019){  
-     tone(Buzz, tecla[2+selectorTeclado], 150);
+     tone(Buzz, keys[2+keyboardOffset], 150);
      count = 0;
-     if(nota != tecla[2+selectorTeclado]){
-      numNota++; 
+     if(pressedNote != keys[2+keyboardOffset]){
+      noteIndex++; 
     }
-     nota = tecla[2+selectorTeclado];
+     pressedNote = keys[2+keyboardOffset];
    }
   
   if( ((analogRead(3)+analogRead(3)+analogRead(3)+analogRead(3))/4)<= 1019){  
-     tone(Buzz, tecla[3+selectorTeclado], 150);
+     tone(Buzz, keys[3+keyboardOffset], 150);
      count = 0;
-     if(nota != tecla[3+selectorTeclado]){
-      numNota++; 
+     if(pressedNote != keys[3+keyboardOffset]){
+      noteIndex++; 
     }
-    nota = tecla[3+selectorTeclado];
+    pressedNote = keys[3+keyboardOffset];
    }
   
   if( ((analogRead(4)+analogRead(4)+analogRead(4)+analogRead(4))/4)<= 1019){  
-     tone(Buzz, tecla[4+selectorTeclado], 150);
+     tone(Buzz, keys[4+keyboardOffset], 150);
      count = 0;
-     if(nota != tecla[4+selectorTeclado]){
-      numNota++; 
+     if(pressedNote != keys[4+keyboardOffset]){
+      noteIndex++; 
     }
-     nota = tecla[4+selectorTeclado];
+     pressedNote = keys[4+keyboardOffset];
    }
   
   if( ((analogRead(5)+analogRead(5)+analogRead(5)+analogRead(5))/4)<= 1019){  
-     tone(Buzz, tecla[5+selectorTeclado], 150);
+     tone(Buzz, keys[5+keyboardOffset], 150);
      count = 0;
-     if(nota != tecla[5+selectorTeclado]){
-      numNota++; 
+     if(pressedNote != keys[5+keyboardOffset]){
+      noteIndex++; 
     }
-     nota = tecla[5+selectorTeclado];
+     pressedNote = keys[5+keyboardOffset];
    }
   
   if( ((analogRead(6)+analogRead(6)+analogRead(6)+analogRead(6))/4)<= 1019){  
-     tone(Buzz, tecla[6+selectorTeclado], 150);
+     tone(Buzz, keys[6+keyboardOffset], 150);
      count = 0;
-     if(nota != tecla[6+selectorTeclado]){
-      numNota++; 
+     if(pressedNote != keys[6+keyboardOffset]){
+      noteIndex++; 
     }
-     nota = tecla[6+selectorTeclado];
+     pressedNote = keys[6+keyboardOffset];
    }
 //################################
-//#####  COMPROBACIONES ##########
+//###########  CHECKS ############
 //################################
   
-  /*si nota que es la ultima nota pulsada es igual a la posicion de la secuenta, 
-  *se enciende verde 5 segundos, cada vez que pulsamos una nota aumenta 1 la secuencia
-  *si la nnta coincide con secuencia, enciende rojjo y reinicia secuencia
+  /* if the last pressed note matches the current position of the sequence,
+  * the green LED lights for 5 seconds; each pressed note advances the sequence by 1.
+  * if the note does NOT match the sequence, the red LED lights and the sequence resets.
   */
 
 
-  //si acietas las 10 notas segidas suena la cacion completa
-  if(numNota >= tamSecuencia) {
-    numNota = 0;
+  // if you hit all 10 notes in a row, the full song plays
+  if(noteIndex >= sequenceLength) {
+    noteIndex = 0;
   
-    if(juego == 1){
-      //Juego1
-      sing(-1);//continuacion cancion 1 recortada
-     // sing(1);//cancion1 entera
+    if(game == 1){
+      // Game 1
+      sing(-1);// trimmed continuation of song 1
+     // sing(1);// full song 1
     }else{
-      //Juego2
-      sing(-2);//continuacion cancion 2 recortada
-     //S sing(2);//cancion1 entera
+      // Game 2
+      sing(-2);// trimmed continuation of song 2
+     //S sing(2);// full song 2
     }
     
     
   }
 
-  //si nota no tiene el valor inicial, comprueba que nota(tecla pulsada) coincida con la poscion de la secuncia secreta
-  if(nota != 0){
-    if(juego == 1){
-      notaSecuencia = secuencia_1[numNota];
+  // if pressedNote left its initial value, check that the pressed key matches the current position of the secret sequence
+  if(pressedNote != 0){
+    if(game == 1){
+      expectedNote = sequence_1[noteIndex];
     }else{
-      notaSecuencia = secuencia_2[numNota];
+      expectedNote = sequence_2[noteIndex];
     }
 
-    //ACIERTAS
-    if(nota == notaSecuencia){
-      //digitalWrite(LedRojo, LOW);
-      digitalWrite(LedVerde, HIGH);
+    // CORRECT
+    if(pressedNote == expectedNote){
+      //digitalWrite(redLed, LOW);
+      digitalWrite(greenLed, HIGH);
       
-    //FALLAS  
+    // WRONG  
     }else{
-      digitalWrite(LedVerde, LOW);
-      digitalWrite(LedRojo, HIGH);
-      numNota = -1;
-      nota = 0;
+      digitalWrite(greenLed, LOW);
+      digitalWrite(redLed, HIGH);
+      noteIndex = -1;
+      pressedNote = 0;
     }
   }
   
-  // apaga leds tras 5 segundos
+  // turn LEDs off after 5 seconds
    count++;
    if(count >= 20){
-    //nota = 0;
-    digitalWrite(LedVerde, LOW); 
-    digitalWrite(LedRojo, LOW); 
+    //pressedNote = 0;
+    digitalWrite(greenLed, LOW); 
+    digitalWrite(redLed, LOW); 
     count = 0;
    }
   
@@ -522,7 +522,7 @@ if(juego > 0){
   }
 }
 //################################
-//##########  FUNCIONES ##########
+//##########  FUNCTIONS ##########
 //################################
 
 int song = 0;
