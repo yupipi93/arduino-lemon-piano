@@ -20,3 +20,6 @@ Thumbs.db
 
 # Claude Code — local harness config (personal, not for the repo)
 .claude/settings.local.json
+
+# Velxio emulation — per-run evidence bundles (reports, logs, screenshots)
+emulation/runs/

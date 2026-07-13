@@ -80,6 +80,20 @@ arduino-lemon-piano/
 └── TODO.md                      ← known bugs & fix roadmap (next work sessions)
 ```
 
+## 🎮 Play it in the browser (no hardware)
+
+The game runs in an interactive [Velxio](https://github.com/davidmonterocrespo24/velxio)
+emulation — real firmware on an emulated ATmega328, clickable lemons, audible
+buzzer, working LEDs and pump indicator:
+
+```bash
+../velxio-multi-board-emulator/harness/.venv/bin/velxio-pipeline stack up
+# then open http://localhost:3080/editor and import emulation/lemon-piano.vlx → Run
+```
+
+Details, key mapping, and the headless `verify` regression test (it plays
+game 2's secret code and asserts `WIN`): **[emulation/README.md](emulation/README.md)**.
+
 ## Quick start
 
 ```bash

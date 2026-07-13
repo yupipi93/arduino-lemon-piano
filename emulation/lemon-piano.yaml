@@ -1,0 +1,136 @@
+name: lemon-piano
+description: >
+  Interactive Velxio emulation of the 2019 Lemon Piano V4. The 7 lemons become
+  clickable pushbuttons (keys 1-7 on A0-A5 + D9 — the VELXIO_EMULATION input
+  shim in firmware/src/main.cpp, see emulation/README.md). Buzzer on D8 plays
+  through the browser's speakers, red/green LEDs give feedback, the blue LED is
+  the water-pump indicator (relay pair D5/D6). Hold GAME SELECT (D4) while
+  pressing RESTART (D7) for game 1 (Mario Main Theme); default is game 2
+  (Underworld). Verify mode plays game 2's secret code by injecting timed key
+  presses and asserts the firmware logs WIN.
+board: arduino-nano
+sketch_file: ../firmware/src/main.cpp
+defines: [VELXIO_EMULATION]
+extra_files:
+  - name: notes.h
+    file: ../firmware/include/notes.h
+
+components:
+  # The 7 "lemons" in ONE horizontal piano row. Labels "1".."7" double as the
+  # PC keyboard mapping (frontend patch 0002: digit keys press the pushbutton
+  # whose label matches). Each key's 10k pull-up sits vertically (rotation 90)
+  # directly above it: the board's signal wire terminates at the resistor
+  # column, never at button level, so no cable crosses the buttons.
+  - { id: key1, type: pushbutton, x: 60,  y: 430, properties: { color: "yellow", label: "1" } }
+  - { id: key2, type: pushbutton, x: 175, y: 430, properties: { color: "yellow", label: "2" } }
+  - { id: key3, type: pushbutton, x: 290, y: 430, properties: { color: "yellow", label: "3" } }
+  - { id: key4, type: pushbutton, x: 405, y: 430, properties: { color: "yellow", label: "4" } }
+  - { id: key5, type: pushbutton, x: 520, y: 430, properties: { color: "yellow", label: "5" } }
+  - { id: key6, type: pushbutton, x: 635, y: 430, properties: { color: "yellow", label: "6" } }
+  - { id: key7, type: pushbutton, x: 750, y: 430, properties: { color: "yellow", label: "7" } }
+  # Pull-ups (10k to 5V) — REQUIRED: Velxio's electrical layer drives AVR
+  # inputs from the solved node voltage; an active-low button with no pull-up
+  # floats at ~0V and reads permanently pressed. Vertical, one per key column.
+  - { id: rp1, type: resistor, x: 90,  y: 290, properties: { value: "10000", rotation: 90 } }
+  - { id: rp2, type: resistor, x: 205, y: 290, properties: { value: "10000", rotation: 90 } }
+  - { id: rp3, type: resistor, x: 320, y: 290, properties: { value: "10000", rotation: 90 } }
+  - { id: rp4, type: resistor, x: 435, y: 290, properties: { value: "10000", rotation: 90 } }
+  - { id: rp5, type: resistor, x: 550, y: 290, properties: { value: "10000", rotation: 90 } }
+  - { id: rp6, type: resistor, x: 665, y: 290, properties: { value: "10000", rotation: 90 } }
+  - { id: rp7, type: resistor, x: 780, y: 290, properties: { value: "10000", rotation: 90 } }
+  # Panel: game selector is a SWITCH (left throw = GND = game 1 Mario, right
+  # throw = 5V = game 2 Underworld; takes effect on RESTART). value: 1 =
+  # game 2 default. The restart button keeps a pull-up like the keys.
+  - { id: sw_game,     type: slide-switch, x: 930,  y: 440, properties: { value: 1, label: "GAME: 1-Mario / 2-Underworld" } }
+  - { id: btn_restart, type: pushbutton,   x: 1090, y: 430, properties: { color: "black", label: "RESTART" } }
+  - { id: rp_restart,  type: resistor,     x: 1120, y: 290, properties: { value: "10000", rotation: 90 } }
+  # Feedback + audio + pump — column on the far right, clear of the keyboard
+  - { id: r_red,     type: resistor, x: 950,  y: 70,  properties: { value: "220" } }
+  - { id: led_red,   type: led,      x: 1070, y: 60,  properties: { color: "red",   label: "WRONG" } }
+  - { id: r_green,   type: resistor, x: 950,  y: 160, properties: { value: "220" } }
+  - { id: led_green, type: led,      x: 1070, y: 150, properties: { color: "green", label: "CORRECT" } }
+  - { id: r_pump,    type: resistor, x: 950,  y: 250, properties: { value: "220" } }
+  - { id: led_pump,  type: led,      x: 1070, y: 240, properties: { color: "blue",  label: "WATER PUMP (relay D5)" } }
+  - { id: buzzer1,   type: buzzer,   x: 1200, y: 70,  properties: {} }
+
+wires:
+  # Signal columns: board pin -> resistor bottom (the key node), resistor
+  # bottom -> key leg. The long board wires end ABOVE the resistor row, so
+  # nothing crosses the buttons.
+  - [board:A0, rp1:2]
+  - [rp1:2, key1:1.l]
+  - [board:A1, rp2:2]
+  - [rp2:2, key2:1.l]
+  - [board:A2, rp3:2]
+  - [rp3:2, key3:1.l]
+  - [board:A3, rp4:2]
+  - [rp4:2, key4:1.l]
+  - [board:A4, rp5:2]
+  - [rp5:2, key5:1.l]
+  - [board:A5, rp6:2]
+  - [rp6:2, key6:1.l]
+  - [board:9,  rp7:2]           # A6 has no digital pin; key 7 lives on D9
+  - [rp7:2, key7:1.l]
+  - [board:7, rp_restart:2]
+  - [rp_restart:2, btn_restart:1.l]
+  # 5V bus: chain along the resistor tops, one drop to the board
+  - [board:5V, rp1:1]
+  - [rp1:1, rp2:1]
+  - [rp2:1, rp3:1]
+  - [rp3:1, rp4:1]
+  - [rp4:1, rp5:1]
+  - [rp5:1, rp6:1]
+  - [rp6:1, rp7:1]
+  - [rp7:1, rp_restart:1]
+  - [rp_restart:1, sw_game:3]   # switch right throw = 5V = game 2
+  # GND bus: daisy-chain along the button bottom legs, one drop to the board
+  - [board:GND.1, key1:2.l]
+  - [key1:2.r, key2:2.l]
+  - [key2:2.r, key3:2.l]
+  - [key3:2.r, key4:2.l]
+  - [key4:2.r, key5:2.l]
+  - [key5:2.r, key6:2.l]
+  - [key6:2.r, key7:2.l]
+  - [key7:2.r, btn_restart:2.l]
+  - [btn_restart:2.r, sw_game:1]  # switch left throw = GND = game 1
+  # Game selector switch: common to D4
+  - [board:4, sw_game:2]
+  # LEDs (through series resistors)
+  - [board:2, r_red:1]
+  - [r_red:2, led_red:A]
+  - [led_red:C, board:GND.2]
+  - [board:3, r_green:1]
+  - [r_green:2, led_green:A]
+  - [led_green:C, board:GND.2]
+  # Pump indicator: lights while RELAY_1 (D5) is driven HIGH for 1s penalties
+  - [board:5, r_pump:1]
+  - [r_pump:2, led_pump:A]
+  - [led_pump:C, board:GND.2]
+  # Buzzer — on D11, NOT D8: Velxio's buzzer part gets its note-off only from
+  # a Timer2 duty->0 event, and duty is polled only on PWM pins (3/5/6/9/10/11).
+  # The emulation firmware clears OCR2A after each note (emuTone) for the same
+  # reason. On D8 the first tone would beep forever, even after Stop.
+  - [board:11, buzzer1:1]
+  - [buzzer1:2, board:GND.2]
+
+# Headless gameplay: after boot (game 2 by default), inject the secret code
+# 3,6,1,4,2,5,3,6,1,4 → key pins A2,A5,A0,A3,A1,A4,A2,A5,A0,A3 = 16,19,14,17,
+# 15,18,16,19,14,17. Presses are active-low pulses, 350ms apart.
+inputs:
+  - { at_s: 2.00, press_pin: 16, hold_s: 0.08 }   # key 3
+  - { at_s: 2.35, press_pin: 19, hold_s: 0.08 }   # key 6
+  - { at_s: 2.70, press_pin: 14, hold_s: 0.08 }   # key 1
+  - { at_s: 3.05, press_pin: 17, hold_s: 0.08 }   # key 4
+  - { at_s: 3.40, press_pin: 15, hold_s: 0.08 }   # key 2
+  - { at_s: 3.75, press_pin: 18, hold_s: 0.08 }   # key 5
+  - { at_s: 4.10, press_pin: 16, hold_s: 0.08 }   # key 3
+  - { at_s: 4.45, press_pin: 19, hold_s: 0.08 }   # key 6
+  - { at_s: 4.80, press_pin: 14, hold_s: 0.08 }   # key 1
+  - { at_s: 5.15, press_pin: 17, hold_s: 0.08 }   # key 4 → WIN
+
+assertions:
+  - { type: serial_contains, pattern: "Lemon Piano V4", within_s: 3 }
+  - { type: serial_contains, pattern: "Game 2",         within_s: 3 }
+  - { type: gpio_toggles, pin: 11, min_edges: 100, within_s: 8 }  # buzzer sang
+  - { type: gpio_toggles, pin: 3, min_edges: 2,   within_s: 8 }   # green LED flashed
+  - { type: serial_contains, pattern: "WIN",            within_s: 8 }

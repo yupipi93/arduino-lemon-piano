@@ -27,7 +27,13 @@
 //################################
 //###########  PINS ##############
 //################################
+#ifdef VELXIO_EMULATION
+#define BUZZER 11  // Velxio only polls PWM duty on D3/5/6/9/10/11; the buzzer
+                   // part's note-off fires ONLY on duty->0, so on D8 the first
+                   // tone would play forever (see emuTone below)
+#else
 #define BUZZER 8
+#endif
 #define RED_LED 2
 #define GREEN_LED 3
 #define GAME_SELECT 4   // held HIGH at boot/restart -> game 1, else game 2
@@ -37,6 +43,26 @@
 #define BUZZ_LED 13     // onboard LED, lit while a melody note is bit-banged
 
 const uint8_t KEY_COUNT = 7;   // A0..A6
+
+// ── Velxio emulation input shim (define VELXIO_EMULATION to enable) ─────────
+// The Velxio browser emulator cannot reproduce the analog lemon divider, so
+// the emulation build swaps ONLY the input layer. Velxio's electrical layer
+// drives AVR inputs from the SPICE-solved node voltage, with one asymmetry
+// (frontend/src/simulation/spice/connect*InputsToMcu.ts): digital injection
+// covers only numerically-named pins ("9"), while analog injection covers
+// A0..A5. Hence:
+//   - keys 1-6: pushbuttons + 10k pull-ups on A0..A5, read via analogRead
+//     (idle ~1023, pressed ~0 — active-low, threshold at 512),
+//   - key 7: pushbutton + pull-up on D9 (A6 has no digital pin), digitalRead,
+//   - GAME_SELECT / RESTART: active-low (pressed = LOW).
+// Game logic, audio, LEDs and the relay pair are untouched, and hardware
+// builds (macro undefined) behave exactly as before this block existed.
+#ifdef VELXIO_EMULATION
+const uint8_t KEY_PINS[KEY_COUNT] = {A0, A1, A2, A3, A4, A5, 9};
+#define PANEL_PRESSED(pin) (digitalRead(pin) == LOW)
+#else
+#define PANEL_PRESSED(pin) (digitalRead(pin) == HIGH)
+#endif
 
 //################################
 //#########  CONSTANTS ###########
@@ -202,6 +228,10 @@ unsigned long ledOnAt = 0;     // millis() when it was lit
 //################################
 //#######  PROTOTYPES ############
 //################################
+bool keyTouched(uint8_t i);
+#ifdef VELXIO_EMULATION
+void emuTone(long frequency, long durationMs);
+#endif
 void calibrate();
 void selectGame();
 void handleGuess();
@@ -229,8 +259,13 @@ void setup() {
 
   pinMode(RED_LED, OUTPUT);
   pinMode(GREEN_LED, OUTPUT);
+#ifdef VELXIO_EMULATION
+  pinMode(GAME_SELECT, INPUT_PULLUP);   // emulated buttons idle HIGH
+  pinMode(RESTART, INPUT_PULLUP);
+#else
   pinMode(GAME_SELECT, INPUT);
   pinMode(RESTART, INPUT);
+#endif
   pinMode(RELAY_1, OUTPUT);
   pinMode(RELAY_2, OUTPUT);
   pinMode(BUZZER, OUTPUT);
@@ -248,7 +283,7 @@ void setup() {
 //################################
 void loop() {
   // Restart at any time.
-  if (digitalRead(RESTART) == HIGH) {
+  if (PANEL_PRESSED(RESTART)) {
     started = false;
   }
 
@@ -268,7 +303,7 @@ void loop() {
   // loop (rising edge only — debounced by hysteresis on the threshold; TODO #8).
   int justPressed = -1;
   for (uint8_t i = 0; i < KEY_COUNT; i++) {
-    bool touched = analogRead(i) > keyThreshold[i];
+    bool touched = keyTouched(i);
     if (touched && !keyHeld[i] && justPressed < 0) {
       justPressed = i;
     }
@@ -281,7 +316,11 @@ void loop() {
       // Locked out until RESTART: any touch replays the game-over tune.
       playDeath();
     } else {
+#ifdef VELXIO_EMULATION
+      emuTone(pressedNote, NOTE_DURATION);
+#else
       tone(BUZZER, pressedNote, NOTE_DURATION);
+#endif
       handleGuess();
     }
   }
@@ -349,11 +388,43 @@ void handleGuess() {
   }
 }
 
+// Is key i currently touched/pressed? The single point where the two sensing
+// models meet: real hardware = analog rise above the calibrated baseline;
+// Velxio emulation = active-low keys (analog-low via pull-ups on A0..A5,
+// digital-low on D9).
+bool keyTouched(uint8_t i) {
+#ifdef VELXIO_EMULATION
+  if (i < 6) {
+    return analogRead(i) < 512;               // pull-up idle ~1023, pressed ~0
+  }
+  return digitalRead(KEY_PINS[i]) == LOW;     // key 7 on D9
+#else
+  return analogRead(i) > keyThreshold[i];
+#endif
+}
+
 // Sample each key's floating idle level and set its touch threshold above it.
 // Auto-handles the "raise SENSITIVITY on a laptop charger" note from 2019 by
 // measuring the actual baseline instead of hardcoding it (TODO #12).
 // Keep hands OFF the lemons during boot.
 void calibrate() {
+#ifdef VELXIO_EMULATION
+  // No analog baseline needed — the keys are active-low against external
+  // pull-ups. Arm key 7's digital input, then WAIT for the electrical solver:
+  // Velxio's first SPICE solve can take a moment, and until it drives our
+  // nets every input reads 0/LOW (= "everything pressed"), which would spam
+  // notes and restarts. Idle-high on RESTART + key 1 means the solve landed.
+  pinMode(KEY_PINS[6], INPUT_PULLUP);
+  for (uint8_t i = 0; i < KEY_COUNT; i++) {
+    keyHeld[i] = false;
+  }
+  log(F("Emulation build: waiting for circuit solve (inputs idle-high)..."));
+  while (PANEL_PRESSED(RESTART) || keyTouched(0)) {
+    delay(10);
+  }
+  log(F("Inputs idle. Ready to play."));
+  return;
+#endif
   log(F("Calibrating (hands off)..."));
   for (uint8_t i = 0; i < KEY_COUNT; i++) {
     long sum = 0;
@@ -374,7 +445,7 @@ void calibrate() {
 
 // Pick the game from the select button and reset all per-game state.
 void selectGame() {
-  game = (digitalRead(GAME_SELECT) == HIGH) ? 1 : 2;
+  game = PANEL_PRESSED(GAME_SELECT) ? 1 : 2;
   currentStep = 0;
   fails = 0;
   dead = false;
@@ -405,9 +476,13 @@ void pumpOff() {
 void firePump() {
   digitalWrite(RELAY_1, HIGH);
   digitalWrite(RELAY_2, LOW);
+#ifdef VELXIO_EMULATION
+  emuTone(NOTE_D1, PUMP_MS);
+#else
   tone(BUZZER, NOTE_D1);
   delay(PUMP_MS);
   noTone(BUZZER);
+#endif
   pumpOff();
 }
 
@@ -441,9 +516,14 @@ void playDeath() {
     int frequency = (int) pgm_read_word(&deathTune[i]);
     int noteType = (int) pgm_read_word(&deathTune[i + 1]);
     int noteDuration = 1000 / noteType;
+#ifdef VELXIO_EMULATION
+    emuTone(frequency, noteDuration);
+    delay((unsigned long)(noteDuration * 0.30));
+#else
     tone(BUZZER, frequency, noteDuration);
     delay((unsigned long)(noteDuration * 1.30));
     noTone(BUZZER);
+#endif
   }
 }
 
@@ -452,6 +532,15 @@ void buzz(int targetPin, long frequency, long length) {
   if (frequency <= 0) {
     return;  // rest / stop — nothing to toggle (and avoids a divide-by-zero; TODO #5)
   }
+#ifdef VELXIO_EMULATION
+  // Bit-banged toggling is invisible to Velxio's buzzer part (it listens to
+  // Timer2 duty, not raw edges, for pitch) — route through emuTone instead.
+  (void) targetPin;
+  digitalWrite(BUZZ_LED, HIGH);
+  emuTone(frequency, length);
+  digitalWrite(BUZZ_LED, LOW);
+  return;
+#endif
   digitalWrite(BUZZ_LED, HIGH);
   long delayValue = 1000000 / frequency / 2;    // half-period in microseconds
   long numCycles = frequency * length / 1000;   // cycles for the requested length
@@ -463,6 +552,22 @@ void buzz(int targetPin, long frequency, long length) {
   }
   digitalWrite(BUZZ_LED, LOW);
 }
+
+#ifdef VELXIO_EMULATION
+// Blocking tone that Velxio's buzzer part can both hear and STOP.
+// The part starts a WebAudio note when Timer2 duty goes >0 (reading the pitch
+// from OCR2A/TCCR2B) and stops it ONLY on a duty->0 event — but noTone()
+// leaves OCR2A set, so without the explicit clear the note plays forever
+// (even after the simulation stops). frequency <= 0 = rest.
+void emuTone(long frequency, long durationMs) {
+  if (frequency > 0) {
+    tone(BUZZER, frequency);
+  }
+  delay(durationMs);
+  noTone(BUZZER);
+  OCR2A = 0;   // duty->0: the buzzer part's only note-off trigger
+}
+#endif
 
 // Serial log helper — a single guard point for all debug output (TODO #4).
 void log(const __FlashStringHelper *msg) {
