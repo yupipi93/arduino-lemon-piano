@@ -108,8 +108,12 @@ The 2019 originals are preserved **verbatim** in git history (commit
   recovered. Restored to `NOTE_DURATION = 50` (ms), consistent with the remnant
   digits and the comment "the lower, the better the feel" (the v3 prototype
   used 150).
-- Behavior is otherwise intentionally **identical to 2019, bugs included** —
-  the fix roadmap lives in [TODO.md](TODO.md).
+- The 1:1 English translation was committed first (commit
+  `restructure: translate to English…`), then the **2019 bugs were fixed**
+  (TODO #1–#12): edge-triggered input so repeated notes are playable, `millis()`
+  timing, melodies in `PROGMEM` (RAM 38 % → 15 %), auto-calibrated touch, and a
+  clean game state machine that no longer false-fails after a win. Details in
+  [CHANGELOG.md](CHANGELOG.md); remaining hardware items in [TODO.md](TODO.md).
 
 ## Lineage
 

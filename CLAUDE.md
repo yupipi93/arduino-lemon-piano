@@ -7,9 +7,12 @@ Mario melody, water-pump penalty. Read `README.md` for the game and
 ## Ground rules
 
 - **Everything in English** — code, comments, identifiers, file names, docs.
-- `firmware/src/main.cpp` is currently a **1:1 translation of the 2019 code,
-  bugs included**. Fixes are planned, item by item, from `TODO.md` — don't
-  "improve" behavior in passing; one TODO item per change.
+- `firmware/src/main.cpp` has the 2019 bugs **fixed** (TODO #1–#12, see
+  `CHANGELOG.md`): edge-triggered input, `millis()` timing, `PROGMEM` melodies,
+  auto-calibrated touch, clean game state machine. The pristine 1:1 English
+  translation is in git history (commit `restructure: translate to English…`)
+  if you need the original behavior. Remaining work is TODO #13–#14 (need the
+  physical board). Keep changes scoped — one TODO item per change.
 - The pristine Spanish originals live in git history (commit
   `rescue: original 2019 lemon piano files`). `archive/` is frozen reference —
   never edit it except for docs.
