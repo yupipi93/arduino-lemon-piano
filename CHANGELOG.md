@@ -2,6 +2,31 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-14 — V5: ten-LED progress bar, auto-advancing games
+
+New hardware version. **V4 is frozen** in `archive/lemon-piano-v4/` (firmware +
+emulation) and the top-level `firmware/` + `emulation/` are now V5.
+
+- **Removed**: the 2-channel relay pair + water pump, the red LED, and the
+  fail-counter / death-tune game-over that was coupled to the pump.
+- **Added**: a **ten-green-LED progress bar** on
+  `D2,D3,D4,D5,D6,D9,D10,D11,D12,D13`. Each correct note lights the next LED; a
+  wrong note blanks all ten (with a short low tone) and restarts the sequence;
+  ten lit = win.
+- **Auto-advance**: winning a theme flips the game to the other one
+  (1 → 2 → 1 …), so both games cycle from a single starting point. On hardware
+  the A7 switch picks the *starting* game; the browser build starts at game 1.
+- **Game select moved D4 → A7** (analog-in) to free the digital pin the 10th LED
+  needed. V5 therefore needs a Nano/Mini (uses A6 **and** A7) — the `uno` env is
+  dropped.
+- **Emulation reworked for V5** (`emulation/lemon-piano.yaml` + `.vlx`): ten
+  green LEDs, keys 1–6 on A0–A5 + key 7 on D12, buzzer on D11. Ten LEDs consume
+  every free browser pin, so the emulation has no game-select/restart (it relies
+  on the auto-advance). **Headless verify green**: injects game 1's code →
+  `Game 1 → OK 1/10 … 10/10 → WIN → Game 2` (all ten LED pins + buzzer toggling).
+- Builds green on `nanoatmega328`, `nanoatmega328new`, `emulation` (RAM 311 B /
+  15 %, flash 6.7 KB / 22 %).
+
 ## 2026-07-13 (routing) — Hard wire-routing rules in the pipeline
 
 The harness now enforces reference-diagram wiring on every generated `.vlx`

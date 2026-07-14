@@ -42,18 +42,31 @@ in the 2026-07-12 refactor, all three envs still build green, RAM down from
   baseline at boot and sets `threshold = baseline + TOUCH_MARGIN`, replacing
   the hardcoded 100/170-per-power-supply constant.
 
-## Hardware / docs — open (needs the physical build)
+## Hardware / docs — open (needs the physical V5 build)
 
-- [ ] **13. Verify the relay/pump wiring** against the real board and confirm
-  the polarity assumed by `pumpOff()`/`firePump()`; update the ⚠️ items in
-  [docs/HARDWARE.md](docs/HARDWARE.md).
-- [ ] **14. Redraw the full schematic** (Fritzing/KiCad) including LEDs,
-  buttons, relays and pump — the surviving diagram covers only the keyboard
-  stage.
+- [ ] **13. Wire and playtest the V5 board**: ten green LEDs on
+  D2,D3,D4,D5,D6,D9,D10,D11,D12,D13 (220 Ω each), game-select SPDT on A7
+  (5 V/GND), restart on D7. The Velxio emulation is the closest thing to a
+  reference schematic today ([emulation/lemon-piano.yaml](emulation/lemon-piano.yaml)).
+- [ ] **14. Redraw the full schematic** (Fritzing/KiCad) for V5 — 7 keys +
+  10-LED bar + A7 switch + restart + buzzer; the surviving diagram covers only
+  the keyboard stage. (V4's relay/pump wiring, if ever rebuilt, is in
+  `archive/lemon-piano-v4/`.)
+- [ ] **15. Confirm A7 game-select biasing** on the real board (SPDT vs.
+  switch + 10 kΩ pulldown); A7 has no internal pull-up.
 
 ## Nice-to-have (new ideas, not blocking)
 
-- [ ] On-hardware playtest: confirm `TOUCH_MARGIN` and `LED_FEEDBACK_MS` feel
-  right; tune if needed.
-- [ ] Interruptible death tune (press RESTART to cut it short) if the replay-
-  on-touch lockout feels long.
+- [ ] On-hardware playtest: confirm `TOUCH_MARGIN` feels right; tune if needed.
+- [ ] LED flourish on win (e.g. chase/blink the full bar) before the theme, and
+  on auto-advance.
+- [ ] Optional per-note key LED feedback, or a "wrong" blink, if the plain
+  blank-on-miss feels too subtle.
+
+## Done in V5 (2026-07-14)
+
+- [x] Removed relays / water pump / red LED / fail-counter / death tune.
+- [x] Ten-green-LED progress bar; blank-all-on-wrong; win = all ten lit.
+- [x] Auto-advance between the two games on win.
+- [x] Game-select moved to A7 to free the 10th LED pin.
+- [x] V5 Velxio emulation (10 LEDs) built + headless verify green.
