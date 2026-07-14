@@ -154,4 +154,7 @@ assertions:
   - { type: gpio_toggles, pin: 2,  min_edges: 1,   within_s: 8 }   # LED 1 lit on first correct
   - { type: gpio_toggles, pin: 11, min_edges: 100, within_s: 14 }  # buzzer sang (keys + victory theme)
   - { type: serial_contains, pattern: "WIN",            within_s: 8 }
+  # Victory light show: the bar flashes per note — LED 10 (D13) only ever
+  # lights during the win, so >=40 edges proves the beat-synced blinking.
+  - { type: gpio_toggles, pin: 13, min_edges: 40,  within_s: 16 }
   - { type: serial_contains, pattern: "Game 2",         within_s: 16 }  # auto-advanced after the theme

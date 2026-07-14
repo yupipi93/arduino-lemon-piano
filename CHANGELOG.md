@@ -2,6 +2,34 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-14 (calibration) — Noise-adaptive touch margin, recalibrate on RESTART
+
+Fixes the critical hardware ghost-press problem (margin needs differ per
+fruit / mains outlet / 5V PSU — a fixed `TOUCH_MARGIN 100` can't serve all):
+
+- `calibrate()` now measures each key's real noise: 64 samples over ~128ms
+  (spans 6+ mains cycles at 50Hz), records mean baseline AND peak, and sets
+  `threshold = baseline + max(MIN_TOUCH_MARGIN=40, 3x(peak-mean))`. Quiet
+  supplies get MORE sensitive than the old fixed 100; noisy chargers get a
+  margin wide enough to kill ghost presses. Thresholds are capped at 900
+  with a serial warning (`VERY NOISY - check fruit contact / power supply`).
+- **Recalibration on every RESTART press**, not just power-on — `calibrate()`
+  moved from `setup()` into the `!started` branch. If the piano misbehaves
+  after changing fruit or outlet: hands off the lemons, press RESTART.
+- The LED bar sweeps one LED per key during calibration (visual "hands off"
+  feedback), and serial logs per-key `baseline / noise / threshold`.
+- Emulation path untouched (its calibrate() is the solver boot guard);
+  headless verify green; all three PlatformIO envs green (flash 20%).
+
+## 2026-07-14 (light show) — LED bar flashes to the victory theme
+
+`playSong()` now flashes the whole ten-LED bar to the beat: lit while each
+note sounds (`buzz` blocks for the note's duration), dark in the inter-note
+gap and during rests. Shared game logic — identical on hardware and in the
+browser build (new `allLedsOn()` helper mirrors `allLedsOff()`). Verified
+headlessly: LED 10 (D13), which only ever lights during the win, toggles 61
+times across the Mario victory tail. All three PlatformIO envs green.
+
 ## 2026-07-14 — V5: ten-LED progress bar, auto-advancing games
 
 New hardware version. **V4 is frozen** in `archive/lemon-piano-v4/` (firmware +

@@ -79,9 +79,14 @@ const uint8_t KEY_PINS[KEY_COUNT] = {A0, A1, A2, A3, A4, A5, 12};
 //#########  CONSTANTS ###########
 //################################
 const int SEQUENCE_LENGTH = 10;   // notes to guess correctly to win (== LED_COUNT)
-const int TOUCH_MARGIN = 100;     // touch threshold = per-key idle baseline + this
-                                  // (auto-calibrated at boot; replaces the old fixed
-                                  //  SENSITIVITY 100/170-per-power-supply constant)
+// Touch margin is now AUTO-CALIBRATED from each key's measured noise (fruit,
+// mains, PSU — all vary): threshold = baseline + max(MIN_TOUCH_MARGIN, 3x the
+// observed peak-to-mean noise). A quiet bench gets MORE sensitive than the old
+// fixed 100; a noisy phone charger gets a margin big enough to kill the ghost
+// presses. Runs at boot AND on every RESTART press — hands off the fruit then.
+const int MIN_TOUCH_MARGIN = 40;  // margin floor on a perfectly quiet line
+const int NOISE_FACTOR = 3;      // margin = NOISE_FACTOR x (peak - mean) noise
+const int THRESHOLD_CAP = 900;   // above this a touch could no longer register
 const int NOTE_DURATION = 70;     // key tone length in ms; the lower, the snappier the feel
 const int WRONG_TONE_MS = 200;    // low "you missed" tone
 
@@ -236,6 +241,7 @@ void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length)
 void wrongTone();
 void keyTone(int note);
 void allLedsOff();
+void allLedsOn();
 void buzz(int targetPin, long frequency, long length);
 void log(const __FlashStringHelper *msg);
 
@@ -261,7 +267,6 @@ void setup() {
 #endif
   // A0..A6 need no pinMode for analogRead.
 
-  calibrate();
 }
 
 
@@ -270,13 +275,16 @@ void setup() {
 //################################
 void loop() {
 #ifndef VELXIO_EMULATION
-  // Restart at any time (re-reads GAME SELECT, blanks the bar).
+  // Restart at any time: RECALIBRATES the touch thresholds (hands off the
+  // lemons!), re-reads GAME SELECT and blanks the bar. Press it whenever the
+  // piano misbehaves after changing fruit, PSU or mains outlet.
   if (digitalRead(RESTART) == HIGH) {
     started = false;
   }
 #endif
 
   if (!started) {
+    calibrate();     // boot + every restart — adapts to fruit/PSU/mains noise
     selectGame();
     started = true;
   }
@@ -324,8 +332,9 @@ void handleGuess() {
     }
 
     if (currentStep >= SEQUENCE_LENGTH) {
-      // VICTORY — all ten lit; hold them through the theme, then AUTO-ADVANCE to
-      // the other game and blank the bar for the next round.
+      // VICTORY — the whole bar flashes to the beat of the winning theme
+      // (playSong's light show), then AUTO-ADVANCE to the other game and
+      // blank the bar for the next round.
       log(F("WIN"));
       playVictory();
       game = (game == 1) ? 2 : 1;
@@ -344,6 +353,12 @@ void handleGuess() {
 void allLedsOff() {
   for (uint8_t i = 0; i < LED_COUNT; i++) {
     digitalWrite(LED_PINS[i], LOW);
+  }
+}
+
+void allLedsOn() {
+  for (uint8_t i = 0; i < LED_COUNT; i++) {
+    digitalWrite(LED_PINS[i], HIGH);
   }
 }
 
@@ -383,22 +398,48 @@ void calibrate() {
   log(F("Inputs idle. Ready to play."));
   return;
 #endif
-  log(F("Calibrating (hands off)..."));
+  log(F("Calibrating (hands off the fruit!)..."));
+  allLedsOff();
   for (uint8_t i = 0; i < KEY_COUNT; i++) {
+    // Visual "calibrating" feedback: the bar sweeps one LED per key.
+    digitalWrite(LED_PINS[i], HIGH);
+
+    // 64 samples x 2ms ≈ 128ms — spans 6+ mains cycles (50Hz), so the peak
+    // captures the supply/fruit noise this key actually sees right now.
     long sum = 0;
-    for (uint8_t s = 0; s < 32; s++) {
-      sum += analogRead(i);
-      delay(1);
+    int peak = 0;
+    for (uint8_t s = 0; s < 64; s++) {
+      int r = analogRead(i);
+      sum += r;
+      if (r > peak) {
+        peak = r;
+      }
+      delay(2);
     }
-    int baseline = sum / 32;
-    keyThreshold[i] = baseline + TOUCH_MARGIN;
+    int baseline = sum / 64;
+    int noise = peak - baseline;
+    int margin = noise * NOISE_FACTOR;
+    if (margin < MIN_TOUCH_MARGIN) {
+      margin = MIN_TOUCH_MARGIN;
+    }
+    keyThreshold[i] = baseline + margin;
+    if (keyThreshold[i] > THRESHOLD_CAP) {
+      keyThreshold[i] = THRESHOLD_CAP;
+      if (serialEnabled) {
+        Serial.print(F("  A")); Serial.print(i);
+        Serial.println(F(" VERY NOISY - check fruit contact / power supply"));
+      }
+    }
     keyHeld[i] = false;
     if (serialEnabled) {
       Serial.print(F("  A")); Serial.print(i);
       Serial.print(F(" baseline=")); Serial.print(baseline);
+      Serial.print(F(" noise=")); Serial.print(noise);
       Serial.print(F(" threshold=")); Serial.println(keyThreshold[i]);
     }
+    digitalWrite(LED_PINS[i], LOW);
   }
+  log(F("Calibration done."));
 }
 
 // Pick the STARTING game (boot / restart). Wins after this auto-advance between
@@ -473,7 +514,15 @@ void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length)
 
     // note duration: one second / note type (quarter = 1000/4, eighth = 1000/8...)
     int noteDuration = 1000 / tempo;
+
+    // Light show: the whole LED bar flashes to the beat — lit while the note
+    // sounds (buzz blocks for its duration), dark in the inter-note gap and
+    // during rests.
+    if (frequency > 0) {
+      allLedsOn();
+    }
     buzz(BUZZER, frequency, noteDuration);
+    allLedsOff();
 
     // a gap of duration + 30% keeps consecutive notes distinct
     delay((unsigned long)(noteDuration * 1.30));
