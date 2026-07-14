@@ -2,6 +2,18 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-13 (routing) — Hard wire-routing rules in the pipeline
+
+The harness now enforces reference-diagram wiring on every generated `.vlx`
+(`velxio_harness/routing.py`, based on exact pin geometry extracted from the
+live Velxio DOM): **no cable may cross any component** (generation aborts on
+violation), no two cables may ride the same lane (staircase nesting in
+adjacent 10px lanes, shortest wires innermost), long runs travel in
+corridors instead of along pin rows, and stubs exit perpendicular to the
+component edge. The lemon piano regenerates with 34 of 46 wires auto-routed
+around the components; headless verify (secret code → WIN) still green.
+Rules documented in the harness AGENTS.md.
+
 ## 2026-07-13 (final) — Emulation polish: keyboard play, switch, clean wiring
 
 - **PC keyboard play**: keys `1`–`7` now play the corresponding lemon

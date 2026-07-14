@@ -22,36 +22,37 @@ components:
   # directly above it: the board's signal wire terminates at the resistor
   # column, never at button level, so no cable crosses the buttons.
   - { id: key1, type: pushbutton, x: 60,  y: 430, properties: { color: "yellow", label: "1" } }
-  - { id: key2, type: pushbutton, x: 175, y: 430, properties: { color: "yellow", label: "2" } }
-  - { id: key3, type: pushbutton, x: 290, y: 430, properties: { color: "yellow", label: "3" } }
-  - { id: key4, type: pushbutton, x: 405, y: 430, properties: { color: "yellow", label: "4" } }
-  - { id: key5, type: pushbutton, x: 520, y: 430, properties: { color: "yellow", label: "5" } }
-  - { id: key6, type: pushbutton, x: 635, y: 430, properties: { color: "yellow", label: "6" } }
-  - { id: key7, type: pushbutton, x: 750, y: 430, properties: { color: "yellow", label: "7" } }
+  - { id: key2, type: pushbutton, x: 190, y: 430, properties: { color: "yellow", label: "2" } }
+  - { id: key3, type: pushbutton, x: 320, y: 430, properties: { color: "yellow", label: "3" } }
+  - { id: key4, type: pushbutton, x: 450, y: 430, properties: { color: "yellow", label: "4" } }
+  - { id: key5, type: pushbutton, x: 580, y: 430, properties: { color: "yellow", label: "5" } }
+  - { id: key6, type: pushbutton, x: 710, y: 430, properties: { color: "yellow", label: "6" } }
+  - { id: key7, type: pushbutton, x: 840, y: 430, properties: { color: "yellow", label: "7" } }
   # Pull-ups (10k to 5V) — REQUIRED: Velxio's electrical layer drives AVR
   # inputs from the solved node voltage; an active-low button with no pull-up
-  # floats at ~0V and reads permanently pressed. Vertical, one per key column.
-  - { id: rp1, type: resistor, x: 90,  y: 290, properties: { value: "10000", rotation: 90 } }
-  - { id: rp2, type: resistor, x: 205, y: 290, properties: { value: "10000", rotation: 90 } }
-  - { id: rp3, type: resistor, x: 320, y: 290, properties: { value: "10000", rotation: 90 } }
-  - { id: rp4, type: resistor, x: 435, y: 290, properties: { value: "10000", rotation: 90 } }
-  - { id: rp5, type: resistor, x: 550, y: 290, properties: { value: "10000", rotation: 90 } }
-  - { id: rp6, type: resistor, x: 665, y: 290, properties: { value: "10000", rotation: 90 } }
-  - { id: rp7, type: resistor, x: 780, y: 290, properties: { value: "10000", rotation: 90 } }
+  # floats at ~0V and reads permanently pressed. Horizontal, one per key
+  # column (pin 1 = left = 5V bus, pin 2 = right = key node).
+  - { id: rp1, type: resistor, x: 36,  y: 310, properties: { value: "10000" } }
+  - { id: rp2, type: resistor, x: 166, y: 310, properties: { value: "10000" } }
+  - { id: rp3, type: resistor, x: 296, y: 310, properties: { value: "10000" } }
+  - { id: rp4, type: resistor, x: 426, y: 310, properties: { value: "10000" } }
+  - { id: rp5, type: resistor, x: 556, y: 310, properties: { value: "10000" } }
+  - { id: rp6, type: resistor, x: 686, y: 310, properties: { value: "10000" } }
+  - { id: rp7, type: resistor, x: 816, y: 310, properties: { value: "10000" } }
   # Panel: game selector is a SWITCH (left throw = GND = game 1 Mario, right
   # throw = 5V = game 2 Underworld; takes effect on RESTART). value: 1 =
   # game 2 default. The restart button keeps a pull-up like the keys.
-  - { id: sw_game,     type: slide-switch, x: 930,  y: 440, properties: { value: 1, label: "GAME: 1-Mario / 2-Underworld" } }
-  - { id: btn_restart, type: pushbutton,   x: 1090, y: 430, properties: { color: "black", label: "RESTART" } }
-  - { id: rp_restart,  type: resistor,     x: 1120, y: 290, properties: { value: "10000", rotation: 90 } }
+  - { id: sw_game,     type: slide-switch, x: 1000,  y: 440, properties: { value: 1, label: "GAME: 1-Mario / 2-Underworld" } }
+  - { id: btn_restart, type: pushbutton,   x: 1160, y: 430, properties: { color: "black", label: "RESTART" } }
+  - { id: rp_restart,  type: resistor,     x: 1130, y: 310, properties: { value: "10000" } }
   # Feedback + audio + pump — column on the far right, clear of the keyboard
-  - { id: r_red,     type: resistor, x: 950,  y: 70,  properties: { value: "220" } }
-  - { id: led_red,   type: led,      x: 1070, y: 60,  properties: { color: "red",   label: "WRONG" } }
-  - { id: r_green,   type: resistor, x: 950,  y: 160, properties: { value: "220" } }
-  - { id: led_green, type: led,      x: 1070, y: 150, properties: { color: "green", label: "CORRECT" } }
-  - { id: r_pump,    type: resistor, x: 950,  y: 250, properties: { value: "220" } }
-  - { id: led_pump,  type: led,      x: 1070, y: 240, properties: { color: "blue",  label: "WATER PUMP (relay D5)" } }
-  - { id: buzzer1,   type: buzzer,   x: 1200, y: 70,  properties: {} }
+  - { id: r_red,     type: resistor, x: 1010,  y: 70,  properties: { value: "220" } }
+  - { id: led_red,   type: led,      x: 1180, y: 55,  properties: { color: "red",   label: "WRONG" } }
+  - { id: r_green,   type: resistor, x: 1010,  y: 160, properties: { value: "220" } }
+  - { id: led_green, type: led,      x: 1180, y: 145, properties: { color: "green", label: "CORRECT" } }
+  - { id: r_pump,    type: resistor, x: 1010,  y: 250, properties: { value: "220" } }
+  - { id: led_pump,  type: led,      x: 1180, y: 235, properties: { color: "blue",  label: "WATER PUMP (relay D5)" } }
+  - { id: buzzer1,   type: buzzer,   x: 1300, y: 70,  properties: {} }
 
 wires:
   # Signal columns: board pin -> resistor bottom (the key node), resistor
