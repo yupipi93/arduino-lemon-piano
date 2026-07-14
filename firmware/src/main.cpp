@@ -82,7 +82,7 @@ const int SEQUENCE_LENGTH = 10;   // notes to guess correctly to win (== LED_COU
 const int TOUCH_MARGIN = 100;     // touch threshold = per-key idle baseline + this
                                   // (auto-calibrated at boot; replaces the old fixed
                                   //  SENSITIVITY 100/170-per-power-supply constant)
-const int NOTE_DURATION = 50;     // key tone length in ms; the lower, the snappier the feel
+const int NOTE_DURATION = 70;     // key tone length in ms; the lower, the snappier the feel
 const int WRONG_TONE_MS = 200;    // low "you missed" tone
 
 const bool serialEnabled = true;  // debug log at 9600 baud
