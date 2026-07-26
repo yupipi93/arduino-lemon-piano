@@ -2,6 +2,96 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-26 — Wiring engine extracted to its own repo (eda-wirewright)
+
+The schematic engine that was living in `tools/schematic/` is now a standalone,
+professional package: **[eda-wirewright](../eda-wirewright/)** (CLI, declarative
+JSON contract format, MCP server for AI, Docker, tests, CI). This project just
+*consumes* it now:
+
+- Removed `tools/schematic/` (moved, not deleted — it's `eda-wirewright/src/wirewright/`).
+- `tools/wiring_diagrams.py` imports `wirewright` via a `sys.path` shim to
+  `../eda-wirewright/src` (no install needed, only Pillow). The three contracts
+  are unchanged; `python3 tools/wiring_diagrams.py` still regenerates
+  `docs/images/wiring-{v4,v4-plus,v5}.png` (36 / 42 / 55 nets, 0 DRC violations).
+
+## 2026-07-25 (engine) — Real schematic engine: auto-router + DRC (no more overlaps)
+
+Rewrote the wiring-diagram generator from hand-placed coordinates into a proper,
+reusable **schematic engine** (`tools/schematic/`, ~1160 lines) — because
+patching coordinates by hand kept producing the same faults (wires over
+resistors, confusing crossings, wires too close, resistors left visually
+unconnected, wires under components). Now the diagrams are *declarative
+contracts* and the engine guarantees correctness:
+
+- **Declarative model**: you state components, typed ports and nets (what
+  connects to what); a 3+-terminal net (e.g. a Nano pin + button + pulldown that
+  are one node) routes as one clean tree. `tools/wiring_diagrams.py` is now just
+  the three contracts (~200 lines).
+- **Grid A\* maze router** (`router.py`): shortest orthogonal paths on a routing
+  grid, component bodies (+clearance) are hard obstacles so a wire can never
+  cross one, a large **bend penalty** yields long straight runs, a light
+  **proximity penalty** keeps wires apart (they cross cleanly rather than
+  detour), and every pin gets a perpendicular **escape stub**. Labels are a soft
+  obstacle so wires route around text.
+- **DRC that runs before every save** (`validator.py`): raises on wire-over-body,
+  coincident wires, unconnected pins, or wires-too-close. The three diagrams now
+  report **0 hard violations, 0 spacing warnings** (36 / 42 / 55 nets). A broken
+  diagram literally cannot be saved.
+- Design follows standard EDA practice (Lee/A\* maze routing, bend/proximity
+  cost, net ordering, junction-dot rules, label placement). See
+  `tools/schematic/README.md`.
+
+Same three outputs (`docs/images/wiring-{v4,v4-plus,v5}.png`), regenerated with
+`python3 tools/wiring_diagrams.py`; canvas widened to 3400 px for breathing room.
+
+## 2026-07-25 (diagrams) — Fix overlapping wires in the wiring diagrams
+
+`tools/wiring_diagrams.py` v1 let several control wires (game-select, buzzer,
+restart, MARGIN+/-) share the same y as the component row they fed into, so a
+wire bound for a farther component cut straight through a nearer component's
+body (and some wires' lanes coincided with LEDs' full-height GND drops).
+Fixed with a `connect_over_top()` router: every controls-row wire first climbs
+to its OWN private "highway" level — all comfortably above the LED tops — then
+crosses over and drops straight down into its own terminal, so no wire ever
+overlaps a component's bounding box. Canvas widened (2500→3700px) to give
+each component (LEDs, relay+pump, game-select, buzzer, restart, MARGIN+/-)
+its own clear horizontal slot. V5 also got its RESTART/BUZZER/LED-bar
+positions rebased off `NANO_X1` (they were absolute pixel coordinates that the
+wider canvas had shifted the Nano away from). Regenerated all three PNGs.
+
+## 2026-07-25 — V4 touch upgrade (in-place) + manual MARGIN buttons + wiring diagrams
+
+Backported V5's touch-sensing improvements onto the **archived V4** and added a
+live manual override. The V4 **game is unchanged** (relay water pump, red/green
+LED, 10-penalty death tune, both secret codes all behave exactly as before) —
+only the touch layer and two new hardware buttons changed. This deliberately
+edits the otherwise-frozen `archive/lemon-piano-v4/` (owner-authorised; the
+pristine 2019 original still lives in git history).
+
+- **Noise-adaptive calibration ported to V4** (`archive/lemon-piano-v4/firmware/src/main.cpp`):
+  the fixed `TOUCH_MARGIN 100` is gone. `calibrate()` now takes 64 samples over
+  ~128 ms per key (mean baseline + peak) and sets
+  `threshold = baseline + max(MIN_TOUCH_MARGIN=40, NOISE_FACTOR=3 × (peak−mean))`,
+  capped at `THRESHOLD_CAP=900`. It runs at boot **and on every RESTART**
+  (moved from `setup()` into loop's `!started` branch), so ghost presses from a
+  new fruit / outlet / PSU are re-tuned by pressing RESTART (hands off).
+- **Manual MARGIN buttons (hardware only)**: `MARGIN +` on **D10** and
+  `MARGIN −` on **D11** (active-HIGH, wired like RESTART, edge-triggered). They
+  shift a `manualMargin` offset applied on top of each key's auto margin
+  (`applyThresholds()`), bounded to `[−120, +400]` in `MARGIN_STEP=10` nudges,
+  with an `EFFECTIVE_MARGIN_FLOOR=8` so a threshold never sits on the baseline.
+  Each press gives an audible tick (high = up, low = down) + a serial line.
+  Emulation build is untouched — the buttons are `#ifndef VELXIO_EMULATION`
+  (its keys are active-low digital and D11 is the buzzer there).
+- **Verified**: all four PlatformIO envs green (nanoatmega328 / …new / uno /
+  emulation; hardware RAM 341 B / 16.7 %), and the V4 Velxio emulation
+  `--mode verify` regression still passes (game 2's code → `WIN`).
+- **Wiring diagrams** (new `tools/wiring_diagrams.py`, pure-PIL, adapted from
+  the oscilloscope project's technique) → `docs/images/wiring-{v4,v4-plus,v5}.png`:
+  one per version (original V4, V4+ with the touch upgrade, and V5), each with
+  the 7-lemon keyboard, colour-coded wires and a legend.
+
 ## 2026-07-14 (calibration) — Noise-adaptive touch margin, recalibrate on RESTART
 
 Fixes the critical hardware ghost-press problem (margin needs differ per

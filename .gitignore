@@ -13,6 +13,10 @@
 .DS_Store
 Thumbs.db
 
+# Python
+__pycache__/
+*.pyc
+
 # Logs / temp
 *.log
 *.tmp
@@ -22,4 +26,5 @@ Thumbs.db
 .claude/settings.local.json
 
 # Velxio emulation — per-run evidence bundles (reports, logs, screenshots)
-emulation/runs/
+# (**/ so both the active emulation/ and archive/**/emulation/ runs are ignored)
+**/emulation/runs/

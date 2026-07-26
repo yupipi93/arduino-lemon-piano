@@ -48,10 +48,11 @@ in the 2026-07-12 refactor, all three envs still build green, RAM down from
   D2,D3,D4,D5,D6,D9,D10,D11,D12,D13 (220 Ω each), game-select SPDT on A7
   (5 V/GND), restart on D7. The Velxio emulation is the closest thing to a
   reference schematic today ([emulation/lemon-piano.yaml](emulation/lemon-piano.yaml)).
-- [ ] **14. Redraw the full schematic** (Fritzing/KiCad) for V5 — 7 keys +
-  10-LED bar + A7 switch + restart + buzzer; the surviving diagram covers only
-  the keyboard stage. (V4's relay/pump wiring, if ever rebuilt, is in
-  `archive/lemon-piano-v4/`.)
+- [~] **14. Full wiring diagram** — done as generated PIL diagrams
+  ([tools/wiring_diagrams.py](tools/wiring_diagrams.py) →
+  [docs/images/wiring-v5.png](docs/images/wiring-v5.png), plus `wiring-v4.png`
+  and `wiring-v4-plus.png`): 7 keys + 10-LED bar + A7 switch + restart + buzzer,
+  colour-coded with a legend. A formal Fritzing/KiCad redraw is still optional.
 - [ ] **15. Confirm A7 game-select biasing** on the real board (SPDT vs.
   switch + 10 kΩ pulldown); A7 has no internal pull-up.
 

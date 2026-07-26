@@ -19,6 +19,19 @@
      - Victory/death/penalty playback is still intentionally blocking (TODO #9):
        the game is meant to pause while a song or the spray plays. Idle key
        input is fully responsive.
+
+   Touch-sensing upgrade (2026-07-25) — the GAME is unchanged (pump, red/green
+   LED, death tune and both codes all behave exactly as before):
+     - Calibration is now NOISE-ADAPTIVE (ported from V5): each key's touch
+       threshold = baseline + max(MIN_TOUCH_MARGIN, NOISE_FACTOR × the observed
+       peak-to-mean noise), clamped to THRESHOLD_CAP. This replaces the fixed
+       TOUCH_MARGIN 100 with a per-key margin that adapts to fruit / PSU / mains
+       noise, re-run at boot AND on every RESTART (hands off the fruit then).
+     - Two new HARDWARE buttons nudge the margin live without a reflash:
+       MARGIN + on D10 and MARGIN − on D11 (active-HIGH, wired like RESTART).
+       They shift a manual offset applied on top of every key's auto margin.
+       The emulation build has no margin buttons — it uses active-low digital
+       keys and D11 is the buzzer there.
 */
 
 #include <Arduino.h>
@@ -33,6 +46,8 @@
                    // tone would play forever (see emuTone below)
 #else
 #define BUZZER 8
+#define MARGIN_UP   10  // hardware-only button: raise touch margin (less sensitive)
+#define MARGIN_DOWN 11  // hardware-only button: lower touch margin (more sensitive)
 #endif
 #define RED_LED 2
 #define GREEN_LED 3
@@ -71,9 +86,25 @@ const int SEQUENCE_LENGTH = 10;   // notes to guess correctly to win
 const int PUMP_FROM_STEP = 7;     // failing at/after this step fires the pump
 const int MAX_FAILS = 10;         // penalties before game over (spares the water bottle)
 
-const int TOUCH_MARGIN = 100;     // touch threshold = per-key idle baseline + this
-                                  // (auto-calibrated at boot; replaces the old fixed
-                                  //  SENSITIVITY 100/170-per-power-supply constant)
+// Touch margin is AUTO-CALIBRATED from each key's measured noise (fruit, mains,
+// PSU — all vary): threshold = baseline + max(MIN_TOUCH_MARGIN, NOISE_FACTOR ×
+// the observed peak-to-mean noise), clamped to THRESHOLD_CAP. A quiet bench
+// gets MORE sensitive than the old fixed 100; a noisy charger gets a margin big
+// enough to kill ghost presses. Re-run at boot AND on every RESTART — hands off
+// the fruit then. (Ported from V5, replacing the fixed 100/170-per-PSU value.)
+const int MIN_TOUCH_MARGIN = 40;  // auto-margin floor on a perfectly quiet line
+const int NOISE_FACTOR = 3;       // auto margin = NOISE_FACTOR × (peak − mean) noise
+const int THRESHOLD_CAP = 900;    // above this a touch could no longer register
+
+// Manual override: the MARGIN +/− buttons (D10/D11) shift this offset, added on
+// top of every key's auto margin, so sensitivity can be tuned live without a
+// reflash. Bounded, and the effective per-key margin never drops below
+// EFFECTIVE_MARGIN_FLOOR (so a threshold never sits on the idle baseline).
+const int MARGIN_STEP = 10;             // per-press nudge of the manual offset
+const int MANUAL_MARGIN_MIN = -120;     // most-sensitive limit
+const int MANUAL_MARGIN_MAX = 400;      // least-sensitive limit
+const int EFFECTIVE_MARGIN_FLOOR = 8;   // per-key margin never falls below this
+
 const int NOTE_DURATION = 50;     // key tone length in ms; the lower, the snappier the feel
                                   // [reconstructed — the 2019 line was corrupted]
 const unsigned long LED_FEEDBACK_MS = 600;  // how long the right/wrong LED stays lit
@@ -220,7 +251,15 @@ int  fails = 0;                // penalties applied this game
 int  pressedNote = 0;          // last note played
 
 int  keyThreshold[KEY_COUNT];  // per-key touch threshold (auto-calibrated)
+int  keyBaseline[KEY_COUNT];   // per-key measured idle level (for live re-margining)
+int  keyAutoMargin[KEY_COUNT]; // per-key noise-derived margin (before manual offset)
 bool keyHeld[KEY_COUNT];       // previous touched-state, for rising-edge detection
+
+int  manualMargin = 0;         // MARGIN +/− (D10/D11) offset on top of the auto margin
+#ifndef VELXIO_EMULATION
+bool marginUpHeld = false;     // rising-edge latch for the MARGIN + button
+bool marginDownHeld = false;   // rising-edge latch for the MARGIN − button
+#endif
 
 bool ledActive = false;        // a feedback LED is currently lit
 unsigned long ledOnAt = 0;     // millis() when it was lit
@@ -233,6 +272,8 @@ bool keyTouched(uint8_t i);
 void emuTone(long frequency, long durationMs);
 #endif
 void calibrate();
+void applyThresholds();
+void adjustMargin(int delta);
 void selectGame();
 void handleGuess();
 void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length);
@@ -265,6 +306,8 @@ void setup() {
 #else
   pinMode(GAME_SELECT, INPUT);
   pinMode(RESTART, INPUT);
+  pinMode(MARGIN_UP, INPUT);      // active-HIGH (button to 5 V + pulldown), like RESTART
+  pinMode(MARGIN_DOWN, INPUT);
 #endif
   pinMode(RELAY_1, OUTPUT);
   pinMode(RELAY_2, OUTPUT);
@@ -274,7 +317,8 @@ void setup() {
   // is gone — it clobbered the D0/D1 UART pins for no benefit; TODO #4.)
 
   pumpOff();
-  calibrate();
+  // calibrate() now runs from loop()'s !started branch, so it also re-runs on
+  // every RESTART (adapts the touch thresholds to fruit/PSU/mains changes).
 }
 
 
@@ -287,9 +331,26 @@ void loop() {
     started = false;
   }
 
+#ifndef VELXIO_EMULATION
+  // MARGIN +/− buttons: nudge the manual touch-margin offset live, edge-triggered
+  // (one step per fresh press). Works at any time, mid-game included.
+  bool up = (digitalRead(MARGIN_UP) == HIGH);
+  if (up && !marginUpHeld) {
+    adjustMargin(+MARGIN_STEP);
+  }
+  marginUpHeld = up;
+  bool down = (digitalRead(MARGIN_DOWN) == HIGH);
+  if (down && !marginDownHeld) {
+    adjustMargin(-MARGIN_STEP);
+  }
+  marginDownHeld = down;
+#endif
+
   // (Re)select the game. selectGame() clears fails/step/dead, so a restart
-  // after death starts truly fresh (TODO #3).
+  // after death starts truly fresh (TODO #3). calibrate() re-measures the touch
+  // thresholds on boot AND on every restart — hands off the fruit then.
   if (!started) {
+    calibrate();
     selectGame();
     started = true;
   }
@@ -403,10 +464,11 @@ bool keyTouched(uint8_t i) {
 #endif
 }
 
-// Sample each key's floating idle level and set its touch threshold above it.
+// Sample each key's floating idle level AND its noise, then set a per-key touch
+// margin above the baseline (TODO #12, upgraded to V5's noise-adaptive scheme).
 // Auto-handles the "raise SENSITIVITY on a laptop charger" note from 2019 by
-// measuring the actual baseline instead of hardcoding it (TODO #12).
-// Keep hands OFF the lemons during boot.
+// measuring what each key actually sees instead of hardcoding a margin.
+// Keep hands OFF the lemons during boot and on every restart.
 void calibrate() {
 #ifdef VELXIO_EMULATION
   // No analog baseline needed — the keys are active-low against external
@@ -425,21 +487,75 @@ void calibrate() {
   log(F("Inputs idle. Ready to play."));
   return;
 #endif
-  log(F("Calibrating (hands off)..."));
+  log(F("Calibrating (hands off the fruit!)..."));
   for (uint8_t i = 0; i < KEY_COUNT; i++) {
+    // 64 samples × 2 ms ≈ 128 ms — spans 6+ mains cycles (50 Hz), so the peak
+    // captures the supply/fruit noise this key actually sees right now.
     long sum = 0;
-    for (uint8_t s = 0; s < 32; s++) {
-      sum += analogRead(i);
-      delay(1);
+    int peak = 0;
+    for (uint8_t s = 0; s < 64; s++) {
+      int r = analogRead(i);
+      sum += r;
+      if (r > peak) {
+        peak = r;
+      }
+      delay(2);
     }
-    int baseline = sum / 32;
-    keyThreshold[i] = baseline + TOUCH_MARGIN;
+    int baseline = sum / 64;
+    int noise = peak - baseline;
+    int margin = noise * NOISE_FACTOR;
+    if (margin < MIN_TOUCH_MARGIN) {
+      margin = MIN_TOUCH_MARGIN;
+    }
+    keyBaseline[i] = baseline;
+    keyAutoMargin[i] = margin;
     keyHeld[i] = false;
     if (serialEnabled) {
       Serial.print(F("  A")); Serial.print(i);
       Serial.print(F(" baseline=")); Serial.print(baseline);
-      Serial.print(F(" threshold=")); Serial.println(keyThreshold[i]);
+      Serial.print(F(" noise=")); Serial.print(noise);
+      Serial.print(F(" autoMargin=")); Serial.println(margin);
     }
+  }
+  applyThresholds();   // fold in the current manual offset + the noisy-line cap
+}
+
+// Recompute every key's touch threshold from its stored baseline + auto margin,
+// plus the live manual offset (MARGIN +/− buttons). Called after calibration
+// and on every manual nudge, so tuning takes effect without re-measuring.
+void applyThresholds() {
+  for (uint8_t i = 0; i < KEY_COUNT; i++) {
+    int margin = keyAutoMargin[i] + manualMargin;
+    if (margin < EFFECTIVE_MARGIN_FLOOR) {
+      margin = EFFECTIVE_MARGIN_FLOOR;   // never let a threshold sit on the baseline
+    }
+    int t = keyBaseline[i] + margin;
+    if (t > THRESHOLD_CAP) {
+      t = THRESHOLD_CAP;
+      if (serialEnabled) {
+        Serial.print(F("  A")); Serial.print(i);
+        Serial.println(F(" threshold capped — very noisy line, check contact/PSU"));
+      }
+    }
+    keyThreshold[i] = t;
+  }
+}
+
+// MARGIN +/− button handler: shift the manual offset (bounded), re-derive the
+// thresholds, and give a short audible + serial confirmation. Hardware only.
+void adjustMargin(int delta) {
+  manualMargin += delta;
+  if (manualMargin < MANUAL_MARGIN_MIN) {
+    manualMargin = MANUAL_MARGIN_MIN;
+  }
+  if (manualMargin > MANUAL_MARGIN_MAX) {
+    manualMargin = MANUAL_MARGIN_MAX;
+  }
+  applyThresholds();
+  tone(BUZZER, (delta > 0) ? NOTE_C6 : NOTE_C4, 40);   // up = high tick, down = low tick
+  if (serialEnabled) {
+    Serial.print(F("Manual touch margin = "));
+    Serial.println(manualMargin);
   }
 }
 
