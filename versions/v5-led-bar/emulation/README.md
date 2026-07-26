@@ -3,15 +3,17 @@
 Play the V5 lemon piano in your browser: real firmware, emulated ATmega328
 (avr8js), clickable lemons, audible buzzer, and the **ten-green-LED progress
 bar**. Built with the
-[velxio-multi-board-emulator](../../velxio-multi-board-emulator/) pipeline
-harness. (The frozen V4 emulation — red/green LEDs + water-pump indicator —
-is in [`../archive/lemon-piano-v4/emulation/`](../archive/lemon-piano-v4/emulation/).)
+[velxio-multi-board-emulator](../../../../velxio-multi-board-emulator/) pipeline
+harness. (The V4 emulation — red/green LEDs + water-pump indicator — is just as active, in
+[`../../v4-water-pump/emulation/`](../../v4-water-pump/emulation/).)
+
+> Run every command below **from the version directory** (`versions/v5-led-bar/`).
 
 ## Play it
 
 ```bash
 # 1. Bring up the Velxio stack (Docker; first boot pulls a ~3.3 GB image once)
-../../velxio-multi-board-emulator/harness/.venv/bin/velxio-pipeline stack up
+../../../velxio-multi-board-emulator/harness/.venv/bin/velxio-pipeline stack up
 
 # 2. Open http://localhost:3080/editor  (the root URL is Velxio's landing
 #    page — the editor is at /editor, or click "Try Simulator Free Online").
@@ -37,7 +39,7 @@ is in [`../archive/lemon-piano-v4/emulation/`](../archive/lemon-piano-v4/emulati
 To regenerate the `.vlx` (or run it headlessly) from the spec:
 
 ```bash
-PIPE=../../velxio-multi-board-emulator/harness/.venv/bin/velxio-pipeline
+PIPE=../../../velxio-multi-board-emulator/harness/.venv/bin/velxio-pipeline
 $PIPE run --mode verify      --spec emulation/lemon-piano.yaml --out emulation/runs
 $PIPE run --mode interactive --spec emulation/lemon-piano.yaml --out emulation/runs
 # then copy the generated runs/<latest>/project.vlx over emulation/lemon-piano.vlx
@@ -53,14 +55,14 @@ game logic. Last run: **pass**, serial `Game 1 → OK 1/10 … 10/10 → WIN →
 
 The real piano senses lemons **analogically**: each key floats near 0 and rises
 above `baseline + 100` when the player closes the 5 V circuit
-([docs/HARDWARE.md](../docs/HARDWARE.md)). That divider cannot be reproduced in
+([../HARDWARE.md](../HARDWARE.md)). That divider cannot be reproduced in
 the Velxio canvas, and with **ten LEDs every usable pin is spoken for** — the
 browser AVR (avr8js) exposes only `A0`–`A5` (ADC injection) and `D2`–`D13`
 (digital injection); `A6`/`A7` are absent and `D0`/`D1` are the UART. That's 18
 lines, and 7 keys + 10 LEDs + buzzer already uses all 18.
 
 So the emulation build swaps ONLY the input layer and drops the two panel
-controls (`firmware/src/main.cpp`, guarded by `-DVELXIO_EMULATION`):
+controls (`../firmware/src/main.cpp`, guarded by `-DVELXIO_EMULATION`):
 
 - **Keys 1–6**: pushbuttons + 10 kΩ pull-ups on **A0–A5**, read with
   `analogRead` — idle ≈ 1023 (5 V through the pull-up), pressed ≈ 0 (button
@@ -87,7 +89,7 @@ level. **Game logic, melodies and the LED bar are the same code as hardware**;
 `pio run` on the two hardware Nano envs is unaffected (the shim path is
 compile-checked by the `emulation` env).
 
-### Emulation pin map (differences vs. [docs/HARDWARE.md](../docs/HARDWARE.md) only)
+### Emulation pin map (differences vs. [../HARDWARE.md](../HARDWARE.md) only)
 
 | Real V5 (Nano) | Emulation |
 |---|---|

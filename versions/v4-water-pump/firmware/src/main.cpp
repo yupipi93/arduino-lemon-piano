@@ -1,15 +1,14 @@
-/* LEMON PIANO V4.5 — V4's game, no water pump, live touch tuning
+/* LEMON PIANO V4 — fixed & improved
    Author : Yupipi93 (Sergio Conejero), 2019
    Rescued, translated and refactored : 2026-07-12
-   V4.5 board                         : 2026-07-26
 
    CODE 1 (Mario Main Theme):  6,5,6,7,2,5,2,1,3,4
    CODE 2 (Mario Underworld) :  3,6,1,4,2,5,3,6,1,4
 
    Seven lemons are touch keys on A0..A6 (the player's body closes each key to
    5 V). Reproduce the secret 10-note melody: green LED = right, red = wrong.
-   Miss from note 7 onward and you take a penalty (a low warning groan). Ten
-   penalties and the Mario death tune plays until you press RESTART.
+   Miss from note 7 onward and a relay fires the water pump. Ten penalties and
+   the Mario death tune plays until you press RESTART.
 
    This file WAS a 1:1 translation of the 2019 sketch; TODO.md items 1–12 are
    now applied. See CHANGELOG.md for what changed and why. The two behavioural
@@ -18,23 +17,8 @@
        melodies with repeated consecutive notes are playable and a held finger
        no longer machine-guns the sequence.
      - Victory/death/penalty playback is still intentionally blocking (TODO #9):
-       the game is meant to pause while a song or the penalty plays. Idle key
+       the game is meant to pause while a song or the spray plays. Idle key
        input is fully responsive.
-
-   Hardware delta vs V4 (../../v4-water-pump/) — this is why V4.5 exists:
-     - NO RELAY PAIR AND NO WATER PUMP. D5/D6 are unused; a late miss plays the
-       low warning groan (NOTE_D1 for PENALTY_MS) and counts a penalty, but
-       nothing sprays. The fail counter and the death tune are unchanged.
-     - Two HARDWARE buttons nudge the touch margin live without a reflash:
-       MARGIN + on D10 and MARGIN − on D11 (active-HIGH, wired like RESTART).
-       They shift a manual offset applied on top of every key's auto margin.
-       The emulation build has no margin buttons — it uses active-low digital
-       keys and D11 is the buzzer there.
-     - Calibration is NOISE-ADAPTIVE (ported from V5): each key's touch
-       threshold = baseline + max(MIN_TOUCH_MARGIN, NOISE_FACTOR × the observed
-       peak-to-mean noise), clamped to THRESHOLD_CAP. This replaces V4's fixed
-       TOUCH_MARGIN 100 with a per-key margin that adapts to fruit / PSU / mains
-       noise, re-run at boot AND on every RESTART (hands off the fruit then).
 */
 
 #include <Arduino.h>
@@ -49,14 +33,12 @@
                    // tone would play forever (see emuTone below)
 #else
 #define BUZZER 8
-#define MARGIN_UP   10  // hardware-only button: raise touch margin (less sensitive)
-#define MARGIN_DOWN 11  // hardware-only button: lower touch margin (more sensitive)
 #endif
 #define RED_LED 2
 #define GREEN_LED 3
 #define GAME_SELECT 4   // held HIGH at boot/restart -> game 1, else game 2
-                        // D5/D6 are FREE on this board — V4's relay pair and
-                        // water pump are gone (see the header)
+#define RELAY_1 5       // water-pump relay pair
+#define RELAY_2 6
 #define RESTART 7       // press to restart (re-runs game selection)
 #define BUZZ_LED 13     // onboard LED, lit while a melody note is bit-banged
 
@@ -73,8 +55,8 @@ const uint8_t KEY_COUNT = 7;   // A0..A6
 //     (idle ~1023, pressed ~0 — active-low, threshold at 512),
 //   - key 7: pushbutton + pull-up on D9 (A6 has no digital pin), digitalRead,
 //   - GAME_SELECT / RESTART: active-low (pressed = LOW).
-// Game logic, audio and LEDs are untouched, and hardware builds (macro
-// undefined) behave exactly as before this block existed.
+// Game logic, audio, LEDs and the relay pair are untouched, and hardware
+// builds (macro undefined) behave exactly as before this block existed.
 #ifdef VELXIO_EMULATION
 const uint8_t KEY_PINS[KEY_COUNT] = {A0, A1, A2, A3, A4, A5, 9};
 #define PANEL_PRESSED(pin) (digitalRead(pin) == LOW)
@@ -86,33 +68,16 @@ const uint8_t KEY_PINS[KEY_COUNT] = {A0, A1, A2, A3, A4, A5, 9};
 //#########  CONSTANTS ###########
 //################################
 const int SEQUENCE_LENGTH = 10;   // notes to guess correctly to win
-const int PENALTY_FROM_STEP = 7;  // failing at/after this step costs a penalty
-                                  // (V4 fired the water pump here; V4.5 has none)
-const int MAX_FAILS = 10;         // penalties before game over
+const int PUMP_FROM_STEP = 7;     // failing at/after this step fires the pump
+const int MAX_FAILS = 10;         // penalties before game over (spares the water bottle)
 
-// Touch margin is AUTO-CALIBRATED from each key's measured noise (fruit, mains,
-// PSU — all vary): threshold = baseline + max(MIN_TOUCH_MARGIN, NOISE_FACTOR ×
-// the observed peak-to-mean noise), clamped to THRESHOLD_CAP. A quiet bench
-// gets MORE sensitive than the old fixed 100; a noisy charger gets a margin big
-// enough to kill ghost presses. Re-run at boot AND on every RESTART — hands off
-// the fruit then. (Ported from V5, replacing the fixed 100/170-per-PSU value.)
-const int MIN_TOUCH_MARGIN = 40;  // auto-margin floor on a perfectly quiet line
-const int NOISE_FACTOR = 3;       // auto margin = NOISE_FACTOR × (peak − mean) noise
-const int THRESHOLD_CAP = 900;    // above this a touch could no longer register
-
-// Manual override: the MARGIN +/− buttons (D10/D11) shift this offset, added on
-// top of every key's auto margin, so sensitivity can be tuned live without a
-// reflash. Bounded, and the effective per-key margin never drops below
-// EFFECTIVE_MARGIN_FLOOR (so a threshold never sits on the idle baseline).
-const int MARGIN_STEP = 10;             // per-press nudge of the manual offset
-const int MANUAL_MARGIN_MIN = -120;     // most-sensitive limit
-const int MANUAL_MARGIN_MAX = 400;      // least-sensitive limit
-const int EFFECTIVE_MARGIN_FLOOR = 8;   // per-key margin never falls below this
-
+const int TOUCH_MARGIN = 100;     // touch threshold = per-key idle baseline + this
+                                  // (auto-calibrated at boot; replaces the old fixed
+                                  //  SENSITIVITY 100/170-per-power-supply constant)
 const int NOTE_DURATION = 50;     // key tone length in ms; the lower, the snappier the feel
                                   // [reconstructed — the 2019 line was corrupted]
 const unsigned long LED_FEEDBACK_MS = 600;  // how long the right/wrong LED stays lit
-const unsigned long PENALTY_MS = 1000;      // low warning groan on a late-game miss
+const unsigned long PUMP_MS = 1000;         // pump ON time on a late-game miss
 
 const bool serialEnabled = true;  // debug log at 9600 baud
 
@@ -255,15 +220,7 @@ int  fails = 0;                // penalties applied this game
 int  pressedNote = 0;          // last note played
 
 int  keyThreshold[KEY_COUNT];  // per-key touch threshold (auto-calibrated)
-int  keyBaseline[KEY_COUNT];   // per-key measured idle level (for live re-margining)
-int  keyAutoMargin[KEY_COUNT]; // per-key noise-derived margin (before manual offset)
 bool keyHeld[KEY_COUNT];       // previous touched-state, for rising-edge detection
-
-int  manualMargin = 0;         // MARGIN +/− (D10/D11) offset on top of the auto margin
-#ifndef VELXIO_EMULATION
-bool marginUpHeld = false;     // rising-edge latch for the MARGIN + button
-bool marginDownHeld = false;   // rising-edge latch for the MARGIN − button
-#endif
 
 bool ledActive = false;        // a feedback LED is currently lit
 unsigned long ledOnAt = 0;     // millis() when it was lit
@@ -276,13 +233,12 @@ bool keyTouched(uint8_t i);
 void emuTone(long frequency, long durationMs);
 #endif
 void calibrate();
-void applyThresholds();
-void adjustMargin(int delta);
 void selectGame();
 void handleGuess();
 void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length);
 void playDeath();
-void playPenalty();
+void firePump();
+void pumpOff();
 void buzz(int targetPin, long frequency, long length);
 void log(const __FlashStringHelper *msg);
 
@@ -293,8 +249,13 @@ void log(const __FlashStringHelper *msg);
 void setup() {
   if (serialEnabled) {
     Serial.begin(9600);
-    Serial.println(F("Lemon Piano V4.5"));
+    Serial.println(F("Lemon Piano V4"));
   }
+
+  // Set the pump to a defined OFF state BEFORE the pins become outputs, so an
+  // active-LOW relay module can't chatter the pump at boot (TODO #2).
+  digitalWrite(RELAY_1, LOW);
+  digitalWrite(RELAY_2, HIGH);
 
   pinMode(RED_LED, OUTPUT);
   pinMode(GREEN_LED, OUTPUT);
@@ -304,16 +265,16 @@ void setup() {
 #else
   pinMode(GAME_SELECT, INPUT);
   pinMode(RESTART, INPUT);
-  pinMode(MARGIN_UP, INPUT);      // active-HIGH (button to 5 V + pulldown), like RESTART
-  pinMode(MARGIN_DOWN, INPUT);
 #endif
+  pinMode(RELAY_1, OUTPUT);
+  pinMode(RELAY_2, OUTPUT);
   pinMode(BUZZER, OUTPUT);
   pinMode(BUZZ_LED, OUTPUT);
   // A0..A6 need no pinMode for analogRead. (The 2019 pinMode(0..7, INPUT) block
   // is gone — it clobbered the D0/D1 UART pins for no benefit; TODO #4.)
 
-  // calibrate() now runs from loop()'s !started branch, so it also re-runs on
-  // every RESTART (adapts the touch thresholds to fruit/PSU/mains changes).
+  pumpOff();
+  calibrate();
 }
 
 
@@ -326,26 +287,9 @@ void loop() {
     started = false;
   }
 
-#ifndef VELXIO_EMULATION
-  // MARGIN +/− buttons: nudge the manual touch-margin offset live, edge-triggered
-  // (one step per fresh press). Works at any time, mid-game included.
-  bool up = (digitalRead(MARGIN_UP) == HIGH);
-  if (up && !marginUpHeld) {
-    adjustMargin(+MARGIN_STEP);
-  }
-  marginUpHeld = up;
-  bool down = (digitalRead(MARGIN_DOWN) == HIGH);
-  if (down && !marginDownHeld) {
-    adjustMargin(-MARGIN_STEP);
-  }
-  marginDownHeld = down;
-#endif
-
   // (Re)select the game. selectGame() clears fails/step/dead, so a restart
-  // after death starts truly fresh (TODO #3). calibrate() re-measures the touch
-  // thresholds on boot AND on every restart — hands off the fruit then.
+  // after death starts truly fresh (TODO #3).
   if (!started) {
-    calibrate();
     selectGame();
     started = true;
   }
@@ -430,9 +374,9 @@ void handleGuess() {
     ledOnAt = millis();
     log(F("WRONG"));
 
-    // Failing late in the sequence costs a penalty (V4 sprayed you here).
-    if (currentStep >= PENALTY_FROM_STEP) {
-      playPenalty();
+    // Failing late in the sequence triggers the water pump.
+    if (currentStep >= PUMP_FROM_STEP) {
+      firePump();
       fails++;
       if (fails >= MAX_FAILS) {
         dead = true;
@@ -459,11 +403,10 @@ bool keyTouched(uint8_t i) {
 #endif
 }
 
-// Sample each key's floating idle level AND its noise, then set a per-key touch
-// margin above the baseline (TODO #12, upgraded to V5's noise-adaptive scheme).
+// Sample each key's floating idle level and set its touch threshold above it.
 // Auto-handles the "raise SENSITIVITY on a laptop charger" note from 2019 by
-// measuring what each key actually sees instead of hardcoding a margin.
-// Keep hands OFF the lemons during boot and on every restart.
+// measuring the actual baseline instead of hardcoding it (TODO #12).
+// Keep hands OFF the lemons during boot.
 void calibrate() {
 #ifdef VELXIO_EMULATION
   // No analog baseline needed — the keys are active-low against external
@@ -482,75 +425,21 @@ void calibrate() {
   log(F("Inputs idle. Ready to play."));
   return;
 #endif
-  log(F("Calibrating (hands off the fruit!)..."));
+  log(F("Calibrating (hands off)..."));
   for (uint8_t i = 0; i < KEY_COUNT; i++) {
-    // 64 samples × 2 ms ≈ 128 ms — spans 6+ mains cycles (50 Hz), so the peak
-    // captures the supply/fruit noise this key actually sees right now.
     long sum = 0;
-    int peak = 0;
-    for (uint8_t s = 0; s < 64; s++) {
-      int r = analogRead(i);
-      sum += r;
-      if (r > peak) {
-        peak = r;
-      }
-      delay(2);
+    for (uint8_t s = 0; s < 32; s++) {
+      sum += analogRead(i);
+      delay(1);
     }
-    int baseline = sum / 64;
-    int noise = peak - baseline;
-    int margin = noise * NOISE_FACTOR;
-    if (margin < MIN_TOUCH_MARGIN) {
-      margin = MIN_TOUCH_MARGIN;
-    }
-    keyBaseline[i] = baseline;
-    keyAutoMargin[i] = margin;
+    int baseline = sum / 32;
+    keyThreshold[i] = baseline + TOUCH_MARGIN;
     keyHeld[i] = false;
     if (serialEnabled) {
       Serial.print(F("  A")); Serial.print(i);
       Serial.print(F(" baseline=")); Serial.print(baseline);
-      Serial.print(F(" noise=")); Serial.print(noise);
-      Serial.print(F(" autoMargin=")); Serial.println(margin);
+      Serial.print(F(" threshold=")); Serial.println(keyThreshold[i]);
     }
-  }
-  applyThresholds();   // fold in the current manual offset + the noisy-line cap
-}
-
-// Recompute every key's touch threshold from its stored baseline + auto margin,
-// plus the live manual offset (MARGIN +/− buttons). Called after calibration
-// and on every manual nudge, so tuning takes effect without re-measuring.
-void applyThresholds() {
-  for (uint8_t i = 0; i < KEY_COUNT; i++) {
-    int margin = keyAutoMargin[i] + manualMargin;
-    if (margin < EFFECTIVE_MARGIN_FLOOR) {
-      margin = EFFECTIVE_MARGIN_FLOOR;   // never let a threshold sit on the baseline
-    }
-    int t = keyBaseline[i] + margin;
-    if (t > THRESHOLD_CAP) {
-      t = THRESHOLD_CAP;
-      if (serialEnabled) {
-        Serial.print(F("  A")); Serial.print(i);
-        Serial.println(F(" threshold capped — very noisy line, check contact/PSU"));
-      }
-    }
-    keyThreshold[i] = t;
-  }
-}
-
-// MARGIN +/− button handler: shift the manual offset (bounded), re-derive the
-// thresholds, and give a short audible + serial confirmation. Hardware only.
-void adjustMargin(int delta) {
-  manualMargin += delta;
-  if (manualMargin < MANUAL_MARGIN_MIN) {
-    manualMargin = MANUAL_MARGIN_MIN;
-  }
-  if (manualMargin > MANUAL_MARGIN_MAX) {
-    manualMargin = MANUAL_MARGIN_MAX;
-  }
-  applyThresholds();
-  tone(BUZZER, (delta > 0) ? NOTE_C6 : NOTE_C4, 40);   // up = high tick, down = low tick
-  if (serialEnabled) {
-    Serial.print(F("Manual touch margin = "));
-    Serial.println(manualMargin);
   }
 }
 
@@ -578,16 +467,23 @@ void selectGame() {
 //#########  ACTUATORS ###########
 //################################
 
-// The late-miss penalty: a low warning groan for PENALTY_MS. On V4 this ran
-// alongside the relay pair driving the water pump; V4.5 keeps only the sound.
-void playPenalty() {
+void pumpOff() {
+  digitalWrite(RELAY_1, LOW);
+  digitalWrite(RELAY_2, HIGH);
+}
+
+// Fire the water pump for PUMP_MS with a low warning groan, then switch off.
+void firePump() {
+  digitalWrite(RELAY_1, HIGH);
+  digitalWrite(RELAY_2, LOW);
 #ifdef VELXIO_EMULATION
-  emuTone(NOTE_D1, PENALTY_MS);
+  emuTone(NOTE_D1, PUMP_MS);
 #else
   tone(BUZZER, NOTE_D1);
-  delay(PENALTY_MS);
+  delay(PUMP_MS);
   noTone(BUZZER);
 #endif
+  pumpOff();
 }
 
 

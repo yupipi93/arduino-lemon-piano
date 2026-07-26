@@ -1,0 +1,36 @@
+name: lemon-piano-v0
+description: >
+  Interactive Velxio emulation of the Lemon Piano V0 bring-up rig: ONE passive
+  buzzer and nothing else. The firmware (../firmware/src/main.cpp built with
+  VELXIO_EMULATION) plays a C-major scale up and down, forever, with real silence
+  between notes — so this is the reference for what the buzzer is supposed to
+  sound like. On hardware the buzzer sits on D8; in the browser it moves to D11,
+  because Velxio polls Timer2 duty only on the PWM pins (3/5/6/9/10/11) and fires
+  note-off only on a duty->0 event (emuTone clears OCR2A after every note; on D8
+  the first note would beep forever). Verify mode asserts the banner and that the
+  buzzer pin actually toggles through the scale.
+board: arduino-nano
+sketch_file: ../firmware/src/main.cpp
+defines: [VELXIO_EMULATION]
+
+components:
+  # The whole circuit: one buzzer. Placed clear of the board so no wire crosses it.
+  - { id: buzzer1, type: buzzer, x: 520, y: 120, properties: {} }
+
+wires:
+  # Buzzer — on D11, NOT D8: Velxio's buzzer part gets its note-off only from a
+  # Timer2 duty->0 event, and duty is polled only on PWM pins (3/5/6/9/10/11).
+  - [board:11, buzzer1:1]
+  - [buzzer1:2, board:GND.1]
+
+# No inputs: V0 has no keys, no switches and no buttons — it just plays.
+
+assertions:
+  - { type: serial_contains, pattern: "Lemon Piano V0", within_s: 3 }
+  - { type: serial_contains, pattern: "path: tone()",   within_s: 3 }
+  # 14 notes × 300 ms at 262-523 Hz: thousands of edges. A stuck or silent
+  # buzzer pin fails this outright.
+  - { type: gpio_toggles, pin: 11, min_edges: 500, within_s: 8 }
+  # The scale must COMPLETE and start again — this is what proves the notes end
+  # (the classic browser failure is one note beeping forever).
+  - { type: serial_contains, pattern: "scale done", within_s: 12 }

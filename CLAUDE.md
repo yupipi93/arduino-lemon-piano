@@ -1,81 +1,111 @@
 # CLAUDE.md — arduino-lemon-piano
 
 Rescued 2019 university Arduino game: 7 lemons as touch keys, guess the secret
-Mario melody. The **active version is V5** — a ten-green-LED progress bar, no
-relays, games that auto-advance on a win. Read `README.md` for the game and
-`docs/HARDWARE.md` for the pin map before changing firmware.
+Mario melody. The repo is organised as **one version per hardware revision**,
+all of them active — `versions/v0-buzzer` … `versions/v5-led-bar`.
+**There is no archive and nothing is frozen.** Read `README.md` for the game,
+`docs/VERSIONING.md` for the versioning rule, and the target version's
+`README.md` + `HARDWARE.md` before touching its firmware.
 
 ## Ground rules
 
 - **Everything in English** — code, comments, identifiers, file names, docs.
-- **Active = V5**: `firmware/` (Nano firmware, needs A6+A7) + `emulation/`
-  (Velxio browser build). **V4 is frozen** in `archive/lemon-piano-v4/`
-  (firmware + emulation) — the version with the red LED + relay water pump.
-  Never edit `archive/` except its docs; the pristine Spanish 2019 originals are
-  in git history (commit `rescue: original 2019 lemon piano files`).
-- One source file, two builds: `firmware/src/main.cpp` compiles for hardware
-  (macro undefined) and for the browser (`-DVELXIO_EMULATION`, see
-  `emulation/README.md`). The shim swaps ONLY input/pin details (active-low
-  keys, buzzer D11, no game-select/restart, game auto-advances); game logic and
-  melodies are shared. Don't fork the logic.
+- **A version is a hardware configuration.** Change the board (add / remove /
+  rewire a part) → **new version directory**; change only code → commit into the
+  version whose board it runs on. Full checklist in `docs/VERSIONING.md`.
+- **Never delete or archive a version.** Every version must keep building. When
+  branching a new one, **copy** the closest existing version, never move it.
+- **V0 (`versions/v0-buzzer/`) is the diagnostic board**: an ATmega328 + one
+  passive buzzer on D8, firmware that plays a scale forever (plus a
+  `-DUSE_BUZZ` env for the bit-banged path). Reach for it when the sound is
+  suspect — it removes the keyboard, the sensing and the game in one step.
+- **The newest board is V5** (`versions/v5-led-bar/`): ten-green-LED progress
+  bar, no relays, games that auto-advance on a win. V4 (relay water pump), V4.5
+  (same game, no pump, MARGIN buttons) and the 2019 rigs V1–V3 are equally
+  active, not history.
+- Each version is self-contained: `firmware/` (PlatformIO, builds in place),
+  `emulation/` (Velxio spec + `.vlx`, or a README saying why there is none),
+  `images/` (wirewright-rendered wiring), `README.md` + `HARDWARE.md`.
+- V4/V4.5/V5 share one source file per version, two builds:
+  `firmware/src/main.cpp` compiles for hardware (macro undefined) and for the
+  browser (`-DVELXIO_EMULATION`). The shim swaps ONLY input/pin details; game
+  logic and melodies are shared. **Don't fork the logic.**
+- The pristine Spanish 2019 originals are in git history (commit `rescue:
+  original 2019 lemon piano files`); V1–V3 are their English translations and
+  should stay as close to the 2019 code as possible (see below).
 - Append a dated entry to `CHANGELOG.md` for every significant change; tick the
   matching `TODO.md` item. Never rewrite old changelog entries.
 
 ## Build / flash (PlatformIO, no IDE)
 
 ```bash
-cd firmware
-pio run                    # compile check — run before every commit (default nanoatmega328)
-pio run -e nanoatmega328new # Nano with new bootloader
-pio run -e emulation        # compile-check the VELXIO_EMULATION shim
-pio run -t upload           # flash the Nano
-pio device monitor          # 9600 baud — logs Game/OK n/10/WIN
+cd versions/<version>/firmware
+pio run                     # compile check — run before every commit
+pio run -e nanoatmega328new # Nano with the new bootloader (V4/V4.5/V5)
+pio run -e uno              # V1-V4.5 only; the Uno DIP has no A6 (key 7)
+pio run -e emulation        # V4/V4.5/V5: compile-check the VELXIO_EMULATION shim
+pio run -t upload           # flash
+pio device monitor          # 9600 baud
 ```
 
-No `uno` env: V5 uses A6 (key 7) + A7 (game select), absent on the classic Uno.
+V1–V3 are Arduino-IDE sketches kept in IDE-compatible folders; their
+`platformio.ini` points at them with `src_dir`, so `pio run` works anyway.
+V5 has no `uno` env: it needs A6 (key 7) + A7 (game select).
 
-## Verify the emulation (headless, no browser)
+## Verify an emulation (headless, no browser)
 
-The `emulation/` build has a real regression test via the Velxio harness
-(present at `../velxio-multi-board-emulator/`, pipeline in its
-`harness/.venv/`). It injects game 1's secret code and asserts
-`Game 1 → OK 1/10 … 10/10 → WIN → Game 2`:
+V0, V4, V4.5 and V5 each have a real regression test via the Velxio harness (present
+at `../velxio-multi-board-emulator/`, pipeline in its `harness/.venv/`). Run it
+**from the version directory**:
 
 ```bash
-PIPE=../../velxio-multi-board-emulator/harness/.venv/bin/velxio-pipeline
-$PIPE stack status                                              # ensure Docker stack is up
+cd versions/v5-led-bar
+PIPE=../../../velxio-multi-board-emulator/harness/.venv/bin/velxio-pipeline
+$PIPE stack status                                                    # ensure the Docker stack is up
 $PIPE run --mode verify --spec emulation/lemon-piano.yaml --out emulation/runs
-# regenerate the importable project: copy runs/<latest>/project.vlx → emulation/lemon-piano.vlx
+cp emulation/runs/<latest>/project.vlx emulation/lemon-piano.vlx      # refresh the importable project
 ```
 
-Read the harness `AGENTS.md` before touching the emulation (routing rules,
-AVR buzzer-on-PWM-pin + `OCR2A=0`, active-low pull-up inputs). **Never** destroy
-its Docker volumes.
+Read the harness `AGENTS.md` before touching an emulation (routing rules, AVR
+buzzer-on-PWM-pin + `OCR2A=0`, active-low pull-up inputs). **Never** destroy its
+Docker volumes. V1–V3 have no emulation on purpose — each
+`emulation/README.md` says what it would take, and the decision (edit 2019
+sketches or not) is an open TODO; don't silently rewrite those sketches.
 
-**Verification bar**: `pio run` on the two Nano envs + the `emulation` env, and
-`--mode verify` green, before committing anything that touches gameplay.
-
-## Layout
-
-- `firmware/` + `emulation/` — active V5 (the code that evolves)
-- `docs/HARDWARE.md` — V5 pin map + deduced schematic
-- `archive/lemon-piano-v4/` — frozen V4 (firmware + emulation)
-- `archive/banana-piano-original/` — frozen lineage (banana piano →
-  keyboard-test → game-prototype/v3)
-- `TODO.md` — backlog · `CHANGELOG.md` — append-only history
+**Verification bar** for a change to a version: `pio run` on all its envs, its
+`--mode verify` green, and its diagram re-rendered with 0 DRC violations. A
+change to something *shared* (`tools/`, wirewright, the harness) → re-verify
+**every** version.
 
 ## Wiring diagrams → use wirewright (never hand-place wires)
 
-The `docs/images/wiring-{v4,v4-plus,v5}.png` diagrams are generated by
-`tools/wiring_diagrams.py`, which is a **declarative contract** consumed by the
-reusable **wirewright** engine (auto-router + DRC — no wires cross components,
-overlap, or leave pins unconnected). Don't hand-roll PIL diagrams; use wirewright:
+Each `versions/*/images/wiring-*.png` is generated by `tools/wiring_diagrams.py`,
+a **declarative contract** (one builder per version, listed in `TARGETS`)
+consumed by the reusable **wirewright** engine (auto-router + DRC — no wires
+cross components, overlap, or leave pins unconnected). Don't hand-roll PIL
+diagrams; use wirewright:
+
+```bash
+python3 tools/wiring_diagrams.py            # all versions
+python3 tools/wiring_diagrams.py v4.5       # one
+```
 
 - **Local** — the engine is the sibling repo `../eda-wirewright` (only needs
-  Pillow; `tools/wiring_diagrams.py` imports it via a `sys.path` shim). Edit the
-  contract there and re-run `python3 tools/wiring_diagrams.py`. Or
+  Pillow; `tools/wiring_diagrams.py` imports it via a `sys.path` shim). Missing a
+  part? Add a factory to `src/wirewright/library.py` + a `registry.py` entry
+  (that is how `ultrasonic` and the 1-channel `relay_module` arrived). Or
   `pip install ../eda-wirewright` → `wirewright render circuit.json -o out.png`.
 - **Cloud** — public API (best for agents): `curl -X POST
   https://wirewright.scv.multitecua.com/render -H 'Content-Type: application/json'
   -d @circuit.json -o out.png`. Discover parts: `GET /components`. Docs +
   contract format: github.com/yupipi93/eda-wirewright.
+
+## Layout
+
+- `versions/` — one directory per hardware revision, all active
+  (`versions/README.md` is the comparison table)
+- `docs/VERSIONING.md` — the rule + the checklist for adding a version
+- `docs/HARDWARE.md` — shared fundamentals (touch physics, the V3→V4 polarity
+  flip, common parts); per-board pin maps live in `versions/*/HARDWARE.md`
+- `tools/wiring_diagrams.py` — every version's diagram contract
+- `TODO.md` — backlog · `CHANGELOG.md` — append-only history

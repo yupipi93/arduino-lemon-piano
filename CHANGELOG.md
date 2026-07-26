@@ -2,6 +2,118 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-26 (V0) — New buzzer bring-up board: a scale, forever
+
+Added **`versions/v0-buzzer/`** after a report that the buzzer "doesn't sound as
+usual". Trying to diagnose it with V2 was a dead end: V2 is a 2019-wiring sketch
+(pull-ups + GND clip, touch = reading *drops* to ≤ 1019), so on a 2026-wired board
+every key reads as permanently pressed and the seven `tone()` calls cut each other
+off — exactly the "single discontinuous tone" observed.
+
+V0 is the smallest board in the project — an ATmega328 and one passive buzzer on
+**D8**, the same pin every version uses, so it runs on an existing build without
+moving a wire. It is numbered 0 because its board is a *subset* of every other
+version; it is a 2026 diagnostic, not part of the 2019 lineage (V1 remains the
+historical origin).
+
+- **Firmware** (`v0-buzzer/firmware/src/main.cpp`): C-major scale C4→C5 and back,
+  300 ms per note with 80 ms of real silence between notes, 700 ms between passes,
+  looping forever. The on-board LED (D13) is lit for each note — so "LED steps
+  through the scale but no sound" isolates the fault to the buzzer/wiring/pin — and
+  every note is logged at 9600 baud (`note 3/14 - 330 Hz`, ASCII only).
+- **Both playback paths, selectable at build time**: default `tone()`/`noTone()`
+  (the key-note path) and `-DUSE_BUZZ` → bit-banged `buzz()` (the path
+  `playSong()` uses for the Mario themes), as env `nanoatmega328-buzz`. Flashing
+  both tells you whether one path degraded or the hardware did. 5 envs, all green.
+- **Emulation**: new spec + `emuTone()` shim (buzzer on D11 in the browser).
+  `--mode verify` **pass** — banner, `path: tone()`, 7 496 edges on the buzzer pin,
+  and `scale done` proving notes actually END (a note that never stops is the
+  classic browser failure). Doubles as the reference recording to compare by ear.
+- **Diagram**: new `build_v0()` contract (4 nets, 0 DRC violations) on a smaller
+  canvas — `_board()` now takes `w`/`bx`/`by` so a tiny board gets a tiny page.
+- **Docs**: `README.md` + `HARDWARE.md` for V0, including an ordered "if it still
+  sounds wrong" checklist (D13 running?, passive vs **active** buzzer, module
+  polarity, `tone()` vs `buzz()`, and the trap of a `-DVELXIO_EMULATION` build
+  which moves the buzzer to **D11**). Both index tables, `CLAUDE.md` and
+  `docs/HARDWARE.md` updated; V1's README now notes V0 is a subset of it.
+- Also added the missing `nanoatmega328new` env to **V2** (new-bootloader Nano),
+  so that board can be flashed too; V2 builds on all three targets.
+
+## 2026-07-26 (V4.5) — V4+ renamed to V4.5, and its relay pair + water pump removed
+
+`versions/v4-plus-margin-buttons/` is now **`versions/v4.5-margin-buttons/`**, and
+that board no longer drives the water pump. The penalty survives as sound: a miss
+from note 7 onward plays the low warning groan and counts a fail, ten fails still
+end the game with the death tune. V4 keeps the pump — it is what makes V4 V4.
+
+- **Firmware** (`v4.5-margin-buttons/firmware/src/main.cpp`): removed `RELAY_1`
+  (D5) / `RELAY_2` (D6), the boot-time defined-OFF writes, both `pinMode`s,
+  `pumpOff()` and `firePump()`. `firePump()` → **`playPenalty()`** (groan only);
+  `PUMP_FROM_STEP` → `PENALTY_FROM_STEP`, `PUMP_MS` → `PENALTY_MS`. Serial banner is
+  now `Lemon Piano V4.5`. D5/D6 are unused on this board. All 4 envs build green.
+- **Emulation**: dropped the blue pump-indicator LED and its 220 Ω + wires from
+  `lemon-piano.yaml`; the `serial_contains` assertion now expects
+  `Lemon Piano V4.5`. `--mode verify` **pass**; `.vlx` regenerated from the run.
+- **Diagram**: `build_v4(plus=True)` no longer adds the relay module or the pump
+  (37 nets, 0 DRC violations) → `versions/v4.5-margin-buttons/images/wiring-v4.5.png`
+  (renamed from `wiring-v4-plus.png`); `TARGETS` key is now `"v4.5"`.
+- **Docs**: V4.5 `README.md` + `HARDWARE.md` rewritten around the two deltas
+  (− relay/pump, + MARGIN buttons); V4's "next revision" text, V5's hardware delta
+  (now just − red LED and − MARGIN buttons, since the pump left with V4.5), both
+  index tables, `CLAUDE.md`, `docs/HARDWARE.md` and `docs/VERSIONING.md` updated.
+  Earlier changelog entries keep the old `V4+` / `v4-plus-margin-buttons` names —
+  they were accurate when written.
+
+## 2026-07-26 (restructure) — One version per hardware revision, none archived
+
+Replaced the "active version + archive" layout with a flat set of **six active
+hardware revisions** under `versions/`. A version now means a *board*: change the
+hardware and you create a new version; change only code and you stay put. The rule
+and the checklist for adding one live in the new **`docs/VERSIONING.md`**.
+
+New layout (each directory is self-contained — firmware, emulation, images, docs):
+
+| Version | Was | Hardware delta |
+|---|---|---|
+| `versions/v1-banana-piano/` | `archive/banana-piano-original/banana-piano/` | origin: 7 fruit keys, speaker D8, HC-SR04 mounted |
+| `versions/v2-keyboard-test/` | `archive/banana-piano-original/keyboard-test/` | − HC-SR04 |
+| `versions/v3-game-prototype/` | `archive/banana-piano-original/game-prototype/` | + red/green LEDs, game button, 1 relay |
+| `versions/v4-water-pump/` | *git history* (`0234d02^`) | clip → +5 V, 2nd relay + pump, RESTART |
+| `versions/v4-plus-margin-buttons/` | `archive/lemon-piano-v4/` | + MARGIN +/− buttons (D10/D11) |
+| `versions/v5-led-bar/` | top-level `firmware/` + `emulation/` | − relays/pump/red LED/margin buttons, + ten LEDs, select → A7 |
+
+- **V4 and V4+ are now separate versions.** The archived snapshot had absorbed the
+  2026-07-25 touch upgrade, so the *board* it documented (V4) no longer matched its
+  firmware. The pre-upgrade firmware + emulation were restored from git history
+  into `v4-water-pump/`, and the upgraded pair stayed as `v4-plus-margin-buttons/`.
+  Both now verify green with their own `.vlx` regenerated from their own firmware.
+- **V1–V3 became buildable.** Each 2019 sketch keeps its Arduino-IDE folder and
+  gained a `platformio.ini` (`src_dir = <sketch>`, envs `nanoatmega328` + `uno`);
+  all three compile. Their code is otherwise untouched.
+- **Three new wiring diagrams** — `wiring-v1/v2/v3.png` — for boards that had none,
+  including the 2019 pull-up comb and GND-clip polarity. Diagram contracts moved to
+  one builder per version (`TARGETS` in `tools/wiring_diagrams.py`) and now render
+  into `versions/*/images/`. All six: 0 DRC violations (23/19/32/36/42/55 nets).
+- **wirewright engine extended** (`../eda-wirewright`): new `ultrasonic` (HC-SR04)
+  component, `relay_module(channels=1|2)`, parametrised `clip_box` (title/sub/size),
+  `buzzer(label, pin_label)` and `water_pump(note)`; `ultrasonic` registered for the
+  JSON/CLI/MCP contract.
+- **Docs rewritten around the new model**: root `README.md` (version matrix),
+  `versions/README.md` (comparison table), per-version `README.md` + `HARDWARE.md`
+  (12 new files), `docs/HARDWARE.md` reduced to shared fundamentals (touch physics,
+  the V3→V4 polarity flip, common parts), `CLAUDE.md` rewritten for the new rules.
+- **V1–V3 have no emulation, on purpose.** Hosting them in the browser AVR would
+  mean editing 2019 sketches (buzzer onto a PWM pin with `OCR2A` cleared, key 7 off
+  A6, pull-ups instead of the divider). Each `emulation/README.md` documents the
+  blockers; the decision is TODO #16.
+- Findings recorded while documenting: V3's relay `digitalWrite()` burst is inside a
+  commented block (wired but never fired); V2's `Serial.begin(9600)` is commented out
+  while its `Serial.print` calls are live; every 2019 sketch reads `analogRead(6)`,
+  which the Uno's DIP package cannot provide (A6 is TQFP-only).
+- Verified after the move: 6/6 firmwares build (v1–v3 `nanoatmega328`+`uno`, V4/V4+
+  4 envs, V5 3 envs); V4, V4+, V5 emulation `--mode verify` **pass**; all six
+  diagrams re-rendered clean.
+
 ## 2026-07-26 — Wiring engine extracted to its own repo (eda-wirewright)
 
 The schematic engine that was living in `tools/schematic/` is now a standalone,

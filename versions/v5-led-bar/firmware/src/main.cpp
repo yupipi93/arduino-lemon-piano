@@ -12,7 +12,8 @@
    Mario Main Theme and it flips to the Underworld, and back), so both games
    cycle from a single starting point.
 
-   What changed from V4 (see archive/lemon-piano-v4/ for the frozen original):
+   What changed from V4/V4.5 (their boards live on in versions/v4-water-pump/
+   and versions/v4.5-margin-buttons/):
      - No relays / no water pump, and no red LED — the ten-LED bar is the whole
        feedback surface (all-on = win in progress, all-off = you missed).
      - The fail-counter / death-tune game-over is gone with the pump it was

@@ -1,0 +1,101 @@
+{
+  "format": "velxio-project",
+  "version": 1,
+  "exportedAt": "2026-07-26T16:00:08.150371+00:00",
+  "name": "lemon-piano-v0",
+  "boards": [
+    {
+      "id": "arduino-nano",
+      "name": "arduino-nano",
+      "boardKind": "arduino-nano",
+      "x": 60,
+      "y": 60,
+      "activeFileGroupId": "group-arduino-nano",
+      "languageMode": "arduino"
+    }
+  ],
+  "fileGroups": {
+    "group-arduino-nano": [
+      {
+        "name": "sketch.ino",
+        "content": "#define VELXIO_EMULATION\n/* LEMON PIANO V0 \u2014 buzzer bring-up: play a scale, forever\n   Author : Sergio Conejero, 2026-07-26\n\n   The smallest board in the project: an ATmega328 and ONE passive buzzer on D8.\n   No keys, no LEDs (bar the on-board one), no game, no touch sensing \u2014 so if\n   this does not sound right, the problem is the buzzer, its wiring, or the pin,\n   and nothing else.\n\n   What it does, in a loop that never ends:\n     C4 D4 E4 F4 G4 A4 B4 C5   (ascending)\n     C5 B4 A4 G4 F4 E4 D4      (descending, back to the start)\n     ... short pause, repeat.\n\n   Each note is NOTE_MS long with a real GAP_MS of SILENCE after it, so you can\n   hear where every note starts and stops. The on-board LED (D13) lights for the\n   duration of each note: if the LED steps through the scale but you hear\n   nothing (or a rattle), the sketch is fine and the fault is downstream.\n   Every note is also printed at 9600 baud.\n\n   Two playback paths, so you can tell WHICH one degraded:\n     - default            -> tone() / noTone(), the AVR hardware timer path used\n                             for key notes in every version.\n     - -DUSE_BUZZ         -> the bit-banged square wave (buzz(), digitalWrite +\n                             delayMicroseconds) that playSong() uses for the\n                             Mario themes. Build it with `pio run -e nanoatmega328-buzz`.\n\n   Buzzer pin: D8 on hardware \u2014 the same pin every version uses, so nothing has\n   to be rewired to run this. In the Velxio browser build the buzzer moves to\n   D11 (see emuTone below).\n*/\n\n#include <Arduino.h>\n\n//################################\n//###########  PINS ##############\n//################################\n#ifdef VELXIO_EMULATION\n#define BUZZER 11  // Velxio polls Timer2 duty only on PWM pins (3/5/6/9/10/11)\n                   // and fires note-off only on a duty->0 event; on D8 the first\n                   // tone would beep forever (see emuTone below)\n#else\n#define BUZZER 8   // hardware: the project's buzzer pin in every version\n#endif\n#define BUZZ_LED 13  // on-board LED \u2014 lit for the duration of each note\n\n//################################\n//#########  THE SCALE ###########\n//################################\n// One octave of C major. Frequencies in Hz (equal temperament, A4 = 440).\n#define NOTE_C4 262\n#define NOTE_D4 294\n#define NOTE_E4 330\n#define NOTE_F4 349\n#define NOTE_G4 392\n#define NOTE_A4 440\n#define NOTE_B4 494\n#define NOTE_C5 523\n\nconst int SCALE[] = {\n  NOTE_C4, NOTE_D4, NOTE_E4, NOTE_F4, NOTE_G4, NOTE_A4, NOTE_B4, NOTE_C5,\n  NOTE_B4, NOTE_A4, NOTE_G4, NOTE_F4, NOTE_E4, NOTE_D4,\n};\nconst uint8_t SCALE_LENGTH = sizeof(SCALE) / sizeof(SCALE[0]);\n\nconst unsigned long NOTE_MS  = 300;   // how long each note sounds\nconst unsigned long GAP_MS   = 80;    // silence between notes (hear each attack)\nconst unsigned long PAUSE_MS = 700;   // silence between passes of the scale\n\nconst bool serialEnabled = true;      // note log at 9600 baud\n\n//################################\n//#######  BUZZER PATHS ##########\n//################################\n\n#ifdef VELXIO_EMULATION\n// Velxio's buzzer part starts a WebAudio note when Timer2 duty goes >0 and stops\n// it ONLY on a duty->0 event, and noTone() leaves OCR2A set. Clearing OCR2A after\n// each note is what makes the note actually END in the browser.\nvoid emuTone(int frequency, unsigned long duration) {\n  if (frequency <= 0) return;\n  tone(BUZZER, frequency);\n  delay(duration);\n  noTone(BUZZER);\n  OCR2A = 0;\n}\n#endif\n\n#ifdef USE_BUZZ\n// The bit-banged square wave used by playSong() for the Mario themes: toggle the\n// pin by hand, half a period at a time. Blocking, and it holds the pin, so it\n// cannot share the timer with tone().\nvoid buzz(int pin, long frequency, long length) {\n  if (frequency <= 0) return;                       // no divide-by-zero\n  long halfPeriodUs = 1000000L / frequency / 2;\n  long cycles = frequency * length / 1000;\n  for (long i = 0; i < cycles; i++) {\n    digitalWrite(pin, HIGH);\n    delayMicroseconds(halfPeriodUs);\n    digitalWrite(pin, LOW);\n    delayMicroseconds(halfPeriodUs);\n  }\n}\n#endif\n\n// Play one note through whichever path this build selected, then go silent.\nvoid playNote(int frequency) {\n  digitalWrite(BUZZ_LED, HIGH);\n\n#if defined(VELXIO_EMULATION)\n  emuTone(frequency, NOTE_MS);\n#elif defined(USE_BUZZ)\n  buzz(BUZZER, frequency, (long) NOTE_MS);\n#else\n  tone(BUZZER, frequency);\n  delay(NOTE_MS);\n  noTone(BUZZER);\n#endif\n\n  digitalWrite(BUZZ_LED, LOW);\n  delay(GAP_MS);                  // real silence \u2014 this is what makes a dropout\n}                                 // or a stuck note obvious\n\n//################################\n//###########  SETUP #############\n//################################\nvoid setup() {\n  if (serialEnabled) {\n    Serial.begin(9600);\n    Serial.println(F(\"Lemon Piano V0 - buzzer scale\"));\n#ifdef USE_BUZZ\n    Serial.println(F(\"path: bit-banged buzz()\"));\n#else\n    Serial.println(F(\"path: tone()\"));\n#endif\n    Serial.print(F(\"buzzer pin: D\"));\n    Serial.println(BUZZER);\n  }\n\n  pinMode(BUZZER, OUTPUT);\n  digitalWrite(BUZZER, LOW);\n  pinMode(BUZZ_LED, OUTPUT);\n  digitalWrite(BUZZ_LED, LOW);\n}\n\n\n//################################\n//###########  LOOP ##############\n//################################\nvoid loop() {\n  for (uint8_t i = 0; i < SCALE_LENGTH; i++) {\n    if (serialEnabled) {\n      Serial.print(F(\"note \"));\n      Serial.print(i + 1);\n      Serial.print(F(\"/\"));\n      Serial.print(SCALE_LENGTH);\n      Serial.print(F(\" - \"));\n      Serial.print(SCALE[i]);\n      Serial.println(F(\" Hz\"));\n    }\n    playNote(SCALE[i]);\n  }\n\n  if (serialEnabled) Serial.println(F(\"scale done - pausing\"));\n  delay(PAUSE_MS);\n}\n"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "buzzer1",
+      "metadataId": "buzzer",
+      "x": 520,
+      "y": 120,
+      "properties": {}
+    }
+  ],
+  "wires": [
+    {
+      "id": "wire-1",
+      "start": {
+        "componentId": "arduino-nano",
+        "pinName": "11",
+        "x": 0,
+        "y": 0
+      },
+      "end": {
+        "componentId": "buzzer1",
+        "pinName": "1",
+        "x": 0,
+        "y": 0
+      },
+      "waypoints": [
+        {
+          "x": 89.3,
+          "y": 40
+        },
+        {
+          "x": 40,
+          "y": 40
+        },
+        {
+          "x": 40,
+          "y": 240
+        },
+        {
+          "x": 553,
+          "y": 240
+        }
+      ],
+      "color": "#22c55e"
+    },
+    {
+      "id": "wire-2",
+      "start": {
+        "componentId": "buzzer1",
+        "pinName": "2",
+        "x": 0,
+        "y": 0
+      },
+      "end": {
+        "componentId": "arduino-nano",
+        "pinName": "GND.1",
+        "x": 0,
+        "y": 0
+      },
+      "waypoints": [
+        {
+          "x": 500,
+          "y": 220
+        },
+        {
+          "x": 500,
+          "y": 120
+        },
+        {
+          "x": 240,
+          "y": 122.4
+        }
+      ],
+      "color": "#000000"
+    }
+  ],
+  "activeBoardId": "arduino-nano"
+}

@@ -26,5 +26,5 @@ __pycache__/
 .claude/settings.local.json
 
 # Velxio emulation — per-run evidence bundles (reports, logs, screenshots)
-# (**/ so both the active emulation/ and archive/**/emulation/ runs are ignored)
+# (**/ so every versions/*/emulation/runs/ is ignored)
 **/emulation/runs/

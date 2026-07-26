@@ -1,15 +1,13 @@
 name: lemon-piano
 description: >
-  Interactive Velxio emulation of the Lemon Piano V4.5 board: V4's game with NO
-  relay pair and NO water pump (D5/D6 unused — a late miss just groans). The 7
-  lemons become clickable pushbuttons (keys 1-7 on A0-A5 + D9 — the
-  VELXIO_EMULATION input shim in ../firmware/src/main.cpp, see
-  emulation/README.md). Buzzer on D11 plays through the browser's speakers and
-  the red/green LEDs give feedback. Hold GAME SELECT (D4) while pressing RESTART
-  (D7) for game 1 (Mario Main Theme); default is game 2 (Underworld). The MARGIN
-  +/- buttons are hardware-only (D11 is the buzzer here). Verify mode plays game
-  2's secret code by injecting timed key presses and asserts the firmware logs
-  WIN.
+  Interactive Velxio emulation of the 2019 Lemon Piano V4. The 7 lemons become
+  clickable pushbuttons (keys 1-7 on A0-A5 + D9 — the VELXIO_EMULATION input
+  shim in firmware/src/main.cpp, see emulation/README.md). Buzzer on D11 plays
+  through the browser's speakers, red/green LEDs give feedback, the blue LED is
+  the water-pump indicator (relay pair D5/D6). Hold GAME SELECT (D4) while
+  pressing RESTART (D7) for game 1 (Mario Main Theme); default is game 2
+  (Underworld). Verify mode plays game 2's secret code by injecting timed key
+  presses and asserts the firmware logs WIN.
 board: arduino-nano
 sketch_file: ../firmware/src/main.cpp
 defines: [VELXIO_EMULATION]
@@ -47,11 +45,13 @@ components:
   - { id: sw_game,     type: slide-switch, x: 1000,  y: 440, properties: { value: 1, label: "GAME: 1-Mario / 2-Underworld" } }
   - { id: btn_restart, type: pushbutton,   x: 1160, y: 430, properties: { color: "black", label: "RESTART" } }
   - { id: rp_restart,  type: resistor,     x: 1130, y: 310, properties: { value: "10000" } }
-  # Feedback + audio — column on the far right, clear of the keyboard
+  # Feedback + audio + pump — column on the far right, clear of the keyboard
   - { id: r_red,     type: resistor, x: 1010,  y: 70,  properties: { value: "220" } }
   - { id: led_red,   type: led,      x: 1180, y: 55,  properties: { color: "red",   label: "WRONG" } }
   - { id: r_green,   type: resistor, x: 1010,  y: 160, properties: { value: "220" } }
   - { id: led_green, type: led,      x: 1180, y: 145, properties: { color: "green", label: "CORRECT" } }
+  - { id: r_pump,    type: resistor, x: 1010,  y: 250, properties: { value: "220" } }
+  - { id: led_pump,  type: led,      x: 1180, y: 235, properties: { color: "blue",  label: "WATER PUMP (relay D5)" } }
   - { id: buzzer1,   type: buzzer,   x: 1300, y: 70,  properties: {} }
 
 wires:
@@ -103,6 +103,10 @@ wires:
   - [board:3, r_green:1]
   - [r_green:2, led_green:A]
   - [led_green:C, board:GND.2]
+  # Pump indicator: lights while RELAY_1 (D5) is driven HIGH for 1s penalties
+  - [board:5, r_pump:1]
+  - [r_pump:2, led_pump:A]
+  - [led_pump:C, board:GND.2]
   # Buzzer — on D11, NOT D8: Velxio's buzzer part gets its note-off only from
   # a Timer2 duty->0 event, and duty is polled only on PWM pins (3/5/6/9/10/11).
   # The emulation firmware clears OCR2A after each note (emuTone) for the same
@@ -126,7 +130,7 @@ inputs:
   - { at_s: 5.15, press_pin: 17, hold_s: 0.08 }   # key 4 → WIN
 
 assertions:
-  - { type: serial_contains, pattern: "Lemon Piano V4.5", within_s: 3 }
+  - { type: serial_contains, pattern: "Lemon Piano V4", within_s: 3 }
   - { type: serial_contains, pattern: "Game 2",         within_s: 3 }
   - { type: gpio_toggles, pin: 11, min_edges: 100, within_s: 8 }  # buzzer sang
   - { type: gpio_toggles, pin: 3, min_edges: 2,   within_s: 8 }   # green LED flashed

@@ -1,8 +1,14 @@
 # TODO — fix roadmap
 
 Firmware bugs found in the rescued 2019 code. **Items 1–12 are done** (applied
-in the 2026-07-12 refactor, all three envs still build green, RAM down from
-778 B/38 % to 309 B/15 %). Items 13–14 need the physical build and are open.
+in the 2026-07-12 refactor to the firmware that is now
+[V4](versions/v4-water-pump/), all envs still build green, RAM down from
+778 B/38 % to 309 B/15 %). Items 13, 15, 16, 17 are open — 13 and 15 need the
+physical V5 build.
+
+Items apply to the newest board ([V5](versions/v5-led-bar/)) unless a version is
+named. New hardware belongs in a new version directory, not in this list — see
+[docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Correctness — ✅ done
 
@@ -47,14 +53,24 @@ in the 2026-07-12 refactor, all three envs still build green, RAM down from
 - [ ] **13. Wire and playtest the V5 board**: ten green LEDs on
   D2,D3,D4,D5,D6,D9,D10,D11,D12,D13 (220 Ω each), game-select SPDT on A7
   (5 V/GND), restart on D7. The Velxio emulation is the closest thing to a
-  reference schematic today ([emulation/lemon-piano.yaml](emulation/lemon-piano.yaml)).
-- [~] **14. Full wiring diagram** — done as generated PIL diagrams
-  ([tools/wiring_diagrams.py](tools/wiring_diagrams.py) →
-  [docs/images/wiring-v5.png](docs/images/wiring-v5.png), plus `wiring-v4.png`
-  and `wiring-v4-plus.png`): 7 keys + 10-LED bar + A7 switch + restart + buzzer,
-  colour-coded with a legend. A formal Fritzing/KiCad redraw is still optional.
+  reference schematic today
+  ([versions/v5-led-bar/emulation/lemon-piano.yaml](versions/v5-led-bar/emulation/lemon-piano.yaml)).
+- [x] **14. Full wiring diagrams** — done, and now **one per hardware revision**:
+  `versions/*/images/wiring-{v1,v2,v3,v4,v4.5,v5}.png`, generated from the
+  declarative contracts in [tools/wiring_diagrams.py](tools/wiring_diagrams.py) on
+  the wirewright auto-router + DRC (0 violations). A formal Fritzing/KiCad redraw
+  is still optional.
 - [ ] **15. Confirm A7 game-select biasing** on the real board (SPDT vs.
   switch + 10 kΩ pulldown); A7 has no internal pull-up.
+- [ ] **16. Decide: emulate the 2019 boards (V1–V3)?** It needs a
+  `#ifdef VELXIO_EMULATION` shim inside the 2019 sketches (buzzer onto a PWM pin
+  with `OCR2A` cleared, key 7 off A6, pull-up buttons instead of the divider) —
+  i.e. editing code whose value is being the untouched original. Blockers per
+  board are written up in each `versions/v{1,2,3}-*/emulation/README.md`. If yes,
+  start with V3: it has a real game to assert on.
+- [ ] **17. V2 quirk:** `Serial.begin(9600)` is commented out while the
+  `Serial.print` calls are live — decide whether to fix it (helps anyone reviving
+  the rig) or leave it as 2019 shipped it.
 
 ## Nice-to-have (new ideas, not blocking)
 

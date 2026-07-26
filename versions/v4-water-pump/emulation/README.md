@@ -1,14 +1,14 @@
-# 🍋 Lemon Piano V4.5 — interactive Velxio emulation
+# 🍋 Lemon Piano V4 — interactive Velxio emulation
 
-> Run every command below **from the version directory**
-> (`versions/v4.5-margin-buttons/`). This is [V4](../../v4-water-pump/emulation/README.md)'s
-> circuit **minus the blue pump-indicator LED** (this board has no relay pair and
-> no water pump), compiling this version's noise-adaptive firmware. The MARGIN +/−
-> buttons are hardware-only — D11 is the buzzer here and no pins are left.
+> Run every command below **from the version directory** (`versions/v4-water-pump/`). This board's firmware is the 02/2019 game with
+> the TODO #1–12 fix pass — no MARGIN buttons; that is
+> [V4.5](../../v4.5-margin-buttons/emulation/README.md), whose emulated circuit is
+> identical but compiles the upgraded firmware.
 
-Play the V4.5 lemon piano in your browser: real firmware, emulated
-ATmega328 (avr8js), clickable lemons, audible buzzer and the red/green feedback
-LEDs. Built with the
+
+Play the 2019 lemon piano in your browser: real firmware, emulated
+ATmega328 (avr8js), clickable lemons, audible buzzer, working LEDs and the
+water-pump indicator. Built with the
 [velxio-multi-board-emulator](../../../../velxio-multi-board-emulator/) pipeline
 harness.
 
@@ -31,9 +31,9 @@ harness.
 - **Game selector switch**: left = game 1 (Mario Main Theme), right =
   game 2 (Underworld, the default). The choice takes effect when you press
   RESTART (or at boot).
-- Green LED = correct note, red = wrong (sequence resets). A miss from note 7
-  on costs a penalty and plays the low warning groan — on V4 that also fired the
-  water pump; this board has none. Buzzer plays through your speakers (WebAudio).
+- Green LED = correct note, red = wrong (sequence resets), blue LED = the
+  water pump firing (a miss from note 7 on), buzzer plays through your
+  speakers (WebAudio).
 - Secret codes: game 1 `6,5,6,7,2,5,2,1,3,4` · game 2 `3,6,1,4,2,5,3,6,1,4`.
 
 To regenerate the `.vlx` (or run it headlessly) from the spec:
@@ -95,19 +95,20 @@ So `../firmware/src/main.cpp` gained a compile-time input shim
 The pull-ups are mandatory: an active-low button with no pull-up floats near
 0 V in the solver and reads permanently pressed. They're the emulation's
 counterpart of the real build's per-key 220 Ω resistors — they define each
-key's idle level. **Game logic, melodies and LEDs are untouched**, and hardware
-builds are unaffected (the shim path is compile-checked by the `emulation` env).
+key's idle level. **Game logic, melodies, LEDs and the relay pair are
+untouched**, and hardware builds are unaffected (`pio run` on all three
+hardware envs produces the same 7296-byte binary as before; the shim path is
+compile-checked by the new `emulation` env).
 
 ### Emulation pin map (differences vs. [../HARDWARE.md](../HARDWARE.md) only)
 
-| Real V4.5 | Emulation |
+| Real V4 | Emulation |
 |---|---|
 | Keys 1–7 = analog touch on A0–A6 (reading *rises* above baseline) | Keys 1–7 = pull-up + button on A0–A5 + **D9** (reading *drops* when pressed) |
 | GAME_SELECT (D4) button held **HIGH** at boot ⇒ game 1 | Slide switch on D4: **left (GND)** ⇒ game 1, **right (5V)** ⇒ game 2; applied at RESTART |
 | RESTART (D7) active-HIGH | RESTART active-LOW |
 | Buzzer on D8 (`tone()` + bit-banged `buzz()`) | Buzzer on **D11** via `emuTone()` (Timer2-duty audio, explicit note-off) |
-| MARGIN +/− buttons on D10/D11 | none — D11 is the buzzer, no pins to spare |
-| D5/D6 unused (no relay, no pump) | unused as well — V4's blue pump-indicator LED is gone |
+| Relay pair D5/D6 → water pump | Blue LED on D5 = pump indicator |
 
 ## Audio timing note
 
