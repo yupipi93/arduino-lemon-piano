@@ -1,14 +1,12 @@
-name: lemon-piano
+name: lemon-piano-v5-free-play
 description: >
-  Interactive Velxio emulation of the Lemon Piano V5. The 7 lemons are
-  clickable pushbuttons (keys 1-7 on A0-A5 + D12 — the VELXIO_EMULATION input
-  shim in firmware/src/main.cpp, see emulation/README.md). A row of TEN green
-  LEDs (D2,D3,D4,D5,D6,D7,D8,D9,D10,D13) is the progress bar: each correct note
-  lights the next LED, a wrong note blanks them all. Buzzer on D11 plays through
-  the browser's speakers. There is no game-select switch or restart button (no
-  pins left beside 10 LEDs): the browser starts at game 1 (Mario Main Theme) and
-  each win AUTO-ADVANCES to the other theme. Verify mode plays game 1's secret
-  code by injecting timed key presses and asserts WIN + the flip to Game 2.
+  Regression test for the 2026-07-27 "piano first, puzzle second" rule of V5:
+  while the progress bar is empty the player may touch any lemon freely and hear
+  its note, with NO wrong tone and NO penalty. Same circuit as lemon-piano.yaml;
+  only the input script differs. It presses five keys that are NOT the first note
+  of game 1's code (key 6), so the sequence never starts — the buzzer must sing
+  and the serial log must stay clean of both OK and WRONG. If the old
+  "any miss buzzes" behaviour ever comes back, this fails.
 board: arduino-nano
 sketch_file: ../firmware/src/main.cpp
 defines: [VELXIO_EMULATION]
@@ -133,49 +131,22 @@ wires:
   - [board:11, buzzer1:1]
   - [buzzer1:2, board:GND.2]
 
-# Headless gameplay, in three acts — this doubles as the regression test for the
-# 2026-07-27 "piano first, puzzle second" rules.
-#
-#   ACT 1 (2.0-3.0 s)  FREE PLAY: three keys that are NOT the first note of the
-#                      code. Each must simply sound; no WRONG, no penalty tone.
-#   ACT 2 (3.4-3.8 s)  START THEN MISS: key 6 is the code's first note (LED 1
-#                      lights, step 1), then key 1 is wrong -> now it DOES cost
-#                      a WRONG, and the low tone must come AFTER key 1's note.
-#   ACT 3 (4.6+ s)     The full code, played clean, to WIN and auto-advance.
-#
-# Game 1 code 6,5,6,7,2,5,2,1,3,4 -> key pins A5,A4,A5,D12,A1,A4,A1,A0,A2,A3 =
-# 19,18,19,12,15,18,15,14,16,17. Active-low pulses.
+# Free play only: keys 1, 3, 7, 2, 4 — game 1's code starts with key 6, so the
+# sequence is never entered. Pins: key1=14, key2=15, key3=16, key4=17, key7=12.
 inputs:
-  # ── ACT 1: free play (keys 1, 3, 7 — none of them the code's first note) ──
   - { at_s: 2.00, press_pin: 14, hold_s: 0.08 }   # key 1
   - { at_s: 2.40, press_pin: 16, hold_s: 0.08 }   # key 3
   - { at_s: 2.80, press_pin: 12, hold_s: 0.08 }   # key 7
-  # ── ACT 2: hit the first note, then miss ─────────────────────────────────
-  - { at_s: 3.40, press_pin: 19, hold_s: 0.08 }   # key 6 -> OK 1/10, LED 1 on
-  - { at_s: 3.80, press_pin: 14, hold_s: 0.08 }   # key 1 -> WRONG (note, gap, low tone)
-  # ── ACT 3: the whole code, clean ─────────────────────────────────────────
-  - { at_s: 4.60, press_pin: 19, hold_s: 0.08 }   # key 6
-  - { at_s: 4.95, press_pin: 18, hold_s: 0.08 }   # key 5
-  - { at_s: 5.30, press_pin: 19, hold_s: 0.08 }   # key 6
-  - { at_s: 5.65, press_pin: 12, hold_s: 0.08 }   # key 7
-  - { at_s: 6.00, press_pin: 15, hold_s: 0.08 }   # key 2
-  - { at_s: 6.35, press_pin: 18, hold_s: 0.08 }   # key 5
-  - { at_s: 6.70, press_pin: 15, hold_s: 0.08 }   # key 2
-  - { at_s: 7.05, press_pin: 14, hold_s: 0.08 }   # key 1
-  - { at_s: 7.40, press_pin: 16, hold_s: 0.08 }   # key 3
-  - { at_s: 7.75, press_pin: 17, hold_s: 0.08 }   # key 4 -> WIN
+  - { at_s: 3.20, press_pin: 15, hold_s: 0.08 }   # key 2
+  - { at_s: 3.60, press_pin: 17, hold_s: 0.08 }   # key 4
 
 assertions:
   - { type: serial_contains, pattern: "Lemon Piano V5", within_s: 3 }
   - { type: serial_contains, pattern: "Game 1",         within_s: 3 }
-  # (Free play is asserted in its own spec, free-play.yaml — `serial_absent` is
-  # run-wide, and this run legitimately contains a WRONG in act 2.)
-  - { type: gpio_toggles, pin: 2,  min_edges: 1,   within_s: 10 }  # LED 1 lit on first correct
-  # ACT 2: once the sequence has started, a miss IS punished.
-  - { type: serial_contains, pattern: "WRONG",          within_s: 5 }
-  - { type: gpio_toggles, pin: 11, min_edges: 100, within_s: 16 }  # buzzer sang (keys + victory theme)
-  - { type: serial_contains, pattern: "WIN",            within_s: 11 }
-  # Victory light show: the bar flashes per note — LED 10 (D13) only ever
-  # lights during the win, so >=40 edges proves the beat-synced blinking.
-  - { type: gpio_toggles, pin: 13, min_edges: 40,  within_s: 18 }
-  - { type: serial_contains, pattern: "Game 2",         within_s: 18 }  # auto-advanced after the theme
+  # The notes DID sound: five key tones at ~70 ms each on the buzzer pin.
+  - { type: gpio_toggles, pin: 11, min_edges: 200, within_s: 8 }
+  # ...and nothing was punished, and no progress was made.
+  - { type: serial_absent,   pattern: "WRONG",          within_s: 8 }
+  - { type: serial_absent,   pattern: "OK ",            within_s: 8 }
+  # LED 1 (D2) must never light: the sequence never started.
+  - { type: gpio_state, pin: 2, state: 0, within_s: 8 }

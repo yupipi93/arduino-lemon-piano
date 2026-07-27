@@ -61,9 +61,14 @@ series resistor to a common GND:
  Dn ──[220 Ω]──▶|── GND        (LED n, anode to the pin)
 ```
 
+- While the bar is empty (`currentStep == 0`) the game is in **free play**: keys
+  sound but nothing is scored or punished.
 - Each **correct** note lights `LED_PINS[currentStep]` and advances the step.
-- A **wrong** note calls `allLedsOff()` (blanks all ten) + a short low tone, and
-  resets to the first note.
+- Once the sequence has started, a **wrong** note calls `allLedsOff()` (blanks all
+  ten) and plays a short low tone — **after** the pressed note has finished
+  (`NOTE_DURATION` 70 ms, then a `WRONG_TONE_GAP_MS` 60 ms silence, then
+  `WRONG_TONE_MS` 200 ms of C2). Measured on the emulator: 69.9 ms note →
+  60.5 ms silence → 200.0 ms tone, no overlap.
 - **All ten lit = win:** the victory theme plays with the bar flashing per note,
   then the game auto-advances to the other theme and the bar blanks.
 

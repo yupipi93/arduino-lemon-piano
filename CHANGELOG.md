@@ -2,6 +2,37 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-27 (V5) — Piano first, puzzle second: free play + a wrong tone that waits its turn
+
+Two gameplay changes to V5, requested after playing it on hardware. The board is
+unchanged, so this stays inside V5 (code-only → no new version).
+
+- **Free play until the sequence starts.** While the bar is empty
+  (`currentStep == 0`) any key just sounds its note: no `WRONG`, no low tone, no
+  penalty. The puzzle begins only when the player happens to hit the code's
+  **first** note (LED 1 lights); from then on a miss blanks the bar and buzzes as
+  before, dropping them back to free play. The instrument no longer scolds you for
+  exploring it.
+- **The wrong tone no longer cuts off the note you played.** `keyTone()` now
+  records `keyToneEndsAt`, and the miss path calls a new `waitKeyToneEnd()` before
+  `wrongTone()`: the pressed key's note finishes (`NOTE_DURATION` 70 ms), then a
+  new `WRONG_TONE_GAP_MS` 60 ms silence, then the 200 ms C2. So you always hear
+  *which* note was wrong, then the verdict. Works for both builds — on hardware
+  `tone()` is non-blocking so there is real time to wait out; in the Velxio build
+  `emuTone()` has already blocked, leaving just the gap.
+- **Verified on the emulator, by measurement** — buzzer-pin edges around a miss:
+  69.9 ms at ~1330 Hz (E6, the key played) → **60.5 ms silence** → 200.0 ms at
+  ~70 Hz (C2, the wrong tone). No overlap.
+- **Emulation tests extended, both green**: `lemon-piano.yaml` now plays three
+  acts — free play, then first-note-and-miss (asserts `WRONG` *does* fire), then
+  the full code to `WIN` and auto-advance. A second spec **`free-play.yaml`**
+  presses five non-matching keys and asserts the buzzer sings while `WRONG`, `OK `
+  and LED 1 all stay absent. (`serial_absent` is run-wide, not windowed — hence
+  two specs rather than one.)
+- Flashed to the hardware Nano (`/dev/ttyUSB0`, env `nanoatmega328`): builds to
+  7 200 B flash (23.4 %) / 315 B RAM, uploaded and verified, boots and calibrates
+  clean.
+
 ## 2026-07-26 (V0 field result) — The bad "buzzer" was a bad Arduino
 
 V0 flashed and run on real hardware for the first time, and it solved the problem

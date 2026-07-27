@@ -24,13 +24,17 @@ flashing to the beat, then the game **auto-advances** to the other tune.
    (5 V) = game 1 (Mario Main Theme), LOW (GND) = game 2 (Underworld).
 2. **Touch lemons.** Hold the 5 V clip in one hand and touch a lemon with the
    other — your body closes the circuit and the note plays on the buzzer.
-3. **Guess the secret sequence** (10 notes). Each correct note lights the next
-   green LED (the bar climbs 1 → 10). A wrong note **blanks all ten** (with a
-   short low tone) and the sequence restarts from the first note.
-4. **Victory + auto-advance.** Light all ten → the theme plays with the bar
+3. **Play freely.** While the bar is empty, every key just sounds its note —
+   no wrong tone, no penalty. It is a piano; noodle as long as you like.
+4. **The puzzle starts when you hit the code's first note** (LED 1 lights). From
+   there each correct note lights the next green LED (the bar climbs 1 → 10),
+   and a wrong note **blanks all ten** and drops you back to free play. The low
+   "wrong" tone plays **after** the note you pressed has finished — you always
+   hear which key was wrong, then the buzz.
+5. **Victory + auto-advance.** Light all ten → the theme plays with the bar
    flashing per note, then the game flips to the **other** theme automatically
    (game 1 → 2 → 1 …), so both games cycle from one starting point.
-5. **Restart** anytime with the button on D7 (re-reads game select, recalibrates,
+6. **Restart** anytime with the button on D7 (re-reads game select, recalibrates,
    blanks the bar).
 
 ### Secret codes (spoilers)
@@ -73,9 +77,18 @@ $PIPE run --mode verify --spec emulation/lemon-piano.yaml --out emulation/runs
 Clickable lemons (or press `1`–`7` on your keyboard), audible buzzer, the ten-LED
 bar. Because ten LEDs use every free browser pin there is **no game-select switch
 and no restart button**: it starts at game 1 and auto-advances on each win.
-`verify` plays game 1's code headlessly and asserts
-`Lemon Piano V5 → Game 1 → LED 1 … → WIN → Game 2` plus the victory light show.
-Last run: **pass** (2026-07-26). Full details, key mapping and the pin-map diff:
+There are **two** headless specs, both green (2026-07-27):
+
+| Spec | What it proves |
+|---|---|
+| `emulation/lemon-piano.yaml` | free play → first note → a miss (`WRONG`) → the full code → `WIN` → auto-advance to `Game 2`, plus the victory light show |
+| `emulation/free-play.yaml` | five keys that are *not* the code's first note: the buzzer sings, but `WRONG` and `OK` never appear and LED 1 never lights |
+
+```bash
+$PIPE run --mode verify --spec emulation/free-play.yaml --out emulation/runs
+```
+
+Full details, key mapping and the pin-map diff:
 [emulation/README.md](emulation/README.md).
 
 ## Files

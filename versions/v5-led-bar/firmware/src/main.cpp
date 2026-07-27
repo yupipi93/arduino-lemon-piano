@@ -12,6 +12,17 @@
    Mario Main Theme and it flips to the Underworld, and back), so both games
    cycle from a single starting point.
 
+   It is a PIANO first, a puzzle second (2026-07-27):
+     - While the bar is empty (currentStep == 0) you can play freely: every key
+       just sounds its note. No "wrong" tone, no penalty — noodle as long as you
+       like. The puzzle only starts once you happen to hit the sequence's FIRST
+       note, which lights LED 1.
+     - From then on a wrong note DOES cost you: the bar blanks and the low tone
+       plays, and you are back to free play.
+     - The wrong tone never interrupts the note you just played. The key's own
+       note is allowed to finish, then a short silence, then the low tone —
+       so you always hear WHICH note you got wrong.
+
    What changed from V4/V4.5 (their boards live on in versions/v4-water-pump/
    and versions/v4.5-margin-buttons/):
      - No relays / no water pump, and no red LED — the ten-LED bar is the whole
@@ -90,6 +101,8 @@ const int NOISE_FACTOR = 3;      // margin = NOISE_FACTOR x (peak - mean) noise
 const int THRESHOLD_CAP = 900;   // above this a touch could no longer register
 const int NOTE_DURATION = 70;     // key tone length in ms; the lower, the snappier the feel
 const int WRONG_TONE_MS = 200;    // low "you missed" tone
+const int WRONG_TONE_GAP_MS = 60; // silence between the played note and the low
+                                  // tone, so the two never blur together
 
 const bool serialEnabled = true;  // debug log at 9600 baud
 
@@ -220,6 +233,8 @@ const int sequence_2[SEQUENCE_LENGTH] = {NOTE_C4, NOTE_C5, NOTE_A3, NOTE_A4, NOT
 int  game = 1;                 // 1 = Main Theme, 2 = Underworld
 bool started = false;          // false triggers (re)selection of the game
 int  currentStep = 0;          // how many correct notes so far (index into the sequence)
+                               // 0 = free play: any key just sounds its note
+unsigned long keyToneEndsAt = 0;  // millis() when the key note now playing stops
 int  pressedNote = 0;          // last note played
 
 int  keyThreshold[KEY_COUNT];  // per-key touch threshold (auto-calibrated)
@@ -240,6 +255,7 @@ void handleGuess();
 void playVictory();
 void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length);
 void wrongTone();
+void waitKeyToneEnd();
 void keyTone(int note);
 void allLedsOff();
 void allLedsOn();
@@ -342,13 +358,20 @@ void handleGuess() {
       resetBoard();
       logGame();
     }
-  } else {
-    // WRONG — blank the whole bar, sound the low tone, back to the start.
+  } else if (currentStep > 0) {
+    // WRONG — but only once the sequence has actually started (see below).
+    // Let the note the player just pressed FINISH first: the low tone is
+    // feedback about that note, so cutting it off hides which key was wrong.
     log(F("WRONG"));
+    waitKeyToneEnd();
     allLedsOff();
     wrongTone();
     currentStep = 0;
   }
+  // else: currentStep == 0 -> FREE PLAY. The bar is empty and the player is
+  // just noodling on the lemons; the note already sounded in readInput() and
+  // nothing else happens. No penalty tone until they have found the first note
+  // of the sequence, so the piano never scolds you for exploring it.
 }
 
 void allLedsOff() {
@@ -477,13 +500,25 @@ void logGame() {
 //#########  AUDIO ###############
 //################################
 
-// The pressed key's note (non-blocking on hardware).
+// The pressed key's note (non-blocking on hardware). Records when it will stop
+// so the wrong tone can queue up behind it instead of cutting it short.
 void keyTone(int note) {
+  keyToneEndsAt = millis() + NOTE_DURATION;
 #ifdef VELXIO_EMULATION
-  emuTone(note, NOTE_DURATION);
+  emuTone(note, NOTE_DURATION);   // blocking: the note is already over on return
 #else
   tone(BUZZER, note, NOTE_DURATION);
 #endif
+}
+
+// Block until the key note that is playing has finished, then leave a short gap.
+// On hardware tone() runs on Timer2 in the background, so there is real time to
+// wait out; in the Velxio build emuTone() already blocked and only the gap is
+// left. Either way the buzzer is silent when this returns.
+void waitKeyToneEnd() {
+  long remaining = (long) (keyToneEndsAt - millis());
+  if (remaining > 0) delay(remaining);
+  delay(WRONG_TONE_GAP_MS);
 }
 
 // Short low "you missed" tone.
