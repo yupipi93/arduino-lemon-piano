@@ -2,6 +2,55 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-27 (V5 input) — One key at a time; and the measurement that says the pull-downs are mandatory
+
+Hardware testing of the previous entry did not behave as asked, and the serial log
+said why: `OK 1/10` followed by `WRONG` **in the same millisecond**, seven times
+over. The repeat filter blocks the same key, so that pattern can only mean two
+*different* channels were counted — one finger read as two keys.
+
+**Firmware (verified in emulation, NOT yet verifiable on this board — see below):**
+
+- `strongestKey()` replaces "first index above threshold": the scan now takes the
+  channel with the largest margin over its own threshold, so a real touch beats
+  coupled ghosts instead of racing them.
+- While a key is down, **every other channel is ignored** until it is released.
+  `keyHeld[]` is gone — `activeKey` is the single source of truth, which makes
+  "one key at a time" structural rather than a patch.
+- New `TOUCH_HYSTERESIS` (60 counts): a key releases only when it falls that far
+  *below* its press threshold, so a reading sitting on the line cannot chop a
+  sustained note into pieces or re-trigger guesses. `keyStillDown()` is used by
+  both the scan and `waitKeyRelease()`.
+- New env `nanoatmega328-debug` (`-DDEBUG_TOUCH`): logs every accepted press with
+  the chosen key and all seven raw ADC readings. Same game logic, extra logging.
+- All three V5 emulation specs still pass.
+
+**Measured on the real board (bench sampler, 7 channels at 20 Hz, four held
+touches of 1.9-32.5 s) — the keyboard as currently wired cannot be read:**
+
+| Measure | Result |
+|---|---|
+| Samples with all 7 channels above 400 | 50 % |
+| Samples with zero channels above 400 | 38 % |
+| Samples pinned at 1023 / at 0 | 27 % / 23 % |
+| Highest vs second-highest channel | **median 5 counts** |
+| Channel reading highest, whichever lemon was touched | A0 or A6, 92 % of samples |
+
+Five counts of spread across seven channels means the ADC is not resolving seven
+voltages; readings arrive as gradient ramps (`148 194 258 332 400 469 545`), i.e.
+sample-and-hold residue from the previous channel, because the source impedance is
+effectively open. The idle level also drifts ~170 counts on a ~25 s cycle — about
+75 % of the touch margin `calibrate()` sets at boot, so thresholds go stale within
+seconds. This data cannot distinguish "pins shorted together" from "pins
+effectively open"; both look the same when the ADC cannot charge its S/H.
+
+So the fix is hardware: **~1 MΩ from each analog pin to GND**, the ⚠️ that has been
+in `docs/HARDWARE.md` since the rescue. Written up with the numbers in
+`versions/v5-led-bar/HARDWARE.md`, including how to confirm it worked (the
+calibration baselines should fall from ~250 to near 0). The firmware changes above
+are the right behaviour once channels are distinguishable, but they are unverified
+on hardware until then.
+
 ## 2026-07-27 (V5 touch) — Notes sustain while held; a key only ever counts once
 
 Second round of V5 gameplay work, again code-only (the board is unchanged, so this

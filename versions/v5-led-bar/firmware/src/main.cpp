@@ -35,6 +35,16 @@
        NOTE: this means a secret code can never contain the same note twice in
        a row. Neither of the two codes does (6,5,6,7,2,5,2,1,3,4 and
        3,6,1,4,2,5,3,6,1,4) — check this if you ever add a third.
+     - ONE LEMON AT A TIME (added after hardware testing, 2026-07-27). All seven
+       analog pins float at the same level and are capacitively coupled to each
+       other and to the player, so ONE finger pushes SEVERAL channels over their
+       threshold at once. The old scan took the first index above threshold, so a
+       single touch could register as two different keys in consecutive loops —
+       on the bench that printed "OK 1/10" immediately followed by "WRONG".
+       Now the scan picks the STRONGEST channel (largest margin over its own
+       threshold) and, while that key is down, every other channel is ignored
+       until it is released. Release uses TOUCH_HYSTERESIS below the press
+       threshold, so a reading hovering on the line cannot chop the note up.
 
    What changed from V4/V4.5 (their boards live on in versions/v4-water-pump/
    and versions/v4.5-margin-buttons/):
@@ -116,6 +126,10 @@ const int NOTE_DURATION = 70;     // key tone length in ms; the lower, the snapp
 const int WRONG_TONE_MS = 200;    // low "you missed" tone
 const int WRONG_TONE_GAP_MS = 60; // silence between the played note and the low
                                   // tone, so the two never blur together
+const int TOUCH_HYSTERESIS = 60;  // a key is released only when it falls this far
+                                  // BELOW its press threshold (Schmitt trigger):
+                                  // stops a borderline reading from stuttering the
+                                  // note and re-triggering guesses
 const unsigned long SUSTAIN_CAP_MS = 2000;  // safety valve: how long the wrong
                                   // tone will wait for a held key to be released
                                   // before sounding anyway (a stuck/ghosting key
@@ -258,12 +272,15 @@ int  lastCountedKey = -1;      // last key the GAME accepted; pressing it again 
 int  pressedNote = 0;          // last note played
 
 int  keyThreshold[KEY_COUNT];  // per-key touch threshold (auto-calibrated)
-bool keyHeld[KEY_COUNT];       // previous touched-state, for rising-edge detection
+                               // (no keyHeld[] any more: activeKey IS the state —
+                               //  exactly one key can be down at a time)
 
 //################################
 //#######  PROTOTYPES ############
 //################################
 bool keyTouched(uint8_t i);
+bool keyStillDown(int i);
+int  strongestKey();
 #ifdef VELXIO_EMULATION
 void emuTone(long frequency, long durationMs);
 #endif
@@ -332,31 +349,40 @@ void loop() {
 //################################
 //########  READ INPUT ###########
 //################################
-  // Scan all keys, update held-state, and act on the FIRST fresh press this
-  // loop (rising edge only — debounced by hysteresis on the threshold).
-  int justPressed = -1;
-  for (uint8_t i = 0; i < KEY_COUNT; i++) {
-    bool touched = keyTouched(i);
-    if (touched && !keyHeld[i] && justPressed < 0) {
-      justPressed = i;
+  // ONE key at a time. While a key is down nothing else can interrupt it — the
+  // channels are coupled, so a single finger lifts several of them over their
+  // thresholds and any "first index wins" scan would flip between them.
+  if (activeKey >= 0) {
+    if (keyStillDown(activeKey)) {
+      return;              // still held: the note is sounding, nothing to decide
     }
-    keyHeld[i] = touched;
-  }
-
-  // RELEASE — the sounding key is no longer touched: let it reach its minimum
-  // length (so a quick tap is still a note), then go silent.
-  if (activeKey >= 0 && !keyHeld[activeKey]) {
+    // RELEASE — let the note reach its minimum length (so a quick tap is still a
+    // note), then go silent. The next loop is free to accept a new key.
     long remaining = (long) (keyToneMinEndsAt - millis());
     if (remaining > 0) delay(remaining);
     stopKeyTone();
     activeKey = -1;
+    return;
   }
 
+  int justPressed = strongestKey();   // the clearest touch this scan, or -1
   if (justPressed >= 0) {
     pressedNote = keys[justPressed + keyboardOffset];
     activeKey = justPressed;
     startKeyTone(pressedNote);   // it's a piano — every press sounds its note,
                                  // and keeps sounding while the lemon is touched
+#ifdef DEBUG_TOUCH
+    Serial.print(F("press key ")); Serial.print(justPressed + 1);
+    Serial.print(F("  readings:"));
+    for (uint8_t i = 0; i < KEY_COUNT; i++) {
+      Serial.print(' ');
+      Serial.print(keyTouched(i) ? '*' : ' ');
+#ifndef VELXIO_EMULATION
+      Serial.print(analogRead(i));
+#endif
+    }
+    Serial.println();
+#endif
 
     // ...but the GAME only sees the first press of a key. Holding it, or
     // tapping it again, is the same single guess until another key is played.
@@ -442,6 +468,41 @@ bool keyTouched(uint8_t i) {
 #endif
 }
 
+// Is key i STILL down? Release needs a lower bar than press (TOUCH_HYSTERESIS),
+// so a reading sitting on the threshold cannot chop a sustained note into pieces.
+bool keyStillDown(int i) {
+  if (i < 0) return false;
+#ifdef VELXIO_EMULATION
+  return keyTouched((uint8_t) i);       // emulated buttons are unambiguous
+#else
+  return analogRead(i) > keyThreshold[i] - TOUCH_HYSTERESIS;
+#endif
+}
+
+// Which key is being touched *most clearly* right now? Returns the channel with
+// the largest margin over its own threshold, or -1 if none is above. On coupled
+// hardware several channels rise together on one touch; the one the finger is
+// actually on wins, and the ghosts are discarded instead of racing it.
+int strongestKey() {
+#ifdef VELXIO_EMULATION
+  for (uint8_t i = 0; i < KEY_COUNT; i++) {
+    if (keyTouched(i)) return i;         // buttons: no ambiguity to resolve
+  }
+  return -1;
+#else
+  int best = -1;
+  long bestMargin = 0;
+  for (uint8_t i = 0; i < KEY_COUNT; i++) {
+    long margin = (long) analogRead(i) - keyThreshold[i];
+    if (margin > bestMargin) {
+      bestMargin = margin;
+      best = i;
+    }
+  }
+  return best;
+#endif
+}
+
 // Sample each key's floating idle level and set its touch threshold above it.
 // Auto-handles the "raise SENSITIVITY on a laptop charger" note from 2019 by
 // measuring the actual baseline instead of hardcoding it. Hands OFF at boot.
@@ -453,9 +514,7 @@ void calibrate() {
   // 0/LOW (= "everything pressed"), which would spam notes. Idle-high on keys
   // 1 and 7 means the solve landed.
   pinMode(KEY_PINS[6], INPUT_PULLUP);
-  for (uint8_t i = 0; i < KEY_COUNT; i++) {
-    keyHeld[i] = false;
-  }
+  activeKey = -1;
   log(F("Emulation build: waiting for circuit solve (inputs idle-high)..."));
   while (keyTouched(0) || keyTouched(6)) {
     delay(10);
@@ -495,7 +554,6 @@ void calibrate() {
         Serial.println(F(" VERY NOISY - check fruit contact / power supply"));
       }
     }
-    keyHeld[i] = false;
     if (serialEnabled) {
       Serial.print(F("  A")); Serial.print(i);
       Serial.print(F(" baseline=")); Serial.print(baseline);
@@ -527,9 +585,6 @@ void resetBoard() {
                          // ended the last one
   stopKeyTone();
   activeKey = -1;
-  for (uint8_t i = 0; i < KEY_COUNT; i++) {
-    keyHeld[i] = false;
-  }
   allLedsOff();
 }
 
@@ -570,10 +625,9 @@ void stopKeyTone() {
 void waitKeyRelease(int key) {
   if (key >= 0) {
     unsigned long giveUpAt = millis() + SUSTAIN_CAP_MS;
-    while (keyTouched(key) && (long) (giveUpAt - millis()) > 0) {
+    while (keyStillDown(key) && (long) (giveUpAt - millis()) > 0) {
       // hold the note; the buzzer is already sounding it
     }
-    keyHeld[key] = false;   // consume the press so the release is not re-read
   }
   long remaining = (long) (keyToneMinEndsAt - millis());
   if (remaining > 0) delay(remaining);

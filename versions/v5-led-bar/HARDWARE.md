@@ -67,6 +67,13 @@ series resistor to a common GND:
   note runs until the lemon is released (`stopKeyTone()`), with `NOTE_DURATION`
   70 ms as a floor for quick taps. Measured on the emulator: a 600 ms hold gives
   a 584 ms tone.
+- **One key at a time, strongest wins.** `strongestKey()` picks the channel with
+  the largest margin over its own threshold rather than the first one above it, and
+  while that key is down every other channel is ignored until it is released
+  (`keyStillDown()`, with `TOUCH_HYSTERESIS` 60 counts of Schmitt hysteresis so a
+  borderline reading cannot chop the note up or re-trigger guesses). This is what
+  stops coupled channels from turning one finger into two guesses — see the
+  measured evidence above for why coupling happens at all.
 - Only the **first press of a key** reaches the game (`lastCountedKey`): holding
   or re-tapping the same lemon sounds but never scores or punishes again until a
   different key is played. This is what makes flaky fruit contact harmless — and
@@ -85,6 +92,42 @@ series resistor to a common GND:
 Standard indicator LEDs (Vf ≈ 2 V): 220 Ω gives ~15 mA at 5 V, within the
 ATmega's per-pin limit. All ten lit ≈ 150 mA — fine on USB, but note the
 ATmega328P's 200 mA total-I/O ceiling leaves little headroom for anything else.
+
+## ⚠️ The pull-downs are not optional (measured 2026-07-27)
+
+The analog pins **must** have ~1 MΩ to GND each. Without them this build's
+keyboard cannot be read at all — not "reads badly", cannot be read. Measured on
+the real board with a bench sampler (7 channels, 20 Hz, four held touches of
+1.9-32.5 s):
+
+| Measure | Result |
+|---|---|
+| Samples with all 7 channels above 400 | 50 % |
+| Samples with zero channels above 400 | 38 % |
+| Samples pinned at 1023 / at 0 | 27 % / 23 % |
+| **Highest vs second-highest channel** | **median 5 counts** |
+| Channel reading highest, whichever lemon was touched | A0 or A6 in 92 % of samples |
+
+Five counts of spread across seven channels means the ADC is not resolving seven
+different voltages, and "A0 or A6 wins" is just the first/last position in the mux
+scan. Readings came in gradient ramps (`148 194 258 332 400 469 545`): the
+sample-and-hold capacitor never charges to the pin's voltage because the source
+impedance is effectively open, so each reading is mostly the previous channel's
+residue plus mains pickup through the player's body. The idle level also drifts
+~170 counts on a ~25 s cycle, which is ~75 % of the touch margin `calibrate()`
+computes at boot — so boot-time thresholds go stale within seconds.
+
+1 MΩ per pin to GND fixes all of it at once: the ADC gets a source impedance it
+can sample, the idle level is anchored at 0 V, the mains pickup collapses, and
+each key becomes a real divider (body ≈ hundreds of kΩ against 1 MΩ), so one
+channel rises several hundred counts while the other six stay put.
+
+**How to check it worked:** flash the firmware and read the calibration lines at
+9600 baud. Before the pull-downs they look like `A0 baseline=257 noise=76`; after,
+the baselines should sit near 0 with much smaller noise. Symptoms of a board
+without them: `OK n/10` immediately followed by `WRONG` in the same millisecond
+(one finger read as two different keys), touches that register nothing at all, and
+notes that fire with nobody near the fruit.
 
 ## Touch sensing
 
