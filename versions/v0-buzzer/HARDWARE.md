@@ -53,6 +53,17 @@ else on the board can stay connected — V0's firmware never touches those pins.
    `buzzer pin: D8` on a hardware build, `D11` on the emulation build.
 6. **Compare against the browser.** The [emulation](emulation/README.md) plays the
    same scale from the same firmware — a reference for what "as usual" is.
+7. **Suspect the board itself.** A failing ATmega board can present exactly as a
+   bad buzzer. **This is not hypothetical: it is what happened on 2026-07-26.**
+   The 2019-era Nano produced a single discontinuous tone that no firmware change
+   fixed; the same V0 build on a different Nano played the scale perfectly on the
+   first try. If the sound is wrong and everything above checks out, swap boards
+   before you replace the buzzer or rewire anything.
+
+   That board's CH340 USB bridge died during the same session (every plug-in
+   failing to enumerate with `error -71` across two ports, two cables and with the
+   board completely bare). Two failures on one board is a strong hint: if a board
+   starts behaving oddly *and* gets flaky over USB, stop debugging the circuit.
 
 ## Frequencies played
 

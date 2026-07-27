@@ -32,6 +32,13 @@ C5  B4  A4  G4  F4  E4  D4          descending, back to the start
   running fine and the fault is the buzzer, its wiring, or the pin.
 - Every note is printed at **9600 baud**: `note 3/14 - 330 Hz`.
 
+> **Field result, 2026-07-26 — V0 earned its keep on the first run.** A build whose
+> buzzer had started sounding wrong (one continuous, discontinuous-sounding tone)
+> was traced with this board: the same V0 firmware played the scale cleanly on a
+> *different* Nano, so the fault was the original **board**, not the buzzer, the
+> wiring, the amplifier or the game firmware. See
+> [HARDWARE.md](HARDWARE.md#if-it-still-sounds-wrong--in-order) step 7.
+
 ## Flash it
 
 ```bash

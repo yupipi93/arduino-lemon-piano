@@ -2,6 +2,29 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-26 (V0 field result) — The bad "buzzer" was a bad Arduino
+
+V0 flashed and run on real hardware for the first time, and it solved the problem
+it was written for on the first try.
+
+- **Flashed**: `pio run -t upload` on env `nanoatmega328` (old bootloader, 57600) —
+  4 020 bytes written and verified, device signature `0x1e950f`. Serial confirms the
+  hardware build (`buzzer pin: D8`) and the scale looping cleanly: `262 → 523 Hz`
+  and back, `scale done - pausing`, repeat.
+- **Root cause of the reported bad sound: the Arduino board, not the audio.** The
+  original 2019-era Nano produced one continuous/discontinuous tone regardless of
+  firmware; the same V0 build on a **different Nano** played the scale perfectly.
+  Not the buzzer, not the wiring, not the amplifier, not the game code.
+- The old board's **CH340 also failed** during the session: every plug-in aborted
+  with `error -71` (`unable to enumerate`) across two USB ports, two cables, with
+  the amp unpowered and with the board fully off the breadboard. Its ATmega may
+  still run, but it cannot be reflashed over USB — ICSP only.
+- Recorded in `versions/v0-buzzer/HARDWARE.md` as step 7 of the troubleshooting
+  checklist ("suspect the board itself") plus a field-result note in that version's
+  `README.md`, so the next person reaches for a spare board before rewiring.
+- Host-side note: `99-platformio-udev.rules` was installed during the session, so
+  `/dev/ttyUSB0` now comes up `crw-rw-rw-` and uploads need no group juggling.
+
 ## 2026-07-26 (V0) — New buzzer bring-up board: a scale, forever
 
 Added **`versions/v0-buzzer/`** after a report that the buzzer "doesn't sound as
