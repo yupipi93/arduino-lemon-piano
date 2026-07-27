@@ -2,6 +2,37 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-27 (V5 touch) — Notes sustain while held; a key only ever counts once
+
+Second round of V5 gameplay work, again code-only (the board is unchanged, so this
+stays inside V5). Lemons make flaky contacts, and the game was reading that flakiness
+as gameplay.
+
+- **A held key keeps sounding.** `keyTone()` became `startKeyTone()` +
+  `stopKeyTone()`: `tone()` is called with no duration, so the note runs until the
+  lemon is released, with `NOTE_DURATION` (70 ms) as a floor so a quick tap is still
+  a proper note. New `activeKey` tracks what is sounding. Measured on the emulator:
+  a 600 ms hold → 584 ms tone; 80 ms taps → 84 ms; 250 ms hold → 250 ms.
+- **A long press is still ONE guess**, and **re-pressing the same key never counts
+  again** (new `lastCountedKey`): repeats sound but do not reach `handleGuess()`
+  until a *different* key is played. Four touches of the same key now produce
+  exactly one `OK 1/10` — previously each one was a fresh guess, so a flickering
+  contact could spray guesses and fail the round on its own.
+  **Consequence to remember: a secret code can no longer contain the same note
+  twice in a row.** Neither of the two codes does; check it if a third is added.
+- The wrong tone now waits for the **release** rather than a fixed 70 ms
+  (`waitKeyRelease()`), capped by the new `SUSTAIN_CAP_MS` (2 s) so a stuck or
+  ghosting key cannot freeze the game. `resetBoard()` clears the sustain/repeat
+  state so a new round may legitimately open with the key that ended the last one.
+- **New spec `emulation/hold-and-repeat.yaml`** (green): key 6 held 600 ms then
+  tapped three more times, nothing else played — asserts ≥1000 buzzer edges by
+  t=3 s (only a real sustain reaches that; a tap gives ~370 at E7), `OK 1/10`
+  present, and `OK 2/10` / `WRONG` **absent** for the whole run. The main spec's
+  act 3 now presses the first note twice as well, proving the filter does not eat
+  real guesses. All three V5 specs verify green.
+- Flashed to the Nano on `/dev/ttyUSB0`: 7 502 B flash (24.4 %) / 319 B RAM,
+  written and verified, boots and calibrates clean.
+
 ## 2026-07-27 (V5) — Piano first, puzzle second: free play + a wrong tone that waits its turn
 
 Two gameplay changes to V5, requested after playing it on hardware. The board is

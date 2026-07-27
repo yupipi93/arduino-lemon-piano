@@ -26,6 +26,11 @@ flashing to the beat, then the game **auto-advances** to the other tune.
    other — your body closes the circuit and the note plays on the buzzer.
 3. **Play freely.** While the bar is empty, every key just sounds its note —
    no wrong tone, no penalty. It is a piano; noodle as long as you like.
+   **Hold a lemon and its note keeps sounding** for as long as you touch it (a
+   quick tap still gets a full 70 ms note), and **pressing the same lemon again
+   never counts twice** — only the first press of a key reaches the game, until
+   you play a different one. Flaky fruit contact can no longer machine-gun
+   guesses.
 4. **The puzzle starts when you hit the code's first note** (LED 1 lights). From
    there each correct note lights the next green LED (the bar climbs 1 → 10),
    and a wrong note **blanks all ten** and drops you back to free play. The low
@@ -81,12 +86,18 @@ There are **two** headless specs, both green (2026-07-27):
 
 | Spec | What it proves |
 |---|---|
-| `emulation/lemon-piano.yaml` | free play → first note → a miss (`WRONG`) → the full code → `WIN` → auto-advance to `Game 2`, plus the victory light show |
+| `emulation/lemon-piano.yaml` | free play → first note → a miss (`WRONG`) → the full code (with the first note pressed twice, to show the repeat filter doesn't eat real guesses) → `WIN` → auto-advance to `Game 2`, plus the victory light show |
 | `emulation/free-play.yaml` | five keys that are *not* the code's first note: the buzzer sings, but `WRONG` and `OK` never appear and LED 1 never lights |
+| `emulation/hold-and-repeat.yaml` | one key held 600 ms then tapped three more times: the note sustains with the touch (584 ms measured), and four touches produce exactly one `OK 1/10` — no `OK 2/10`, no `WRONG` |
 
 ```bash
 $PIPE run --mode verify --spec emulation/free-play.yaml --out emulation/runs
+$PIPE run --mode verify --spec emulation/hold-and-repeat.yaml --out emulation/runs
 ```
+
+> **A code can never repeat a note back-to-back** now that same-key repeats are
+> filtered. Neither of the two codes does (`6,5,6,7,2,5,2,1,3,4` and
+> `3,6,1,4,2,5,3,6,1,4`) — check it if you ever add a third.
 
 Full details, key mapping and the pin-map diff:
 [emulation/README.md](emulation/README.md).

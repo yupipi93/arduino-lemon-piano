@@ -1,14 +1,17 @@
-name: lemon-piano
+name: lemon-piano-v5-hold-and-repeat
 description: >
-  Interactive Velxio emulation of the Lemon Piano V5. The 7 lemons are
-  clickable pushbuttons (keys 1-7 on A0-A5 + D12 — the VELXIO_EMULATION input
-  shim in firmware/src/main.cpp, see emulation/README.md). A row of TEN green
-  LEDs (D2,D3,D4,D5,D6,D7,D8,D9,D10,D13) is the progress bar: each correct note
-  lights the next LED, a wrong note blanks them all. Buzzer on D11 plays through
-  the browser's speakers. There is no game-select switch or restart button (no
-  pins left beside 10 LEDs): the browser starts at game 1 (Mario Main Theme) and
-  each win AUTO-ADVANCES to the other theme. Verify mode plays game 1's secret
-  code by injecting timed key presses and asserts WIN + the flip to Game 2.
+  Regression test for the 2026-07-27 touch rules of V5. Same circuit as
+  lemon-piano.yaml; only the input script differs.
+    (1) A LONG PRESS keeps sounding but counts ONCE. Key 6 (game 1's first note)
+        is held for 600 ms: the buzzer must sing for the whole hold — far more
+        edges than a 70 ms tap could make — and the game must log OK 1/10, never
+        OK 2/10 from the same touch. Measured: a 600 ms hold gives a 584 ms tone
+        (3108 edges at E7 = 2637 Hz); the 80 ms taps give 84 ms each.
+    (2) PRESSING THE SAME KEY AGAIN IS IGNORED. Key 6 is then tapped twice more.
+        Step 1 expects key 5, so under the old rules each repeat would have been
+        a WRONG; now they only sound. WRONG must never appear in this run.
+  After the repeats the rest of the code is played cleanly, so the run still
+  reaches WIN and auto-advances — proving the filtering did not eat real guesses.
 board: arduino-nano
 sketch_file: ../firmware/src/main.cpp
 defines: [VELXIO_EMULATION]
@@ -133,53 +136,26 @@ wires:
   - [board:11, buzzer1:1]
   - [buzzer1:2, board:GND.2]
 
-# Headless gameplay, in three acts — this doubles as the regression test for the
-# 2026-07-27 "piano first, puzzle second" rules.
-#
-#   ACT 1 (2.0-3.0 s)  FREE PLAY: three keys that are NOT the first note of the
-#                      code. Each must simply sound; no WRONG, no penalty tone.
-#   ACT 2 (3.4-3.8 s)  START THEN MISS: key 6 is the code's first note (LED 1
-#                      lights, step 1), then key 1 is wrong -> now it DOES cost
-#                      a WRONG, and the low tone must come AFTER key 1's note.
-#   ACT 3 (4.6+ s)     The full code to WIN and auto-advance — with the first
-#                      note pressed TWICE, to prove the repeat filter ignores the
-#                      double without losing the real guess (2026-07-27 rule).
-#
-# Game 1 code 6,5,6,7,2,5,2,1,3,4 -> key pins A5,A4,A5,D12,A1,A4,A1,A0,A2,A3 =
-# 19,18,19,12,15,18,15,14,16,17. Active-low pulses.
+# Game 1 code starts with key 6 (pin 19). This run plays NOTHING else, so any
+# second OK or any WRONG can only come from mis-counting the hold or the repeats.
 inputs:
-  # ── ACT 1: free play (keys 1, 3, 7 — none of them the code's first note) ──
-  - { at_s: 2.00, press_pin: 14, hold_s: 0.08 }   # key 1
-  - { at_s: 2.40, press_pin: 16, hold_s: 0.08 }   # key 3
-  - { at_s: 2.80, press_pin: 12, hold_s: 0.08 }   # key 7
-  # ── ACT 2: hit the first note, then miss ─────────────────────────────────
-  - { at_s: 3.40, press_pin: 19, hold_s: 0.08 }   # key 6 -> OK 1/10, LED 1 on
-  - { at_s: 3.80, press_pin: 14, hold_s: 0.08 }   # key 1 -> WRONG (note, gap, low tone)
-  # ── ACT 3: the whole code, clean ─────────────────────────────────────────
-  - { at_s: 4.60, press_pin: 19, hold_s: 0.08 }   # key 6
-  - { at_s: 4.78, press_pin: 19, hold_s: 0.08 }   # key 6 AGAIN -> ignored, and
-                                                  # must not derail the sequence
-  - { at_s: 4.95, press_pin: 18, hold_s: 0.08 }   # key 5
-  - { at_s: 5.30, press_pin: 19, hold_s: 0.08 }   # key 6
-  - { at_s: 5.65, press_pin: 12, hold_s: 0.08 }   # key 7
-  - { at_s: 6.00, press_pin: 15, hold_s: 0.08 }   # key 2
-  - { at_s: 6.35, press_pin: 18, hold_s: 0.08 }   # key 5
-  - { at_s: 6.70, press_pin: 15, hold_s: 0.08 }   # key 2
-  - { at_s: 7.05, press_pin: 14, hold_s: 0.08 }   # key 1
-  - { at_s: 7.40, press_pin: 16, hold_s: 0.08 }   # key 3
-  - { at_s: 7.75, press_pin: 17, hold_s: 0.08 }   # key 4 -> WIN
+  # (1) LONG PRESS of key 6 — 600 ms of sustained note, one single guess.
+  - { at_s: 2.00, press_pin: 19, hold_s: 0.60 }   # key 6 -> OK 1/10 (once!)
+  # (2) the SAME key twice more: must sound, must not score, must not punish.
+  - { at_s: 3.00, press_pin: 19, hold_s: 0.08 }   # key 6 again -> ignored
+  - { at_s: 3.40, press_pin: 19, hold_s: 0.08 }   # key 6 again -> ignored
+  - { at_s: 3.80, press_pin: 19, hold_s: 0.25 }   # and once more, held -> ignored
 
 assertions:
   - { type: serial_contains, pattern: "Lemon Piano V5", within_s: 3 }
-  - { type: serial_contains, pattern: "Game 1",         within_s: 3 }
-  # (Free play is asserted in its own spec, free-play.yaml — `serial_absent` is
-  # run-wide, and this run legitimately contains a WRONG in act 2.)
-  - { type: gpio_toggles, pin: 2,  min_edges: 1,   within_s: 10 }  # LED 1 lit on first correct
-  # ACT 2: once the sequence has started, a miss IS punished.
-  - { type: serial_contains, pattern: "WRONG",          within_s: 5 }
-  - { type: gpio_toggles, pin: 11, min_edges: 100, within_s: 16 }  # buzzer sang (keys + victory theme)
-  - { type: serial_contains, pattern: "WIN",            within_s: 11 }
-  # Victory light show: the bar flashes per note — LED 10 (D13) only ever
-  # lights during the win, so >=40 edges proves the beat-synced blinking.
-  - { type: gpio_toggles, pin: 13, min_edges: 40,  within_s: 18 }
-  - { type: serial_contains, pattern: "Game 2",         within_s: 18 }  # auto-advanced after the theme
+  # (1) SUSTAIN: by t=3.0 s the only thing played is the 600 ms hold of key 6
+  # (E7 = 2637 Hz -> ~3100 edges). A 70 ms tap of the same key gives only ~370,
+  # so clearing 1000 edges is only possible if the note sustained for the touch.
+  - { type: gpio_toggles, pin: 11, min_edges: 1000, within_s: 3.0 }
+  # The hold registered as a guess...
+  - { type: serial_contains, pattern: "OK 1/10",        within_s: 3.0 }
+  # ...exactly ONE guess. Four touches of the same key, and the game never
+  # advanced past step 1 and never punished anything. (serial_absent is run-wide,
+  # which is exactly what we want here: this run plays no other key.)
+  - { type: serial_absent,   pattern: "OK 2/10",        within_s: 10 }
+  - { type: serial_absent,   pattern: "WRONG",          within_s: 10 }

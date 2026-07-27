@@ -23,6 +23,19 @@
        note is allowed to finish, then a short silence, then the low tone —
        so you always hear WHICH note you got wrong.
 
+   Touch behaviour, so fruit contact never fights the game (2026-07-27):
+     - HOLD A KEY AND IT KEEPS SOUNDING. The note sustains for as long as the
+       lemon is touched (with NOTE_DURATION as a minimum, so a quick tap is
+       still a proper note). Holding is ONE press as far as the game is
+       concerned — a long touch can never count twice.
+     - PRESSING THE SAME KEY AGAIN DOES NOT COUNT. Only the first press of a
+       key reaches the game; repeats of that same key sound but are ignored,
+       until a DIFFERENT key is pressed. Lemons make flaky contacts, and a
+       flickering touch used to register as a burst of guesses.
+       NOTE: this means a secret code can never contain the same note twice in
+       a row. Neither of the two codes does (6,5,6,7,2,5,2,1,3,4 and
+       3,6,1,4,2,5,3,6,1,4) — check this if you ever add a third.
+
    What changed from V4/V4.5 (their boards live on in versions/v4-water-pump/
    and versions/v4.5-margin-buttons/):
      - No relays / no water pump, and no red LED — the ten-LED bar is the whole
@@ -103,6 +116,10 @@ const int NOTE_DURATION = 70;     // key tone length in ms; the lower, the snapp
 const int WRONG_TONE_MS = 200;    // low "you missed" tone
 const int WRONG_TONE_GAP_MS = 60; // silence between the played note and the low
                                   // tone, so the two never blur together
+const unsigned long SUSTAIN_CAP_MS = 2000;  // safety valve: how long the wrong
+                                  // tone will wait for a held key to be released
+                                  // before sounding anyway (a stuck/ghosting key
+                                  // must not freeze the game)
 
 const bool serialEnabled = true;  // debug log at 9600 baud
 
@@ -234,7 +251,10 @@ int  game = 1;                 // 1 = Main Theme, 2 = Underworld
 bool started = false;          // false triggers (re)selection of the game
 int  currentStep = 0;          // how many correct notes so far (index into the sequence)
                                // 0 = free play: any key just sounds its note
-unsigned long keyToneEndsAt = 0;  // millis() when the key note now playing stops
+unsigned long keyToneMinEndsAt = 0;  // a key note never stops before this millis()
+int  activeKey = -1;           // key whose note is sounding right now (-1 = silence)
+int  lastCountedKey = -1;      // last key the GAME accepted; pressing it again is
+                               // ignored until a different key is pressed
 int  pressedNote = 0;          // last note played
 
 int  keyThreshold[KEY_COUNT];  // per-key touch threshold (auto-calibrated)
@@ -255,8 +275,9 @@ void handleGuess();
 void playVictory();
 void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length);
 void wrongTone();
-void waitKeyToneEnd();
-void keyTone(int note);
+void startKeyTone(int note);
+void stopKeyTone();
+void waitKeyRelease(int key);
 void allLedsOff();
 void allLedsOn();
 void buzz(int targetPin, long frequency, long length);
@@ -322,10 +343,27 @@ void loop() {
     keyHeld[i] = touched;
   }
 
+  // RELEASE — the sounding key is no longer touched: let it reach its minimum
+  // length (so a quick tap is still a note), then go silent.
+  if (activeKey >= 0 && !keyHeld[activeKey]) {
+    long remaining = (long) (keyToneMinEndsAt - millis());
+    if (remaining > 0) delay(remaining);
+    stopKeyTone();
+    activeKey = -1;
+  }
+
   if (justPressed >= 0) {
     pressedNote = keys[justPressed + keyboardOffset];
-    keyTone(pressedNote);   // it's a piano — every press sounds its note
-    handleGuess();
+    activeKey = justPressed;
+    startKeyTone(pressedNote);   // it's a piano — every press sounds its note,
+                                 // and keeps sounding while the lemon is touched
+
+    // ...but the GAME only sees the first press of a key. Holding it, or
+    // tapping it again, is the same single guess until another key is played.
+    if (justPressed != lastCountedKey) {
+      lastCountedKey = justPressed;
+      handleGuess();
+    }
   }
 }
 
@@ -362,8 +400,11 @@ void handleGuess() {
     // WRONG — but only once the sequence has actually started (see below).
     // Let the note the player just pressed FINISH first: the low tone is
     // feedback about that note, so cutting it off hides which key was wrong.
+    // With sustain, "finished" means the lemon was let go (capped, so a stuck
+    // key cannot freeze the game).
     log(F("WRONG"));
-    waitKeyToneEnd();
+    waitKeyRelease(activeKey);
+    delay(WRONG_TONE_GAP_MS);
     allLedsOff();
     wrongTone();
     currentStep = 0;
@@ -482,6 +523,10 @@ void selectGame() {
 void resetBoard() {
   currentStep = 0;
   pressedNote = 0;
+  lastCountedKey = -1;   // a new round may legitimately open with the key that
+                         // ended the last one
+  stopKeyTone();
+  activeKey = -1;
   for (uint8_t i = 0; i < KEY_COUNT; i++) {
     keyHeld[i] = false;
   }
@@ -500,25 +545,40 @@ void logGame() {
 //#########  AUDIO ###############
 //################################
 
-// The pressed key's note (non-blocking on hardware). Records when it will stop
-// so the wrong tone can queue up behind it instead of cutting it short.
-void keyTone(int note) {
-  keyToneEndsAt = millis() + NOTE_DURATION;
+// Start the pressed key's note and LEAVE IT SOUNDING: no duration argument, so
+// Timer2 keeps driving the buzzer until stopKeyTone(). The note is guaranteed to
+// last at least NOTE_DURATION even if the touch was a fleeting tap.
+void startKeyTone(int note) {
+  keyToneMinEndsAt = millis() + NOTE_DURATION;
+  tone(BUZZER, note);
+}
+
+// Silence the sustained note. Velxio's buzzer part only ends a WebAudio note on
+// a Timer2 duty->0 event, and noTone() leaves OCR2A set — hence the extra clear
+// in the emulation build (same reason emuTone() does it).
+void stopKeyTone() {
 #ifdef VELXIO_EMULATION
-  emuTone(note, NOTE_DURATION);   // blocking: the note is already over on return
+  noTone(BUZZER);
+  OCR2A = 0;
 #else
-  tone(BUZZER, note, NOTE_DURATION);
+  noTone(BUZZER);
 #endif
 }
 
-// Block until the key note that is playing has finished, then leave a short gap.
-// On hardware tone() runs on Timer2 in the background, so there is real time to
-// wait out; in the Velxio build emuTone() already blocked and only the gap is
-// left. Either way the buzzer is silent when this returns.
-void waitKeyToneEnd() {
-  long remaining = (long) (keyToneEndsAt - millis());
+// Wait for a held key to be let go, keeping its note sounding, then silence it.
+// Capped by SUSTAIN_CAP_MS so a stuck or ghosting key cannot hang the game.
+void waitKeyRelease(int key) {
+  if (key >= 0) {
+    unsigned long giveUpAt = millis() + SUSTAIN_CAP_MS;
+    while (keyTouched(key) && (long) (giveUpAt - millis()) > 0) {
+      // hold the note; the buzzer is already sounding it
+    }
+    keyHeld[key] = false;   // consume the press so the release is not re-read
+  }
+  long remaining = (long) (keyToneMinEndsAt - millis());
   if (remaining > 0) delay(remaining);
-  delay(WRONG_TONE_GAP_MS);
+  stopKeyTone();
+  activeKey = -1;
 }
 
 // Short low "you missed" tone.
