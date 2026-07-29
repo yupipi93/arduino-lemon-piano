@@ -5,14 +5,25 @@ the entire feedback surface. Each correct note lights the next LED, a wrong note
 blanks all ten, and lighting the tenth wins — the theme plays with the bar
 flashing to the beat, then the game **auto-advances** to the other tune.
 
+> **Rebuilt on 2026-07-28.** This board replaces the original V5 board *in place*,
+> at the owner's request, rather than becoming a new version. The previous V5
+> (floating +5 V-clip keyboard, A7 game-select switch, D7 restart button) is
+> recoverable from git history and described in [../../CHANGELOG.md](../../CHANGELOG.md).
+
 **Hardware delta vs [V4.5](../v4.5-margin-buttons/):**
 
-- **off** the board: the **red LED** and the two **MARGIN buttons** (the relay pair
-  and the water pump already left with V4.5);
-- **on** the board: **ten green LEDs** with 220 Ω each on D2,D3,D4,D5,D6,D9,D10,
-  D11,D12,D13;
-- **game select moves to A7** (analog-in only) to free the tenth LED's pin;
-- board: **Arduino Nano only** — V5 needs A6 *and* A7, which a classic Uno lacks.
+- **the keyboard returns to the 2019 arrangement**: each key is pulled **up** to
+  +5 V through 220 Ω and the player holds a **GND** clip, so a touch drags the
+  reading **down**. This is what made the keyboard readable at all — the
+  measurements are in [HARDWARE.md](HARDWARE.md);
+- **off** the board: the red LED, the two MARGIN buttons, the **game-select
+  switch** and the **restart button** (relays and pump left with V4.5);
+- **on** the board: **ten green LEDs in one ascending run, D2 → D11** (LED n on
+  pin n+1, so the bar wires left to right with nothing to look up) and **two
+  sensitivity buttons** — **SENS + on D12**, **SENS − on A7**. The buzzer moves to
+  **D13**;
+- board: **Arduino Nano only** — A6 is key 7 and A7 is a button, and a classic Uno
+  exposes neither.
 
 <div align="center">
 <img src="images/wiring-v5.png" alt="V5 wiring diagram" width="92%"/>
@@ -20,10 +31,13 @@ flashing to the beat, then the game **auto-advances** to the other tune.
 
 ## How it plays
 
-1. **Power on.** The A7 game-select switch picks the **starting** game: tied HIGH
-   (5 V) = game 1 (Mario Main Theme), LOW (GND) = game 2 (Underworld).
-2. **Touch lemons.** Hold the 5 V clip in one hand and touch a lemon with the
-   other — your body closes the circuit and the note plays on the buzzer.
+1. **Power on → auto-calibration.** It measures every key's resting level *and*
+   its idle noise, running the LED bar across as it goes (**LEDs moving = hands
+   off the fruit**), derives the touch margin from the measured noise, chirps when
+   done, and shows the chosen sensitivity on the bar. The game starts at **game 1**
+   and auto-advances on each win, so both themes are reachable with no switch.
+2. **Touch lemons.** Hold the **GND** clip in one hand and touch a lemon with the
+   other — your body drags that pin down and the note plays on the buzzer.
 3. **Play freely.** While the bar is empty, every key just sounds its note —
    no wrong tone, no penalty. It is a piano; noodle as long as you like.
    **Hold a lemon and its note keeps sounding** for as long as you touch it (a
@@ -36,27 +50,74 @@ flashing to the beat, then the game **auto-advances** to the other tune.
    and a wrong note **blanks all ten** and drops you back to free play. The low
    "wrong" tone plays **after** the note you pressed has finished — you always
    hear which key was wrong, then the buzz.
-5. **Victory + auto-advance.** Light all ten → the theme plays with the bar
-   flashing per note, then the game flips to the **other** theme automatically
-   (game 1 → 2 → 1 …), so both games cycle from one starting point.
-6. **Restart** anytime with the button on D7 (re-reads game select, recalibrates,
-   blanks the bar).
+5. **Victory + auto-advance.** Light all ten → the **flagpole fanfare** plays,
+   then that level's own theme with the bar flashing per note, then the game moves
+   to the **next level** (1 → 2 → 3 → 4 → 1 …). Clearing level 4 plays the
+   **ending melody** first.
+6. **Tune sensitivity while you play**: **D12** = more sensitive, **A7** = less
+   sensitive, 1-count steps (5 above margin 20), auto-repeat while held. The bar
+   shows the level for a moment after each press, and the tick's pitch tracks the
+   setting — so you can see *and* hear where it is.
+7. **Smart adjust**: hold **both buttons for 1 s while touching a lemon**. It
+   works out which lemon your finger is on, measures how far the other channels
+   wander meanwhile, and sets the margin midway between the two — the cleanest
+   separation your fruit can currently give. The bar fills as it samples; a rising
+   triad means it learned, a falling pair means the touch could not be told from
+   noise and **nothing changed**.
+8. **No restart button.** Recalibrate with the smart-adjust gesture or a reset.
 
-### Secret codes (spoilers)
+Every state has its own sound, all of them **above** the game notes (3.3–4.7 kHz,
+where a piezo is loudest) so a chirp is never mistaken for a note: calibration
+start/finish, button ticks, end-stop, smart-adjust progress/success/failure, and a
+warble if a key gets stuck reading touched and is re-baselined.
 
-| Game | Melody | Code |
+### Four levels, four themes (spoilers)
+
+Each level has its own seven key notes, its own 10-note code, and its own theme
+played on the win. Clear level 4 and the **ending melody** plays before it wraps
+back to level 1.
+
+| Level | Theme | Code |
 |---|---|---|
-| 1 | Super Mario Bros — Main Theme | `6, 5, 6, 7, 2, 5, 2, 1, 3, 4` |
-| 2 | Super Mario Bros — Underworld | `3, 6, 1, 4, 2, 5, 3, 6, 1, 4` |
+| 1 | Overworld / Main Theme | `6, 5, 6, 7, 2, 5, 2, 1, 3, 4` |
+| 2 | Underworld | `3, 6, 1, 4, 2, 5, 3, 6, 1, 4` |
+| 3 | Underwater | `2, 4, 6, 1, 5, 3, 7, 4, 2, 6` |
+| 4 | Starman | `5, 1, 3, 7, 2, 6, 4, 1, 5, 3` |
 
 | Key | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
 |---|---|---|---|---|---|---|---|
-| Game 1 note | E6 | G6 | A6 | B6 | C7 | E7 | G7 |
-| Game 2 note | A3 | A#3 | C4 | A4 | A#4 | C5 | D5 |
+| Level 1 | E6 | G6 | A6 | B6 | C7 | E7 | G7 |
+| Level 2 | A3 | A#3 | C4 | A4 | A#4 | C5 | D5 |
+| Level 3 | C5 | C#5 | D5 | E5 | F5 | G5 | A5 |
+| Level 4 | C5 | D5 | E5 | F5 | G5 | A5 | C6 |
 
-Touch sensing keeps V4.5's noise-adaptive calibration (`baseline + max(40, 3 ×
-noise)`, re-run on every RESTART) — it just has no MARGIN buttons to nudge it,
-because those pins are LEDs now.
+A level's seven notes are always distinct (the game recognises a guess by
+frequency), and no code repeats a note back-to-back (a repeated press of the same
+key is filtered as flaky contact).
+
+### The sounds are Mario's
+
+Every non-key sound is a Super Mario Bros effect — see
+[../../docs/MARIO-SOUNDS.md](../../docs/MARIO-SOUNDS.md) for the note data and
+where each one came from:
+
+| Moment | Sound |
+|---|---|
+| Calibration starts | fireball whoosh |
+| Each key measured | **a coin** (seven coins = seven keys) |
+| Calibration finished | **mushroom power-up** |
+| Sensitivity button | coin grace-note tick, pitch tracks the margin |
+| Knob at its end stop | bump (head on a block) |
+| Smart adjust listening | a coin per sampling burst |
+| Smart adjust learned | **1-up** |
+| Smart adjust failed | **death rattle** |
+| Level complete | **flagpole fanfare**, then that level's theme |
+| All four levels clear | **ending melody** |
+
+Touch sensing is the V2.5 front end: `threshold = baseline − margin`, with the
+baseline measured at boot and tracked while each key is untouched, and the margin
+auto-derived as `max(4, 2 × worst measured noise)`. On this rig that lands on
+**margin 4 → threshold 1018**, which is the working point measured by hand.
 
 ## Firmware
 
@@ -69,7 +130,17 @@ pio run -t upload
 pio device monitor               # 9600 baud — logs Game/OK n/10/WIN
 ```
 
-There is no `uno` env: V5 needs A6 (key 7) + A7 (game select).
+There is no `uno` env: V5 needs A6 (key 7) + A7 (SENS −).
+
+### Pin map at a glance
+
+```
+A0..A6   keys 1..7      220 Ω pull-up each; player holds the GND clip
+D2..D11  LEDs 1..10     LED n on pin n+1 — one run, in order
+D12      SENS +         button to GND (internal pull-up)
+D13      buzzer         on-board LED blinks along with the audio
+A7       SENS −         button to GND + external 10 kΩ pull-up
+```
 
 ## Emulation — ✅ verify green
 

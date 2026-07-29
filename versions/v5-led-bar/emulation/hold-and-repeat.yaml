@@ -2,7 +2,7 @@ name: lemon-piano-v5-hold-and-repeat
 description: >
   Regression test for the 2026-07-27 touch rules of V5. Same circuit as
   lemon-piano.yaml; only the input script differs.
-    (1) A LONG PRESS keeps sounding but counts ONCE. Key 6 (game 1's first note)
+    (1) A LONG PRESS keeps sounding but counts ONCE. Key 6 (level 1's first note)
         is held for 600 ms: the buzzer must sing for the whole hold — far more
         edges than a 70 ms tap could make — and the game must log OK 1/10, never
         OK 2/10 from the same touch. Measured: a 600 ms hold gives a 584 ms tone
@@ -18,6 +18,8 @@ defines: [VELXIO_EMULATION]
 extra_files:
   - name: notes.h
     file: ../firmware/include/notes.h
+  - name: mario_sfx.h
+    file: ../firmware/include/mario_sfx.h
 
 components:
   # ── The 7 "lemons": one horizontal piano row. Labels "1".."7" double as the
@@ -136,7 +138,7 @@ wires:
   - [board:11, buzzer1:1]
   - [buzzer1:2, board:GND.2]
 
-# Game 1 code starts with key 6 (pin 19). This run plays NOTHING else, so any
+# Level 1 code starts with key 6 (pin 19). This run plays NOTHING else, so any
 # second OK or any WRONG can only come from mis-counting the hold or the repeats.
 inputs:
   # (1) LONG PRESS of key 6 — 600 ms of sustained note, one single guess.
@@ -148,10 +150,12 @@ inputs:
 
 assertions:
   - { type: serial_contains, pattern: "Lemon Piano V5", within_s: 3 }
-  # (1) SUSTAIN: by t=3.0 s the only thing played is the 600 ms hold of key 6
-  # (E7 = 2637 Hz -> ~3100 edges). A 70 ms tap of the same key gives only ~370,
-  # so clearing 1000 edges is only possible if the note sustained for the touch.
-  - { type: gpio_toggles, pin: 11, min_edges: 1000, within_s: 3.0 }
+  # (1) SUSTAIN: measured on this circuit, the boot UI chirps alone put 2091 edges
+  # on the buzzer pin before any key is touched, and the 600 ms hold of key 6
+  # (E7 = 2637 Hz) adds ~3200 more -> 5307 by t=3 s. A 70 ms tap would add only
+  # ~370 (i.e. ~2460 total), so a threshold of 4000 is cleared ONLY by a note that
+  # really sustained for the whole touch. (Re-measure this if the boot sounds change.)
+  - { type: gpio_toggles, pin: 11, min_edges: 4000, within_s: 3.0 }
   # The hold registered as a guess...
   - { type: serial_contains, pattern: "OK 1/10",        within_s: 3.0 }
   # ...exactly ONE guess. Four touches of the same key, and the game never

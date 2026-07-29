@@ -23,10 +23,11 @@ wiring diagram and docs, and each is expected to build. There is no archive.
 | 0 | [**V0** — buzzer rig](versions/v0-buzzer/) | *bring-up (2026)*: one passive buzzer on D8 and nothing else — plays a scale forever, to test the sound in isolation | ✅ verify green |
 | 1 | [**V1** — banana piano](versions/v1-banana-piano/) | *the 2019 origin*: + 7 fruit keys + 220 Ω pull-ups, + HC-SR04 (code commented out) | — |
 | 2 | [**V2** — keyboard test](versions/v2-keyboard-test/) | − HC-SR04: the keyboard and speaker alone, for measuring the keys | — |
+| 2.5 | [**V2.5** — live threshold](versions/v2.5-threshold-buttons/) | + 2 buttons that tune the touch threshold **while it runs** (D10/D11), serial readout of every reading and note | ✅ verify green |
 | 3 | [**V3** — game prototype](versions/v3-game-prototype/) | + red/green feedback LEDs, game-select button, one relay channel — the game is born | — |
 | 4 | [**V4** — water pump](versions/v4-water-pump/) | clip flips to **+5 V** (sensing inverted), Nano, 2nd relay channel + **water pump**, RESTART button | ✅ verify green |
 | 5 | [**V4.5** — margin buttons](versions/v4.5-margin-buttons/) | **− relay pair + water pump** · + MARGIN +/− buttons (D10/D11) to tune touch sensitivity live | ✅ verify green |
-| 6 | [**V5** — LED bar](versions/v5-led-bar/) ⭐ newest | − red LED, − MARGIN buttons · + **ten green LEDs** · game select → A7 | ✅ verify green |
+| 6 | [**V5** — LED bar](versions/v5-led-bar/) ⭐ newest | *rebuilt 2026-07-28*: keyboard back to **220 Ω pull-ups + GND clip** · + **ten green LEDs** · + 2 live-sensitivity buttons · − game-select, − restart | ✅ verify green |
 
 Details, pin maps and per-board build commands: [versions/README.md](versions/README.md).
 The methodology (what counts as a new version, and the checklist for adding one):
@@ -40,23 +41,25 @@ The methodology (what counts as a new version, and the checklist for adding one)
    the note plays on the buzzer.
 3. **Guess the secret sequence** (10 notes). Each correct note lights the next
    green LED; a wrong note **blanks all ten** and the sequence restarts.
-4. **Victory + auto-advance.** All ten lit → the theme plays with the bar flashing
-   to the beat, then the game flips to the other tune automatically.
+4. **Victory + auto-advance.** All ten lit → the flagpole fanfare, then that
+   level's theme with the bar flashing to the beat, then on to the next of the
+   **four levels**.
 5. **Restart** anytime with the D7 button (re-reads game select, recalibrates).
 
 ### Secret codes (spoilers!)
 
 Keys numbered 1–7, left to right. These two codes have been the same since V3:
 
-| Game | Melody | Code |
+| Level | Theme | Code |
 |---|---|---|
-| 1 | Super Mario Bros — Main Theme | `6, 5, 6, 7, 2, 5, 2, 1, 3, 4` |
-| 2 | Super Mario Bros — Underworld Theme | `3, 6, 1, 4, 2, 5, 3, 6, 1, 4` |
+| 1 | Super Mario Bros — Overworld / Main Theme | `6, 5, 6, 7, 2, 5, 2, 1, 3, 4` |
+| 2 | Super Mario Bros — Underworld | `3, 6, 1, 4, 2, 5, 3, 6, 1, 4` |
+| 3 | Super Mario Bros — Underwater | `2, 4, 6, 1, 5, 3, 7, 4, 2, 6` |
+| 4 | Super Mario Bros — Starman | `5, 1, 3, 7, 2, 6, 4, 1, 5, 3` |
 
-| Key | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
-|---|---|---|---|---|---|---|---|
-| Game 1 note | E6 | G6 | A6 | B6 | C7 | E7 | G7 |
-| Game 2 note | A3 | A#3 | C4 | A4 | A#4 | C5 | D5 |
+Clear all four and the **ending melody** plays. Every non-key sound is a Mario
+effect (coin, power-up, 1-up, death, flagpole fanfare) — the note data and its
+provenance are in [docs/MARIO-SOUNDS.md](docs/MARIO-SOUNDS.md).
 
 ## Quick start
 
@@ -75,7 +78,7 @@ committing. Every version builds in place, including the 2019 sketches.
 
 ## 🎮 Play it in the browser (no hardware)
 
-V0, V4, V4.5 and V5 each run in an interactive
+V0, V2.5, V4, V4.5 and V5 each run in an interactive
 [Velxio](https://github.com/davidmonterocrespo24/velxio) emulation — real firmware
 on an emulated ATmega328, clickable lemons, audible buzzer:
 
@@ -102,6 +105,7 @@ arduino-lemon-piano/
 │   ├── v0-buzzer/                 ← buzzer bring-up rig (diagnostic)
 │   ├── v1-banana-piano/           ← firmware · emulation notes · images · docs
 │   ├── v2-keyboard-test/
+│   ├── v2.5-threshold-buttons/    ← keyboard + live threshold (instrument)
 │   ├── v3-game-prototype/
 │   ├── v4-water-pump/
 │   ├── v4.5-margin-buttons/
@@ -112,6 +116,7 @@ arduino-lemon-piano/
 │       └── images/                ← wiring-v5.png (wirewright-rendered)
 ├── docs/
 │   ├── VERSIONING.md              ← what counts as a version + how to add one
+│   ├── MARIO-SOUNDS.md            ← every Mario melody/SFX: notes + provenance
 │   ├── HARDWARE.md                ← shared fundamentals: touch physics, polarity, parts
 │   ├── keyboard-schematic.fzz     ← editable Fritzing source (keyboard stage)
 │   └── images/                    ← shared reference images
@@ -129,7 +134,7 @@ Every version's `images/wiring-*.png` is **generated**, never hand-drawn:
 a pin unconnected). Re-render everything, or one version:
 
 ```bash
-python3 tools/wiring_diagrams.py            # all seven
+python3 tools/wiring_diagrams.py            # all eight
 python3 tools/wiring_diagrams.py v3 v4.5    # just these
 ```
 

@@ -124,6 +124,17 @@ def _button(s, cid, x, y, pin, label, sub, color, cap):
     s.connect(f"{cid}pg", C["gnd"], P(f"{cid}PD", "b"), R("GND"))
 
 
+def _button_to_gnd(s, cid, x, y, pin, label, sub, color, cap):
+    """Active-LOW button: pin -> button -> GND, relying on the AVR's INTERNAL
+    pull-up, so unlike _button() there is no external resistor to draw. Used by
+    the V2.5 bench rig, where fewer parts on the breadboard is the point."""
+    s.add(lib.push_button(cid, x, y, label, sub, cap=cap))
+    s.connect(f"{cid}sig", color, P("U1", pin), P(cid, "pin"))
+    # push_button's far terminal is named "v5" by the library; here it goes to
+    # GND, which is what makes the button active-low.
+    s.connect(f"{cid}gnd", C["gnd"], P(cid, "v5"), R("GND"))
+
+
 def _buzzer(s, x, y, label="passive buzzer", pin="D8"):
     s.add(lib.buzzer("BUZ", x, y, label=label, pin_label=pin))
     s.connect("buzsig", C["buzz"], P("U1", pin), P("BUZ", "sig"))
@@ -222,6 +233,45 @@ def build_v2():
               C["muted"]), NOTE_2019_BOARD]
     s.decorations.append(deco.legend(entries=entries, notes=notes, **_legend_box(GND_2019)))
     return s, "v2-keyboard-test", "wiring-v2.png"
+
+
+# ── V2.5 — keyboard test + live threshold buttons ────────────────────────────
+def build_v2_5():
+    s = _board("Lemon Piano V2.5 — keyboard test with a live touch threshold",
+               "V2's rig plus TWO BUTTONS that tune the touch threshold while it "
+               "runs (D10 up / D11 down, to GND via the internal pull-ups) and a "
+               "serial readout of every reading, the threshold and each note.",
+               BOARD_2019, h=H_2019, gnd_y=GND_2019)
+    keyboard_2019(s)
+    _buzzer(s, 1900, 560, label="speaker / buzzer")
+
+    _button_to_gnd(s, "TUP", 2450, 620, "D10", "THRESHOLD +", "less touch needed",
+                   C["margin"], (60, 170, 90))
+    _button_to_gnd(s, "TDN", 2450, 900, "D11", "THRESHOLD −", "more touch needed",
+                   C["margin"], (200, 60, 60))
+
+    entries = [
+        KEY_LEGEND_2019,
+        RAIL_LEGEND,
+        (C["buzz"], "Speaker", ["D8 · one fixed note per key (C3..B3)"]),
+        (C["margin"], "Threshold buttons",
+         ["D10 = raise · D11 = lower · step 5, auto-repeat while held",
+          "button straight to GND — internal pull-ups, no resistors"]),
+        (C["muted"], "Serial monitor",
+         ["9600 baud · live readout of A0..A6 vs the threshold",
+          "plus every threshold change and every note played"]),
+    ]
+    notes = [("Hardware delta vs V2: two buttons, nothing else. V2's hardcoded "
+              "`<= 1019` is now a variable you can dial in while touching the fruit "
+              "— no edit-compile-reflash cycle to find a working threshold.",
+              C["muted"]),
+             ("These buttons are active-LOW (to GND) unlike V3/V4/V4.5's active-HIGH "
+              "ones, so they need no 10 kΩ pulldown: fewer parts on a bench rig.",
+              C["muted"]),
+             NOTE_2019_BOARD]
+    s.decorations.append(deco.legend(entries=entries, notes=notes,
+                                     **_legend_box(GND_2019, h=380)))
+    return s, "v2.5-threshold-buttons", "wiring-v2.5.png"
 
 
 # ── V3 — game prototype (LEDs + game button + one relay) ─────────────────────
@@ -359,15 +409,20 @@ def build_v4(plus=False):
 
 # ── V5 ───────────────────────────────────────────────────────────────────────
 def build_v5():
-    s = _board("Lemon Piano V5 — ten-LED progress bar (no pump)",
-               "7 lemon keys · ten green LEDs (progress bar) · game-select on A7 · "
-               "restart · buzzer. No relay, no pump, no red LED.",
-               "ATmega328P · Nano only (needs A6+A7)")
-    keyboard_2026(s)
+    """The 2026-07-28 rebuild: GND-clip keyboard (pull-ups), ten-LED bar, two
+    sensitivity buttons, no restart and no game-select switch."""
+    s = _board("Lemon Piano V5 — ten-LED bar, GND clip, live sensitivity",
+               "7 fruit keys pulled UP through 220 Ω (player holds GND) · ten green "
+               "LEDs on D2..D11 in order · SENS + (D12) / SENS − (A7) tune the touch "
+               "margin live · buzzer on D13. "
+               "No relay, no pump, no restart, no game-select.",
+               "ATmega328P · Nano only (A6 = key 7, A7 = a button)",
+               h=1860, gnd_y=GND_2019)   # taller page: this legend carries four notes
+    keyboard_2019(s, fruit="lemon")
 
-    # ten-LED progress bar
-    pins = ["D2", "D3", "D4", "D5", "D6", "D9", "D10", "D11", "D12", "D13"]
-    x0, dx, ybar = NANO_X + NANO_W_ + 120, 92, 980
+    # ten-LED progress bar — also the calibration display and the sensitivity meter
+    pins = ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11"]
+    x0, dx, ybar = 1700, 100, 950
     for i, pin in enumerate(pins):
         cx = x0 + i * dx
         cid = f"L{i}"
@@ -377,31 +432,50 @@ def build_v5():
         s.connect(f"c{i}", C["gnd"], P(cid, "cathode"), P(f"{cid}R", "a"))
         s.connect(f"g{i}", C["gnd"], P(f"{cid}R", "b"), R("GND"))
 
-    # game-select on A7 (analog), left of the board near A7
-    s.add(lib.spdt_switch("SEL", 830, 250, "A7", com_facing="E", analog=True))
-    s.connect("a7", C["ctrl"], P("SEL", "com"), P("U1", "A7"))
-    s.connect("selv", C["v5"], P("SEL", "p5"), R("5V"))
-    s.connect("selg", C["gnd"], P("SEL", "pg"), R("GND"))
+    _buzzer(s, 1560, 420, pin="D13")
 
-    # restart + buzzer in the upper-right band
-    _button(s, "RST", NANO_X + NANO_W_ + 420, 560, "D7", "RESTART", "re-reads game",
-            C["ctrl"], (70, 120, 200))
-    _buzzer(s, NANO_X + NANO_W_ + 700, 560)
+    # SENS + on D7: plain digital pin, internal pull-up, button straight to GND.
+    _button_to_gnd(s, "SUP", 2350, 420, "D12", "SENS +", "more sensitive",
+                   C["margin"], (60, 170, 90))
+
+    # SENS − on A7: analog-in only, so it needs an EXTERNAL pull-up — the one part
+    # on this board that is not just a button.
+    s.add(lib.push_button("SDN", 2850, 420, "SENS −", "less sensitive", cap=(200, 60, 60)))
+    s.add(lib.resistor("SDNPU", 2750, 250, orient="V", label="10k"))
+    s.connect("sdnsig", C["margin"], P("U1", "A7"), P("SDN", "pin"), P("SDNPU", "b"))
+    s.connect("sdnpu", C["v5"], P("SDNPU", "a"), R("5V"))
+    s.connect("sdngnd", C["gnd"], P("SDN", "v5"), R("GND"))
 
     entries = [
-        (C["key"], "Lemon keys (7)", ["A0..A6 · 220 Ω each · 5 V through the body"]),
-        (C["v5"], "+5 V / GND rails", ["board 5V/GND · LED cathodes · button pulldown"]),
-        (C["led"], "Progress bar (10 LEDs)",
-         ["D2,3,4,5,6,9,10,11,12,13 · 220 Ω each", "1 LED per correct note · all 10 = win"]),
-        (C["ctrl"], "Controls", ["GAME SELECT on A7 (SPDT, analog-in) · RESTART (D7)"]),
-        (C["buzz"], "Buzzer", ["D8 passive buzzer (key notes + victory tunes)"]),
+        (C["key"], "Lemon keys (7)", ["A0..A6 · 220 Ω pull-up to +5 V each",
+                                      "idle ≈ 1022 · a touch drags the pin DOWN"]),
+        (C["v5"], "+5 V / GND rails", ["key pull-ups · SENS − pull-up · LED cathodes",
+                                       "player's clip is on GND"]),
+        (C["led"], "Bar of 10 green LEDs",
+         ["ONE ASCENDING RUN: LED n on pin n+1 (D2..D11) · 220 Ω each",
+          "game progress · calibration display · sensitivity meter"]),
+        (C["margin"], "Sensitivity buttons",
+         ["SENS + (D12, to GND) · SENS − (A7, to GND + 10 kΩ pull-up)",
+          "both held 1 s while touching a lemon = smart adjust"]),
+        (C["buzz"], "Buzzer", ["D13 · key notes, victory themes and UI chirps"]),
     ]
-    notes = [("Hardware delta vs V4.5: the red LED and the MARGIN buttons come off "
-              "(the relays and pump went with V4.5); ten green LEDs go on. Every I/O "
-              "line is now used: A0–A7 + D2–D13. "
-              "A7 is analog-in only — drive it with an SPDT to 5 V / GND. A classic Uno "
-              "lacks A6/A7.", C["muted"])]
-    s.decorations.append(deco.legend(entries=entries, notes=notes, **_legend_box(RAIL_GND_Y)))
+    notes = [("Rebuilt 2026-07-28. The keyboard went back to the 2019 arrangement — "
+              "220 Ω pull-ups and a GND clip — because floating +5 V-clip pins could "
+              "not be read at all: one touch pushed all seven channels to the rail, "
+              "and the idle level drifted ~170 counts on a ~25 s cycle.", C["muted"]),
+             ("Pin order is deliberate: the bar is D2..D11 in order, so LED n sits on "
+              "pin n+1 and you can wire it left to right without looking anything up. "
+              "The buzzer takes D13 (its on-board LED just blinks along) and the button "
+              "takes D12, because on many Nanos D13's on-board LED fights an internal "
+              "pull-up and would read as permanently pressed.", C["muted"]),
+             ("GAME SELECT and RESTART are gone: A7 and D12 are the two buttons now. "
+              "The game starts at 1 and auto-advances on every win; recalibration is "
+              "the smart-adjust gesture or a board reset.", C["muted"]),
+             ("A7 is analog-in only and has no internal pull-up — hence the external "
+              "10 kΩ on SENS −. SENS + uses the AVR's own pull-up and needs none.",
+              C["muted"])]
+    s.decorations.append(deco.legend(entries=entries, notes=notes,
+                                     **_legend_box(GND_2019, h=460)))
     return s, "v5-led-bar", "wiring-v5.png"
 
 
@@ -410,6 +484,7 @@ TARGETS = {
     "v0": build_v0,
     "v1": build_v1,
     "v2": build_v2,
+    "v2.5": build_v2_5,
     "v3": build_v3,
     "v4": lambda: build_v4(False),
     "v4.5": lambda: build_v4(True),

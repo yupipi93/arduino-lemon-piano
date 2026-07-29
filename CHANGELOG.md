@@ -2,6 +2,228 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-29 (V5 audio timing) — Fixed the sound race; silences are now policy
+
+Reported after playing it: the win fanfare stepped on the tenth note. Root cause —
+a key note SUSTAINS (`tone()` runs until the lemon is released), so the fanfare's
+own `tone()` preempted it mid-sound. Fixed centrally rather than per call site.
+
+- **`silenceKeyNote()`** lets a sounding note finish (its minimum length *and* the
+  player's release, capped by `SUSTAIN_CAP_MS`) and then pauses, before a win or a
+  miss speaks. **`hushBuzzer()`** stops the tone immediately for the smart adjust,
+  where the player must keep touching and the buzzer has to be quiet anyway.
+- **Note articulation**, and this was a real bug the measurement caught: notes
+  inside an SFX table ran back-to-back, so the seven-note fanfare came out as a
+  **single 1071 ms tone**, and Starman's repeated `F5 F5` would have been one long
+  note. Every note now gives up its last `SFX_ARTICULATION_MS` (18 ms) to silence,
+  taken FROM the note so the table's tempo is what you hear.
+- **`SFX_TAIL_MS`** (60 ms) after every effect so seven calibration coins do not
+  blur; **`PHRASE_GAP_MS`** (350 ms) between fanfare → level theme → ending melody.
+- The sensitivity tick now **stays silent while a key note is sounding** instead of
+  chopping it in half; the LED meter still reports the change.
+- Closed a related race: if the player held the winning lemon past the 2 s release
+  cap, that held key counted as the first guess of the NEXT level. It is now marked
+  as already-used — release and press again, like any repeat.
+- Measured after the fix (emulator, buzzer-pin edges): winning note plays out →
+  **262 ms silence** → fanfare, seven notes at 92/242 ms with 18 ms between →
+  **655 ms** → level theme. 10 926 B flash (36 %) / 461 B RAM. 3/3 specs pass,
+  flashed to the board. Timing policy documented in `docs/MARIO-SOUNDS.md`.
+
+## 2026-07-29 (V5) — Four levels, and every sound is Mario's
+
+Researched the NES sound data, catalogued it, and rebuilt V5's audio around it.
+V5.5 (the rotary-encoder proposal) is deleted — diagram, builder and index row —
+though the generic `rotary_encoder` part stays in the wirewright engine, where it
+is useful to any project.
+
+**New: `docs/MARIO-SOUNDS.md`** — a global reference for every melody and effect,
+with note/duration tables and, for each entry, a **provenance tag**: ✅ sourced
+verbatim, 📐 transcribed from a cited letter-note tab, or 🔨 reconstructed from a
+cited description. The accuracy genuinely differs between them and pretending
+otherwise would be worse than useless. Sourced verbatim: coin (B5 100 ms → E6),
+1-up (E6 G6 E7 C7 D7 G7 @125 ms), fireball (G4 G5 G6 @35 ms). Transcribed:
+underwater and starman (melody voice only). Reconstructed: power-up (from the
+documented Ab→Bb→C sweep), flagpole fanfare, ending melody.
+
+**Two more levels — four in total**, each with its own key notes, code and theme:
+
+| Level | Theme | Code |
+|---|---|---|
+| 1 | Overworld | 6,5,6,7,2,5,2,1,3,4 |
+| 2 | Underworld | 3,6,1,4,2,5,3,6,1,4 |
+| 3 | **Underwater** | 2,4,6,1,5,3,7,4,2,6 |
+| 4 | **Starman** | 5,1,3,7,2,6,4,1,5,3 |
+
+Two constraints the new codes had to satisfy, both consequences of earlier work: a
+level's seven notes must be **distinct** (a guess is recognised by frequency), and
+no code may repeat a note **back-to-back** (a repeat of the same key is filtered as
+flaky fruit contact).
+
+**Win flow**: clearing a level plays the **flagpole fanfare**, then that level's own
+theme with the LED bar as a light show, then advances. Clearing level 4 plays the
+**ending melody** and wraps to level 1. Serial now says `Level n` rather than
+`Game n`.
+
+**UI sounds are Mario effects** (`firmware/include/mario_sfx.h`, PROGMEM
+`{frequency, ms}` tables with a `{0,0}` terminator, played by the new `playSfx()`):
+fireball when calibration starts, **a coin per key measured** (seven coins = seven
+keys), **power-up** when it is ready, a coin grace-note tick for the sensitivity
+buttons (pitch still tracks the margin), a **bump** at the end stops, a coin per
+smart-adjust sampling burst, **1-up** when it learns, the **death rattle** when it
+cannot. `playTone()` now treats frequency 0 as a rest, so the tables can hold
+silence.
+
+- 10 716 B flash (35 %) / 461 B RAM (23 %). Flashed and confirmed: calibration now
+  takes ~1.6 s while it counts out seven coins.
+- All three emulation specs pass. Two fixes they needed: `extra_files` had to
+  declare `mario_sfx.h` (the pipeline copies only the headers a spec lists, so the
+  browser build failed to compile until it did), and the `Game n` assertions became
+  `Level n`. The victory light-show assertion on LED 10 was relaxed from 40 edges
+  to 2: the fanfare and themes now step the bar one LED per note instead of
+  flashing the whole row, so the old count no longer described the behaviour.
+- Docs: root README (level table + codes), V5 README (levels, sounds table, win
+  flow), `docs/HARDWARE.md` and `CLAUDE.md` point at the new sound reference.
+
+## 2026-07-28 (V5.5) — Drawn proposal: sensitivity on a KY-040 rotary encoder
+
+**Diagram only**, at the owner's request: `versions/v5.5-rotary-encoder/` holds the
+wiring and the reasoning, with no firmware and no emulation (the folders are absent
+rather than empty, and the README says so up front). V5 remains the working board.
+
+- V5's two sensitivity buttons are replaced by **one KY-040 encoder** (5 in stock,
+  20 pulses/rev). Everything else is V5: pulled-up keys + GND clip, D2–D11 bar,
+  buzzer on D13.
+- **The pin budget decides the shape.** Ten LEDs + buzzer occupy eleven of twelve
+  digital lines, so both buttons free exactly **D12 and A7** — two pins for a part
+  that wants three. **CLK → D12** (the line that must not be missed gets the real
+  digital pin), **DT → A7** (only read at the instant CLK changes, so an
+  `analogRead`'s ~112 µs is irrelevant), and the **shaft pushbutton is left
+  unconnected**. Consequence for whoever writes the firmware: V5's smart-adjust
+  gesture needs a new trigger — "keep turning against the end stop" costs no wire.
+- Noted in the diagram and README: driving the bar through a **74HC595** would free
+  seven pins and let CLK/DT sit on D2/D3 (the hardware-interrupt pins), which is the
+  robust way to decode quadrature — but that is a different board, so a different
+  version.
+- **Engine**: new `rotary_encoder` component in `../eda-wirewright` (knob + header,
+  ports `vcc`/`gnd`/`clk`/`dt`[/`sw`]) with a `with_sw` flag, so a deliberately
+  unwired pushbutton is drawn greyed instead of tripping the DRC's unconnected-pin
+  rule. Registered for the JSON/CLI/MCP contract; the engine's 11 tests still pass.
+- 9 diagrams now render, all with 0 DRC violations.
+
+## 2026-07-28 (V5 rebuilt) — GND-clip keyboard, live sensitivity, no restart/select
+
+V5's board is **replaced in place** at the owner's request, rather than becoming a
+new version: the previous V5 board (floating +5 V-clip keyboard, A7 game-select
+switch, D7 restart button) now lives only in git history and in this log. Its
+firmware, emulation and diagram are all rebuilt.
+
+**Hardware**
+
+- **Keyboard back to the 2019 arrangement**: 220 Ω pull-up per key, player holds a
+  **GND** clip, so a touch drags the reading DOWN. This is the change that made the
+  keyboard readable: idle went from ~250 with 76-104 counts of noise and ~170
+  counts of drift (floating pins) to **1022 with 1 count of noise** on every
+  channel. Measured before/after on the board.
+- **Off**: game-select switch (A7) and restart button (D7).
+- **On**: **SENS +** on D7 (to GND, internal pull-up) and **SENS −** on A7 (to GND
+  with an external 10 kΩ pull-up — A7 has no internal one, and is read with
+  `analogRead(A7) < 512`). Ten LEDs + buzzer take eleven of twelve digital lines,
+  which is why the second button had to be an analog pin.
+
+**Firmware** — the V2.5 front end merged into the V5 game:
+
+- Boot **auto-calibration**: per-key baseline *and* idle noise, margin derived as
+  `max(4, 2 x worst noise)`; on this rig that lands on margin 4 → threshold 1018,
+  the working point found by hand. The **LED bar is the progress display** (one LED
+  per key as it is measured = hands off the fruit) and then shows the chosen
+  sensitivity as a level meter.
+- **Sensitivity knob on the two buttons**: 1-count steps below margin 20, 5 above,
+  auto-repeat while held, end stops reported and sounded. The bar shows the level
+  after each press; the tick's pitch tracks the setting.
+- **Smart adjust** (both buttons 1 s while touching a lemon): identifies the touched
+  key, measures the other channels' wander as the noise floor, sets the margin
+  midway between them, and refuses to change anything if the touch is not separable
+  from noise. Samples in four bursts with the blip BETWEEN them, never during, so
+  the buzzer current cannot pollute the reading it is learning from.
+- **A key sounds once** until a different key is played (was: only the *game*
+  ignored repeats; now the note does too).
+- **UI sound vocabulary** at 3.3-4.7 kHz — above every game note (game 1 reaches
+  G7 = 3136 Hz, game 2 runs 220-587 Hz) and where a piezo is loudest: calibration
+  start/finish, button ticks, end-stop, smart-adjust progress/success/failure,
+  stuck-key warble. One `playTone()` now serves hardware and browser, which
+  retired `emuTone()`.
+- Sensing rewritten for the new polarity: `threshold = baseline − margin`,
+  `strongestKey()` picks the channel that dropped furthest below its threshold,
+  `TOUCH_HYSTERESIS` down to 2 counts because the whole signal is ~4.
+- 10 114 B flash (33 %), 393 B RAM (19 %). Flashed and confirmed on hardware.
+
+**Emulation** — all three specs green, and two assertions had quietly rotted:
+
+- The keys need **no polarity shim any more**: a browser pushbutton with a pull-up
+  *is* this sensing model. Only the buzzer (D11, the `OCR2A` rule) and key 7 (D12,
+  no A6 in avr8js) still move. The **boot guard is back** and matters more than
+  ever — until the first SPICE solve every input reads LOW, which would calibrate
+  every baseline to 0.
+- **No sensitivity buttons in the browser**: ten LEDs + buzzer + key 7 use all
+  twelve digital lines. The buttons and smart adjust are verified on the V2.5 rig,
+  which is the same front end without the bar.
+- The boot chirps put **2091 edges** on the buzzer pin before any key is touched,
+  which silently defanged two `gpio_toggles` thresholds (1000 and 200). Re-measured
+  and re-armed at 4000 (sustain, distinguishes 5307 from ~2460) and 3000 (free play,
+  measured 3625), with the arithmetic written into the specs so the next person can
+  re-derive them.
+
+**Pin map rewired for buildability (same session)** — the bar is now **one
+unbroken ascending run, LED n on pin n+1**: LEDs 1-10 on **D2..D11**, **SENS +** on
+**D12**, **buzzer on D13**, SENS − still on A7. Wiring the bar left to right no
+longer needs a lookup table. The buzzer took D13 rather than the button because
+D13 carries the Nano's on-board LED through ~1 kΩ, which fights a ~30 kΩ internal
+pull-up and can read as permanently pressed; a buzzer is indifferent to that load.
+(D0/D1 stay off-limits — they are the UART, i.e. the serial monitor this rig is
+tuned with and the pins avrdude uploads through.)
+
+**Diagram** — `build_v5()` rewritten: 2019 pull-up comb + GND clip, ten-LED bar,
+both buttons with the A7 pull-up drawn, no switch and no restart. 0 DRC violations.
+
+## 2026-07-27 (V2.5) — New version: keyboard test with a LIVE touch threshold
+
+V2's touch detection hangs on one hardcoded number (`<= 1019`), and finding a
+working value meant edit-compile-reflash for a figure that depends on the fruit,
+the PSU, the mains outlet and where your feet are. V2.5 makes it adjustable while
+the piano runs. Two buttons is a hardware change, so per `docs/VERSIONING.md` this
+is a new version rather than an edit to the 2019 sketch — V2 stays as it was.
+
+- **Firmware** (`versions/v2.5-threshold-buttons/firmware/`, new 2026 code): the
+  threshold is the variable `touchThreshold`, stepped 5 at a time by **THRESHOLD +
+  (D10)** and **THRESHOLD − (D11)**, with debounce and auto-repeat while held
+  (400 ms, then every 120 ms) so a 0-1023 sweep is one long press. Serial monitor
+  **on** at 9600 (V2's `Serial.begin` is commented out): a live readout of all
+  seven 4-sample averages against the threshold twice a second, with a `*` on each
+  channel counted as touched, plus every threshold change and every note played
+  with the reading that triggered it. Detection is edge-triggered, so a held key
+  plays once instead of machine-gunning. 5 188 B flash, 306 B RAM.
+- **Buttons are active-LOW to GND on the internal pull-ups** — no external
+  resistors, deliberately unlike V3/V4/V4.5's active-HIGH + 10 kΩ pulldown. A
+  bench rig should need as few parts as possible.
+- **`TOUCH_WHEN_BELOW` flag**: `true` keeps V2's 2019 polarity (touch drags the
+  pin down); `false` switches the comparison for 2026 wiring (touch pushes it up).
+  Without the right setting no threshold value can work, so it is stated in the
+  banner the firmware prints at boot.
+- **Emulation** (`emulation/keyboard-test.yaml`, `--mode verify` **pass** first
+  run): seven clickable keys **and both threshold buttons**, so the point of the
+  version is playable in the browser. The script plays keys 1/2/7, taps the
+  threshold down twice and up once, then plays key 3; it asserts the notes, the
+  buzzer edges and `>>> threshold=1014 / 1009 / 1014`. Keys 1-6 need no shim — a
+  pushbutton with a pull-up *is* the 2019 polarity — only the buzzer (to D9, a
+  duty-polled PWM pin) and key 7 (to D12, since avr8js has no A6) move.
+- **Diagram**: new `build_v2_5()` contract → `images/wiring-v2.5.png` (23 nets, 0
+  DRC violations), plus a new `_button_to_gnd()` helper in
+  `tools/wiring_diagrams.py` for active-low buttons with no pulldown to draw.
+- Docs: `README.md` + `HARDWARE.md` for the version, rows in both index tables,
+  `CLAUDE.md` and `docs/HARDWARE.md` updated.
+- Not yet flashed to hardware: the board dropped off USB (clean `USB disconnect`,
+  not the old `error -71`) before the upload could run.
+
 ## 2026-07-27 (V5 input) — One key at a time; and the measurement that says the pull-downs are mandatory
 
 Hardware testing of the previous entry did not behave as asked, and the serial log

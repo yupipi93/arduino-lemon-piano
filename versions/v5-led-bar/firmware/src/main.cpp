@@ -1,85 +1,83 @@
-/* LEMON PIANO V5 — 10-LED progress bar
+/* LEMON PIANO V5 — ten-LED progress bar, GND clip, live sensitivity
    Author : Yupipi93 (Sergio Conejero), 2019 · V5 rework 2026-07-14
+   Board rebuilt 2026-07-28: GND-clip keyboard, two sensitivity buttons, no
+   restart and no game-select switch.
 
    CODE 1 (Mario Main Theme):  6,5,6,7,2,5,2,1,3,4
    CODE 2 (Mario Underworld) :  3,6,1,4,2,5,3,6,1,4
 
-   Seven lemons are touch keys on A0..A6 (the player's body closes each key to
-   5 V). Reproduce the secret 10-note melody. A row of TEN green LEDs is the
-   progress bar: each correct note lights the next LED; a wrong note blanks the
-   whole row and the sequence restarts from the first note. Light all ten and
-   the theme plays — then the game AUTO-ADVANCES to the other theme (win the
-   Mario Main Theme and it flips to the Underworld, and back), so both games
-   cycle from a single starting point.
+   Seven lemons are touch keys on A0..A6. Reproduce the secret 10-note melody. A
+   row of TEN green LEDs is the progress bar: each correct note lights the next
+   LED; a wrong note blanks the row and the sequence restarts. Light all ten and
+   the theme plays, then the game AUTO-ADVANCES to the other one.
 
-   It is a PIANO first, a puzzle second (2026-07-27):
-     - While the bar is empty (currentStep == 0) you can play freely: every key
-       just sounds its note. No "wrong" tone, no penalty — noodle as long as you
-       like. The puzzle only starts once you happen to hit the sequence's FIRST
-       note, which lights LED 1.
-     - From then on a wrong note DOES cost you: the bar blanks and the low tone
-       plays, and you are back to free play.
-     - The wrong tone never interrupts the note you just played. The key's own
-       note is allowed to finish, then a short silence, then the low tone —
-       so you always hear WHICH note you got wrong.
+   THE KEYBOARD IS THE 2019 ONE AGAIN (2026-07-28). Every analog pin is pulled UP
+   to +5 V through 220 Ohm and rests near 1023; the player holds a GND clip, so
+   touching a lemon drags that pin DOWN. This replaced the floating +5 V-clip
+   keyboard because floating pins could not be read at all: measured on the bench,
+   one touch pushed ALL SEVEN channels to the rail, the highest and second-highest
+   channel differed by a median of 5 counts, and the idle level wandered ~170
+   counts on a ~25 s cycle. A 220 Ohm pull-up gives every pin a hard reference:
+   idle 1022-1023, rock steady, and a touch dips it a few counts.
 
-   Touch behaviour, so fruit contact never fights the game (2026-07-27):
-     - HOLD A KEY AND IT KEEPS SOUNDING. The note sustains for as long as the
-       lemon is touched (with NOTE_DURATION as a minimum, so a quick tap is
-       still a proper note). Holding is ONE press as far as the game is
-       concerned — a long touch can never count twice.
-     - PRESSING THE SAME KEY AGAIN DOES NOT COUNT. Only the first press of a
-       key reaches the game; repeats of that same key sound but are ignored,
-       until a DIFFERENT key is pressed. Lemons make flaky contacts, and a
-       flickering touch used to register as a burst of guesses.
-       NOTE: this means a secret code can never contain the same note twice in
-       a row. Neither of the two codes does (6,5,6,7,2,5,2,1,3,4 and
-       3,6,1,4,2,5,3,6,1,4) — check this if you ever add a third.
-     - ONE LEMON AT A TIME (added after hardware testing, 2026-07-27). All seven
-       analog pins float at the same level and are capacitively coupled to each
-       other and to the player, so ONE finger pushes SEVERAL channels over their
-       threshold at once. The old scan took the first index above threshold, so a
-       single touch could register as two different keys in consecutive loops —
-       on the bench that printed "OK 1/10" immediately followed by "WRONG".
-       Now the scan picks the STRONGEST channel (largest margin over its own
-       threshold) and, while that key is down, every other channel is ignored
-       until it is released. Release uses TOUCH_HYSTERESIS below the press
-       threshold, so a reading hovering on the line cannot chop the note up.
+   Sensitivity is a MARGIN from each key's own resting level, not an absolute
+   reading, and it is on two buttons so it can be tuned with a hand on the fruit:
+     - D7 -> more sensitive (smaller margin)
+     - A7 -> less sensitive (bigger margin)
+     - both held 1 s WHILE TOUCHING a lemon -> smart adjust: the firmware learns
+       the best margin from that real touch.
+   At boot it auto-calibrates: it measures every key's baseline AND its idle
+   noise, then derives the margin from the noise. The LED bar shows what it is
+   doing, and every state change has its own sound.
 
-   What changed from V4/V4.5 (their boards live on in versions/v4-water-pump/
-   and versions/v4.5-margin-buttons/):
-     - No relays / no water pump, and no red LED — the ten-LED bar is the whole
-       feedback surface (all-on = win in progress, all-off = you missed).
-     - The fail-counter / death-tune game-over is gone with the pump it was
-       tied to; a wrong note just resets the bar. A short low "wrong" tone
-       still plays for feedback.
-     - GAME SELECT moved from D4 to A7 so all 12 digital pins are free to drive
-       the ten LEDs. A7 is analog-in only on the Nano: tie it HIGH (5 V, game 1)
-       or LOW (GND, game 2) with an SPDT switch (or a switch to 5 V + 10k pull-
-       down). Read at boot and on RESTART.
+   Gone in this rebuild: GAME SELECT (A7 is a button now) and RESTART (D7 is a
+   button now). The game starts at 1 and auto-advances on every win, so both
+   themes are reachable; recalibration is the smart-adjust gesture or a reset.
+   The previous V5 board is in git history and CHANGELOG.md.
 
-   Kept from V4: edge-triggered input (one step per fresh touch), auto-
-   calibrated analog touch, PROGMEM melodies, both games, and the compile-time
+   Kept: edge-triggered input, one key at a time (strongest channel wins),
+   sustained notes, PROGMEM melodies, the victory light show, and the compile-time
    Velxio emulation shim (see emulation/README.md).
 
-   Requires an Arduino Nano (or Mini) — V5 uses A6 (key 7) and A7 (game select),
-   which the classic Uno does not expose.
+   Pin map (rewired 2026-07-28 for buildability — one ascending run for the bar):
+     A0..A6  keys 1..7      (220 Ohm pull-up each; player holds GND)
+     D2..D11 LEDs 1..10     (LED n on pin n+1 — nothing to look up)
+     D12     SENS + button  (to GND, internal pull-up)
+     D13     buzzer         (the on-board LED blinks with the audio)
+     A7      SENS - button  (to GND + external 10 kOhm pull-up)
+
+   Requires an Arduino Nano (or Mini): A6 is a key and A7 is a button, and the
+   classic Uno exposes neither.
 */
 
 #include <Arduino.h>
 #include "notes.h"
+#include "mario_sfx.h"   // every non-key sound + the level 3/4 themes
 
 //################################
 //###########  PINS ##############
 //################################
 #ifdef VELXIO_EMULATION
-#define BUZZER 11  // Velxio only polls PWM duty on D3/5/6/9/10/11; the buzzer
-                   // part's note-off fires ONLY on duty->0, so on D8 the first
-                   // tone would play forever (see emuTone below)
+#define BUZZER 11  // MUST be D11: Velxio ends a note only on a Timer2 duty->0
+                   // event and noTone() leaves OCR2A set, so the note-off is an
+                   // explicit `OCR2A = 0` — and OCR2A is Timer2/OC2A = D11. On any
+                   // other pin the first note beeps forever (CHANGELOG 2026-07-13).
 #else
-#define BUZZER 8
-#define GAME_SELECT A7  // analog-in only: HIGH(5V)=game 1, LOW(GND)=game 2
-#define RESTART 7       // press (active-HIGH) to restart / re-read game select
+// Pin map chosen so the board is easy to WIRE and easy to FOLLOW: the ten LEDs are
+// one unbroken ascending run, LED n on pin n+1 (LED 1 = D2 ... LED 10 = D11), then
+// the two odd men out take the last two digital pins.
+#define BUZZER 13        // last pin; the Nano's on-board LED blinks along with the
+                         // audio, which is harmless (and a free "sound" indicator)
+#define SENS_UP 12       // button to GND (internal pull-up): MORE sensitive
+#define SENS_DOWN A7     // button to GND + external 10k pull-up: LESS sensitive.
+                         // A7 is analog-in only and has no internal pull-up, hence
+                         // the external one; read with analogRead() < 512.
+                         //
+                         // Why the button is NOT on D13: on many Nanos the on-board
+                         // LED hangs off D13 through ~1 kOhm, which fights a ~30 kOhm
+                         // internal pull-up and can read as "permanently pressed".
+                         // A buzzer does not care about that load, so D13 is its pin
+                         // and the button gets D12.
 #endif
 
 const uint8_t KEY_COUNT = 7;    // A0..A6
@@ -87,25 +85,25 @@ const uint8_t LED_COUNT = 10;   // one green LED per note of the sequence
 
 // The ten green progress LEDs, LED[0] = first note ... LED[9] = tenth note.
 #ifdef VELXIO_EMULATION
-// Emulation reuses D7/D8 (no restart/HW-buzzer pins here) and keeps key 7 on
-// D12 + buzzer on D11, leaving exactly these ten pins for the LEDs.
+// The browser has no pins for the sensitivity buttons (see the shim note below),
+// so D7/D8 are free for LEDs here; key 7 is on D12 and the buzzer on D11.
 const uint8_t LED_PINS[LED_COUNT] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 13};
 #else
-// Hardware: D7 = RESTART, D8 = BUZZER, so the LEDs take every other free pin.
-const uint8_t LED_PINS[LED_COUNT] = {2, 3, 4, 5, 6, 9, 10, 11, 12, 13};
+// Hardware: one contiguous run, LED n -> pin n+1. Wire the bar left to right and
+// the pin numbers just count up with it — no gaps to remember.
+const uint8_t LED_PINS[LED_COUNT] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
 #endif
 
 // ── Velxio emulation input shim (define VELXIO_EMULATION to enable) ─────────
-// The browser emulator can't reproduce the analog lemon divider or A6/A7, and
-// with ten LEDs every I/O line is spoken for. So the emulation build:
-//   - keys 1-6: pushbuttons + 10k pull-ups on A0..A5, analogRead, active-low
-//     (idle ~1023, pressed ~0; threshold 512),
-//   - key 7:    pushbutton + pull-up on D12, digitalRead (A6 has no digital pin),
-//   - drops GAME SELECT and RESTART (no pins left): the browser starts at game 1
-//     and each win auto-advances to the other theme, so both games are reachable
-//     with no select switch and no restart button,
-//   - buzzer on D11 via emuTone (Timer2-duty audio with an explicit note-off).
-// Hardware builds (macro undefined) are unaffected.
+// Good news since the keyboard went back to pull-ups: the browser's pushbutton +
+// pull-up IS this polarity (idle ~1023, pressed ~0), so the sensing needs no shim
+// at all any more. What still differs:
+//   - key 7 moves to D12: avr8js exposes A0..A5 for analog injection, no A6/A7,
+//   - buzzer on D11 (see above),
+//   - NO sensitivity buttons: ten LEDs + buzzer + key 7 already use all twelve
+//     digital lines. The buttons and the smart-adjust gesture are verified on the
+//     V2.5 rig instead (../../v2.5-threshold-buttons/), which is the same front
+//     end with the bar removed. Boot auto-calibration still runs here.
 #ifdef VELXIO_EMULATION
 const uint8_t KEY_PINS[KEY_COUNT] = {A0, A1, A2, A3, A4, A5, 12};
 #endif
@@ -114,26 +112,81 @@ const uint8_t KEY_PINS[KEY_COUNT] = {A0, A1, A2, A3, A4, A5, 12};
 //#########  CONSTANTS ###########
 //################################
 const int SEQUENCE_LENGTH = 10;   // notes to guess correctly to win (== LED_COUNT)
-// Touch margin is now AUTO-CALIBRATED from each key's measured noise (fruit,
-// mains, PSU — all vary): threshold = baseline + max(MIN_TOUCH_MARGIN, 3x the
-// observed peak-to-mean noise). A quiet bench gets MORE sensitive than the old
-// fixed 100; a noisy phone charger gets a margin big enough to kill the ghost
-// presses. Runs at boot AND on every RESTART press — hands off the fruit then.
-const int MIN_TOUCH_MARGIN = 40;  // margin floor on a perfectly quiet line
-const int NOISE_FACTOR = 3;      // margin = NOISE_FACTOR x (peak - mean) noise
-const int THRESHOLD_CAP = 900;   // above this a touch could no longer register
-const int NOTE_DURATION = 70;     // key tone length in ms; the lower, the snappier the feel
+
+// ── Sensitivity ─────────────────────────────────────────────────────────────
+// A key counts as touched when its reading has dropped TOUCH_MARGIN counts below
+// that key's own resting level. Measured on this rig (2026-07-27): baseline 1022,
+// a fruit touch dips to 1018 — a 3-4 count signal, because ~1 MOhm of skin against
+// a 220 Ohm pull-up is a lopsided divider. That is where the 2019 sketch's magic
+// `<= 1019` came from, and why the knob works in SINGLE counts down here.
+int  touchMargin = 4;             // the knob, in ADC counts (auto-set at boot)
+const int MARGIN_MIN = 1;
+const int MARGIN_MAX = 600;
+const int MARGIN_STEP_FINE = 1;      // step at or below MARGIN_COARSE_ABOVE
+const int MARGIN_STEP_COARSE = 5;    // step above it
+const int MARGIN_COARSE_ABOVE = 20;
+const int TOUCH_HYSTERESIS = 2;   // a key is released only when it comes back this
+                                  // far ABOVE its threshold (Schmitt trigger), so a
+                                  // reading on the line cannot chop up the note.
+                                  // Small, because the whole signal is ~4 counts.
+
+// ── Auto-calibration ────────────────────────────────────────────────────────
+// The margin is derived from the MEASURED noise: a quiet rig gets a tight margin,
+// a noisy one a wide margin, with no dial to turn. Floor 4 = the working point
+// measured on the real board.
+const uint8_t CAL_SAMPLES = 24;               // ~200 ms for all seven keys
+const int NOISE_FACTOR = 2;                   // auto margin = 2 x worst noise
+const int AUTO_MARGIN_MIN = 4;                // ...never tighter than this
+const unsigned long BASELINE_EVERY_MS = 100;  // idle-drift tracking interval
+const int BASELINE_DIVISOR = 8;               // baseline += (reading-baseline)/8
+const unsigned long STUCK_MS = 5000;          // stuck-key re-baseline timeout
+
+// ── Smart adjust (both buttons 1 s while touching a lemon) ──────────────────
+const unsigned long RECAL_HOLD_MS = 1000;     // hold both this long to trigger it
+const unsigned long LEARN_MS = 600;           // total sampling window
+const uint8_t LEARN_BURSTS = 4;               // bursts, with a blip + LED between
+
+// ── Buttons ─────────────────────────────────────────────────────────────────
+const unsigned long BUTTON_DEBOUNCE_MS = 40;
+const unsigned long REPEAT_DELAY_MS = 400;    // hold this long to start ramping
+const unsigned long REPEAT_EVERY_MS = 120;    // then one step this often
+
+// ── Sound ───────────────────────────────────────────────────────────────────
+const int NOTE_DURATION = 70;     // minimum key tone length; a held key sustains
 const int WRONG_TONE_MS = 200;    // low "you missed" tone
 const int WRONG_TONE_GAP_MS = 60; // silence between the played note and the low
                                   // tone, so the two never blur together
-const int TOUCH_HYSTERESIS = 60;  // a key is released only when it falls this far
-                                  // BELOW its press threshold (Schmitt trigger):
-                                  // stops a borderline reading from stuttering the
-                                  // note and re-triggering guesses
-const unsigned long SUSTAIN_CAP_MS = 2000;  // safety valve: how long the wrong
-                                  // tone will wait for a held key to be released
-                                  // before sounding anyway (a stuck/ghosting key
+const unsigned long SUSTAIN_CAP_MS = 2000;  // how long the wrong tone waits for a
+                                  // held key before sounding anyway (a stuck key
                                   // must not freeze the game)
+// UI chirps sit ABOVE every game note (game 1 reaches G7 = 3136 Hz, game 2 runs
+// 220..587 Hz), so a state sound can never be mistaken for the piano. 3.3-4.8 kHz
+// is also where a piezo is loudest.
+const bool UI_SOUNDS = true;
+const int UI_TICK_MS = 14;
+
+// ── Silence policy (2026-07-29) ─────────────────────────────────────────────
+// A key note SUSTAINS: tone() runs until the lemon is released. So anything the
+// piano wants to say afterwards must wait for that note to finish, or it simply
+// preempts it mid-sound — which is what made the win fanfare step on the tenth
+// note. Three deliberate silences fix it:
+const int SFX_GAP_MS = 120;      // hush -> silence -> effect: separates an effect
+                                 // from whatever was sounding before it
+const int SFX_TAIL_MS = 60;      // silence AFTER every effect, so two effects in a
+                                 // row (seven calibration coins) never blur
+const int PHRASE_GAP_MS = 350;   // musical pause between phrases: fanfare -> level
+                                 // theme -> ending melody
+const int SFX_ARTICULATION_MS = 18;  // silence carved out of the END of each note in
+                                 // a table. Without it the notes run together and a
+                                 // repeated pitch (Starman's F5 F5) sounds like one
+                                 // long note — measured: the 7-note fanfare came out
+                                 // as a single 1071 ms tone. Taken FROM the note, so
+                                 // the tempo written in the table is what you hear.
+const int UI_LOW = 3300;
+const int UI_MID = 4000;
+const int UI_HIGH = 4700;
+
+const int LED_METER_MS = 700;     // how long the bar shows the sensitivity level
 
 const bool serialEnabled = true;  // debug log at 9600 baud
 
@@ -250,46 +303,102 @@ const uint8_t UNDER_VICTORY_FROM = 12;   // full theme is 56 notes; cut = tail 4
 //################################
 //#####  SECRET SEQUENCES ########
 //################################
-// Keys 0..6 for game 1, 7..13 for game 2 (keyboardOffset selects the half).
-const int keys[14] = {
-  NOTE_E6, NOTE_G6, NOTE_A6, NOTE_B6, NOTE_C7, NOTE_E7, NOTE_G7,   // game 1
-  NOTE_A3, NOTE_AS3, NOTE_C4, NOTE_A4, NOTE_AS4, NOTE_C5, NOTE_D5  // game 2
+// FOUR levels since 2026-07-29. Each level has its own seven key notes and its
+// own 10-note secret code. The seven notes of a level MUST be distinct: the game
+// recognises a guess by comparing frequencies, so two keys sharing a note would
+// be indistinguishable. And no code may repeat a note back-to-back, because a
+// repeated press of the same key is filtered as flaky contact.
+const uint8_t LEVEL_COUNT = 4;
+
+const int keys[LEVEL_COUNT * KEY_COUNT] = {
+  // level 1 — Overworld (the 2019 set)
+  NOTE_E6, NOTE_G6, NOTE_A6, NOTE_B6, NOTE_C7, NOTE_E7, NOTE_G7,
+  // level 2 — Underworld (the 2019 set)
+  NOTE_A3, NOTE_AS3, NOTE_C4, NOTE_A4, NOTE_AS4, NOTE_C5, NOTE_D5,
+  // level 3 — Underwater: the theme's own chromatic-into-arpeggio material
+  NOTE_C5, NOTE_CS5, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_G5, NOTE_A5,
+  // level 4 — Starman: a plain C major run, for the hammered figure
+  NOTE_C5, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_G5, NOTE_A5, NOTE_C6,
 };
+
+// Codes, as key numbers 1..7:
+//   level 1: 6,5,6,7,2,5,2,1,3,4      (Mario Main Theme — since 2019)
+//   level 2: 3,6,1,4,2,5,3,6,1,4      (Underworld — since 2019)
+//   level 3: 2,4,6,1,5,3,7,4,2,6      (new)
+//   level 4: 5,1,3,7,2,6,4,1,5,3      (new)
 const int sequence_1[SEQUENCE_LENGTH] = {NOTE_E7, NOTE_C7, NOTE_E7, NOTE_G7, NOTE_G6, NOTE_C7, NOTE_G6, NOTE_E6, NOTE_A6, NOTE_B6};
 const int sequence_2[SEQUENCE_LENGTH] = {NOTE_C4, NOTE_C5, NOTE_A3, NOTE_A4, NOTE_AS3, NOTE_AS4, NOTE_C4, NOTE_C5, NOTE_A3, NOTE_A4};
+const int sequence_3[SEQUENCE_LENGTH] = {NOTE_CS5, NOTE_E5, NOTE_G5, NOTE_C5, NOTE_F5, NOTE_D5, NOTE_A5, NOTE_E5, NOTE_CS5, NOTE_G5};
+const int sequence_4[SEQUENCE_LENGTH] = {NOTE_G5, NOTE_C5, NOTE_E5, NOTE_C6, NOTE_D5, NOTE_A5, NOTE_F5, NOTE_C5, NOTE_G5, NOTE_E5};
 
 //################################
 //#########  STATE ###############
 //################################
-int  game = 1;                 // 1 = Main Theme, 2 = Underworld
-bool started = false;          // false triggers (re)selection of the game
+int  level = 1;                // 1..LEVEL_COUNT (see the themes above)
 int  currentStep = 0;          // how many correct notes so far (index into the sequence)
                                // 0 = free play: any key just sounds its note
 unsigned long keyToneMinEndsAt = 0;  // a key note never stops before this millis()
 int  activeKey = -1;           // key whose note is sounding right now (-1 = silence)
 int  lastCountedKey = -1;      // last key the GAME accepted; pressing it again is
                                // ignored until a different key is pressed
+int  lastSoundedKey = -1;      // ...and it does not sound again either
 int  pressedNote = 0;          // last note played
 
-int  keyThreshold[KEY_COUNT];  // per-key touch threshold (auto-calibrated)
-                               // (no keyHeld[] any more: activeKey IS the state —
-                               //  exactly one key can be down at a time)
+int  baseline[KEY_COUNT];      // each key's resting level (measured, then tracked)
+int  noiseLevel[KEY_COUNT];    // peak-to-peak idle noise, from calibration
+unsigned long touchedSince[KEY_COUNT];  // when this key started reading touched
+unsigned long lastBaselineTick = 0;
+unsigned long ledMeterUntil = 0;        // bar is showing the level until this ms
+
+struct Button {
+  uint8_t pin;
+  int direction;               // -1 = more sensitive, +1 = less sensitive
+  bool pressed;
+  unsigned long changedAt;
+  unsigned long nextRepeat;
+};
+#ifndef VELXIO_EMULATION
+Button buttons[2] = {
+  {SENS_UP,   -1, false, 0, 0},
+  {SENS_DOWN, +1, false, 0, 0},
+};
+unsigned long bothHeldSince = 0;
+#endif
 
 //################################
 //#######  PROTOTYPES ############
 //################################
+int  readKey(uint8_t i);
+int  thresholdFor(uint8_t i);
 bool keyTouched(uint8_t i);
 bool keyStillDown(int i);
 int  strongestKey();
-#ifdef VELXIO_EMULATION
-void emuTone(long frequency, long durationMs);
+void autoCalibrate();
+void learnFromTouch();
+void trackBaselines();
+#ifndef VELXIO_EMULATION
+void serviceButtons();
+void nudgeMargin(int direction);
+int  stepSize();
 #endif
-void calibrate();
-void selectGame();
+void showMarginOnBar();
+void playTone(int freq, int ms);
+void soundCalStart();
+void soundCalStep();
+void soundCalDone();
+void soundTick();
+void soundLimit();
+void soundLearnBlip();
+void soundLearnOk();
+void soundLearnFail();
+void soundStuck();
 void resetBoard();
 void logGame();
 void handleGuess();
 void playVictory();
+void playSfx(const int *table, bool lightShow = false);
+void hushBuzzer();
+void silenceKeyNote();
 void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length);
 void wrongTone();
 void startKeyTone(int note);
@@ -316,12 +425,14 @@ void setup() {
   }
   pinMode(BUZZER, OUTPUT);
 #ifndef VELXIO_EMULATION
-  pinMode(RESTART, INPUT);
-  // GAME_SELECT is A7 (analog-in only) — no pinMode / no internal pull-up; the
-  // external switch must drive it to 5 V or GND.
+  pinMode(SENS_UP, INPUT_PULLUP);     // button to GND
+  // SENS_DOWN is A7: analog-in only, no internal pull-up, so the board carries an
+  // external 10k to +5 V and the button pulls it to GND.
 #endif
   // A0..A6 need no pinMode for analogRead.
 
+  autoCalibrate();                    // measures baselines + noise, sets the margin
+  logGame();
 }
 
 
@@ -330,21 +441,20 @@ void setup() {
 //################################
 void loop() {
 #ifndef VELXIO_EMULATION
-  // Restart at any time: RECALIBRATES the touch thresholds (hands off the
-  // lemons!), re-reads GAME SELECT and blanks the bar. Press it whenever the
-  // piano misbehaves after changing fruit, PSU or mains outlet.
-  if (digitalRead(RESTART) == HIGH) {
-    started = false;
-  }
+  serviceButtons();      // sensitivity knob + the smart-adjust gesture
 #endif
+  trackBaselines();      // follow the idle drift while keys are untouched
 
-  if (!started) {
-    calibrate();     // boot + every restart — adapts to fruit/PSU/mains noise
-    selectGame();
-    started = true;
+  // The bar belongs to the sensitivity meter for a moment after a button press;
+  // restore the game's progress display when that moment passes.
+  if (ledMeterUntil && (long) (ledMeterUntil - millis()) <= 0) {
+    ledMeterUntil = 0;
+    for (uint8_t i = 0; i < LED_COUNT; i++) {
+      digitalWrite(LED_PINS[i], i < currentStep ? HIGH : LOW);
+    }
   }
 
-  const int keyboardOffset = (game == 1) ? 0 : 7;
+  const int keyboardOffset = (level - 1) * KEY_COUNT;
 
 //################################
 //########  READ INPUT ###########
@@ -369,8 +479,13 @@ void loop() {
   if (justPressed >= 0) {
     pressedNote = keys[justPressed + keyboardOffset];
     activeKey = justPressed;
-    startKeyTone(pressedNote);   // it's a piano — every press sounds its note,
-                                 // and keeps sounding while the lemon is touched
+    if (justPressed != lastSoundedKey) {
+      startKeyTone(pressedNote); // it's a piano — a fresh key sounds its note and
+                                 // keeps sounding while the lemon is touched
+    } else if (serialEnabled) {
+      Serial.print(F("    key ")); Serial.print(justPressed + 1);
+      Serial.println(F(" again - locked (play another key to unlock it)"));
+    }
 #ifdef DEBUG_TOUCH
     Serial.print(F("press key ")); Serial.print(justPressed + 1);
     Serial.print(F("  readings:"));
@@ -384,10 +499,13 @@ void loop() {
     Serial.println();
 #endif
 
-    // ...but the GAME only sees the first press of a key. Holding it, or
-    // tapping it again, is the same single guess until another key is played.
+    // ...but the GAME only sees the first press of a key, and a repeat does not
+    // even sound: holding a lemon or tapping it again is the same single event
+    // until a DIFFERENT key is played. Flaky fruit contact used to machine-gun
+    // both the buzzer and the guesses.
     if (justPressed != lastCountedKey) {
       lastCountedKey = justPressed;
+      lastSoundedKey = justPressed;
       handleGuess();
     }
   }
@@ -401,7 +519,11 @@ void loop() {
 // Evaluate the note the player just pressed against the secret sequence and
 // drive the ten-LED progress bar.
 void handleGuess() {
-  const int *sequence = (game == 1) ? sequence_1 : sequence_2;
+  const int wonWith = activeKey;      // the key under the finger right now
+  const int *sequence = (level == 1) ? sequence_1
+                      : (level == 2) ? sequence_2
+                      : (level == 3) ? sequence_3
+                                     : sequence_4;
 
   if (pressedNote == sequence[currentStep]) {
     // CORRECT — light this step's LED and advance.
@@ -413,13 +535,31 @@ void handleGuess() {
     }
 
     if (currentStep >= SEQUENCE_LENGTH) {
-      // VICTORY — the whole bar flashes to the beat of the winning theme
-      // (playSong's light show), then AUTO-ADVANCE to the other game and
-      // blank the bar for the next round.
+      // VICTORY — the flagpole fanfare, then this level's own theme with the
+      // whole bar flashing to the beat, then on to the next level. Clearing the
+      // LAST level plays the ending melody and wraps back to level 1.
       log(F("WIN"));
+      // The tenth note is still sounding under the player's finger. Let it play
+      // out, pause, and only then start the fanfare — otherwise the fanfare cuts
+      // the winning note off mid-sound.
+      silenceKeyNote();
+      playSfx(sfxLevelClear, true);
+      delay(PHRASE_GAP_MS);
       playVictory();
-      game = (game == 1) ? 2 : 1;
+      level++;
+      if (level > LEVEL_COUNT) {
+        log(F("ALL LEVELS CLEAR"));
+        delay(PHRASE_GAP_MS);
+        playSfx(sfxEnding, true);
+        level = 1;
+      }
       resetBoard();
+      // If the player never let go (the release wait is capped so a stuck key
+      // cannot hang the game), the still-held lemon must NOT count as the first
+      // guess of the next level. Leave it marked as already used: releasing and
+      // pressing again is what unlocks it, exactly like any other repeat.
+      lastCountedKey = wonWith;
+      lastSoundedKey = wonWith;
       logGame();
     }
   } else if (currentStep > 0) {
@@ -457,132 +597,328 @@ void allLedsOn() {
 // models meet: real hardware = analog rise above the calibrated baseline;
 // Velxio emulation = active-low keys (analog-low via pull-ups on A0..A5,
 // digital-low on D12 for key 7).
-bool keyTouched(uint8_t i) {
+// Four-sample average, as the 2019 rig did: cheap noise rejection on a signal
+// only a few counts wide. Key 7 is a digital button in the browser build.
+int readKey(uint8_t i) {
 #ifdef VELXIO_EMULATION
-  if (i < 6) {
-    return analogRead(i) < 512;               // pull-up idle ~1023, pressed ~0
+  if (i == 6) {
+    return digitalRead(KEY_PINS[6]) == LOW ? 0 : 1023;
   }
-  return digitalRead(KEY_PINS[i]) == LOW;     // key 7 on D12
-#else
-  return analogRead(i) > keyThreshold[i];
 #endif
+  long sum = 0;
+  for (uint8_t n = 0; n < 4; n++) {
+    sum += analogRead(i);
+  }
+  return (int) (sum / 4);
 }
 
-// Is key i STILL down? Release needs a lower bar than press (TOUCH_HYSTERESIS),
-// so a reading sitting on the threshold cannot chop a sustained note into pieces.
+// Where this key's trigger point sits right now: its own resting level, minus the
+// margin — the pins are pulled UP, so a touch drags them DOWN.
+int thresholdFor(uint8_t i) {
+  int v = baseline[i] - touchMargin;
+  if (v < 0) v = 0;
+  return v;
+}
+
+bool keyTouched(uint8_t i) {
+  return readKey(i) <= thresholdFor(i);
+}
+
+// Is key i STILL down? Release needs a slightly higher bar than press
+// (TOUCH_HYSTERESIS), so a reading sitting on the line cannot chop a sustained
+// note into pieces or re-trigger guesses.
 bool keyStillDown(int i) {
   if (i < 0) return false;
-#ifdef VELXIO_EMULATION
-  return keyTouched((uint8_t) i);       // emulated buttons are unambiguous
-#else
-  return analogRead(i) > keyThreshold[i] - TOUCH_HYSTERESIS;
-#endif
+  return readKey((uint8_t) i) <= thresholdFor((uint8_t) i) + TOUCH_HYSTERESIS;
 }
 
-// Which key is being touched *most clearly* right now? Returns the channel with
-// the largest margin over its own threshold, or -1 if none is above. On coupled
-// hardware several channels rise together on one touch; the one the finger is
-// actually on wins, and the ghosts are discarded instead of racing it.
+// Which key is being touched *most clearly*? The channel that has dropped
+// furthest below its own threshold wins, so the lemon under the finger beats any
+// neighbour that merely grazed its threshold. -1 if none is below.
 int strongestKey() {
-#ifdef VELXIO_EMULATION
-  for (uint8_t i = 0; i < KEY_COUNT; i++) {
-    if (keyTouched(i)) return i;         // buttons: no ambiguity to resolve
-  }
-  return -1;
-#else
   int best = -1;
-  long bestMargin = 0;
+  long bestDepth = 0;
   for (uint8_t i = 0; i < KEY_COUNT; i++) {
-    long margin = (long) analogRead(i) - keyThreshold[i];
-    if (margin > bestMargin) {
-      bestMargin = margin;
+    long depth = (long) thresholdFor(i) - readKey(i);
+    if (depth >= 0 && depth + 1 > bestDepth) {
+      bestDepth = depth + 1;
       best = i;
     }
   }
   return best;
-#endif
 }
 
-// Sample each key's floating idle level and set its touch threshold above it.
-// Auto-handles the "raise SENSITIVITY on a laptop charger" note from 2019 by
-// measuring the actual baseline instead of hardcoding it. Hands OFF at boot.
-void calibrate() {
+
+//################################
+//######  CALIBRATION ############
+//################################
+
+// Fast, smart, automatic: measure every key's resting level AND its idle noise,
+// then derive the margin from the noise itself. The LED BAR is the progress
+// display — one LED per key as it is measured — so the player can see that the
+// piano is busy and keep their hands off the fruit.
+void autoCalibrate() {
 #ifdef VELXIO_EMULATION
-  // Active-low keys against external pull-ups — no analog baseline. Arm key 7's
-  // digital input, then WAIT for the electrical solver: Velxio's first SPICE
-  // solve takes a moment, and until it drives our nets every input reads
-  // 0/LOW (= "everything pressed"), which would spam notes. Idle-high on keys
-  // 1 and 7 means the solve landed.
-  pinMode(KEY_PINS[6], INPUT_PULLUP);
-  activeKey = -1;
+  // BOOT GUARD (2026-07-13 fix, and doubly important now): Velxio's first SPICE
+  // solve takes a moment, and until it drives our nets every input reads 0/LOW —
+  // which with this polarity means "every key touched", so calibration would
+  // measure a baseline of 0 and the piano would never work.
   log(F("Emulation build: waiting for circuit solve (inputs idle-high)..."));
-  while (keyTouched(0) || keyTouched(6)) {
+  while (readKey(0) < 512 || readKey(6) < 512) {
     delay(10);
   }
   log(F("Inputs idle. Ready to play."));
-  return;
 #endif
-  log(F("Calibrating (hands off the fruit!)..."));
+  log(F("Auto-calibrating - LEDs running = HANDS OFF THE FRUIT..."));
+  soundCalStart();
   allLedsOff();
+
+  int worstNoise = 0;
   for (uint8_t i = 0; i < KEY_COUNT; i++) {
-    // Visual "calibrating" feedback: the bar sweeps one LED per key.
-    digitalWrite(LED_PINS[i], HIGH);
-
-    // 64 samples x 2ms ≈ 128ms — spans 6+ mains cycles (50Hz), so the peak
-    // captures the supply/fruit noise this key actually sees right now.
+    digitalWrite(LED_PINS[i], HIGH);        // key i is being measured
     long sum = 0;
-    int peak = 0;
-    for (uint8_t s = 0; s < 64; s++) {
-      int r = analogRead(i);
-      sum += r;
-      if (r > peak) {
-        peak = r;
-      }
-      delay(2);
+    int lo = 1023, hi = 0;
+    for (uint8_t n = 0; n < CAL_SAMPLES; n++) {
+      int v = readKey(i);
+      sum += v;
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+      delay(1);
     }
-    int baseline = sum / 64;
-    int noise = peak - baseline;
-    int margin = noise * NOISE_FACTOR;
-    if (margin < MIN_TOUCH_MARGIN) {
-      margin = MIN_TOUCH_MARGIN;
-    }
-    keyThreshold[i] = baseline + margin;
-    if (keyThreshold[i] > THRESHOLD_CAP) {
-      keyThreshold[i] = THRESHOLD_CAP;
-      if (serialEnabled) {
-        Serial.print(F("  A")); Serial.print(i);
-        Serial.println(F(" VERY NOISY - check fruit contact / power supply"));
-      }
-    }
-    if (serialEnabled) {
-      Serial.print(F("  A")); Serial.print(i);
-      Serial.print(F(" baseline=")); Serial.print(baseline);
-      Serial.print(F(" noise=")); Serial.print(noise);
-      Serial.print(F(" threshold=")); Serial.println(keyThreshold[i]);
-    }
-    digitalWrite(LED_PINS[i], LOW);
+    baseline[i] = (int) (sum / CAL_SAMPLES);
+    noiseLevel[i] = hi - lo;
+    if (noiseLevel[i] > worstNoise) worstNoise = noiseLevel[i];
+    touchedSince[i] = 0;
+    soundCalStep();          // a coin per key: audible progress, hands still off
   }
-  log(F("Calibration done."));
-}
 
-// Pick the STARTING game (boot / restart). Wins after this auto-advance between
-// the two games, so this only sets where the cycle begins.
-void selectGame() {
-#ifdef VELXIO_EMULATION
-  game = 1;   // no select pin in the browser build — start at the Main Theme
-#else
-  game = (analogRead(GAME_SELECT) > 512) ? 1 : 2;   // A7: HIGH=game 1, LOW=game 2
-#endif
+  int autoMargin = worstNoise * NOISE_FACTOR;
+  if (autoMargin < AUTO_MARGIN_MIN) autoMargin = AUTO_MARGIN_MIN;
+  if (autoMargin > MARGIN_MAX) autoMargin = MARGIN_MAX;
+  touchMargin = autoMargin;
+
+  if (serialEnabled) {
+    for (uint8_t i = 0; i < KEY_COUNT; i++) {
+      Serial.print(F("  key ")); Serial.print(i + 1);
+      Serial.print(F(" baseline=")); Serial.print(baseline[i]);
+      Serial.print(F(" noise=")); Serial.print(noiseLevel[i]);
+      Serial.print(F(" -> threshold=")); Serial.println(thresholdFor(i));
+    }
+    Serial.print(F("auto margin=")); Serial.print(touchMargin);
+    Serial.print(F("  (worst noise ")); Serial.print(worstNoise);
+    Serial.print(F(" x ")); Serial.print(NOISE_FACTOR);
+    Serial.print(F(", floor ")); Serial.print(AUTO_MARGIN_MIN);
+    Serial.println(F(")"));
+  }
+
   resetBoard();
-  logGame();
+  soundCalDone();          // all clear: you may touch the fruit
+  showMarginOnBar();       // ...and here is the sensitivity it settled on
 }
 
+// Follow the idle level slowly while a key is NOT touched, so drift cannot make
+// the margin lie. A key stuck "touched" for STUCK_MS is noise, not a finger — it
+// is re-baselined so the piano recovers by itself, and says so.
+void trackBaselines() {
+  unsigned long now = millis();
+  if (now - lastBaselineTick < BASELINE_EVERY_MS) return;
+  lastBaselineTick = now;
+
+  for (uint8_t i = 0; i < KEY_COUNT; i++) {
+    if ((int) i == activeKey) continue;              // sounding: leave it alone
+    int v = readKey(i);
+    if (v > thresholdFor(i)) {
+      touchedSince[i] = 0;
+      baseline[i] += (v - baseline[i]) / BASELINE_DIVISOR;
+    } else if (touchedSince[i] == 0) {
+      touchedSince[i] = now;
+    } else if (now - touchedSince[i] > STUCK_MS) {
+      if (serialEnabled) {
+        Serial.print(F("!!! key ")); Serial.print(i + 1);
+        Serial.println(F(" stuck touched - re-baselining it (noise, not a finger?)"));
+      }
+      baseline[i] = v;
+      touchedSince[i] = 0;
+      soundStuck();
+    }
+  }
+}
+
+#ifndef VELXIO_EMULATION
+// ── Smart adjust: learn the margin from a REAL touch ────────────────────────
+// Hold both buttons for 1 s WHILE TOUCHING A LEMON. It watches every channel for
+// LEARN_MS, works out which key the finger is on (the biggest drop below that
+// key's baseline), measures how far the other channels wander meanwhile (the
+// noise floor), and puts the margin halfway between the two — the cleanest
+// separation this fruit can currently give. The LED bar fills as it samples. If
+// the touch is not clearly above the noise it says so and changes nothing.
+void learnFromTouch() {
+  log(F("SMART ADJUST - KEEP TOUCHING THE LEMON while the bar fills..."));
+  hushBuzzer();      // silent while sampling: the buzzer's own current would ride
+                     // into the readings we are about to learn from
+  allLedsOff();
+
+  int lo[KEY_COUNT];
+  for (uint8_t i = 0; i < KEY_COUNT; i++) lo[i] = 1023;
+
+  for (uint8_t burst = 0; burst < LEARN_BURSTS; burst++) {
+    // Sample in bursts with the blip BETWEEN them, never during: the buzzer
+    // draws current through the same ground as the analog front end, so a tone
+    // playing while we measure would pollute the reading we are learning from.
+    unsigned long until = millis() + LEARN_MS / LEARN_BURSTS;
+    while ((long) (until - millis()) > 0) {
+      for (uint8_t i = 0; i < KEY_COUNT; i++) {
+        int v = readKey(i);
+        if (v < lo[i]) lo[i] = v;
+      }
+    }
+    for (uint8_t l = 0; l <= burst * 2 && l < LED_COUNT; l++) {
+      digitalWrite(LED_PINS[l], HIGH);          // progress on the bar
+    }
+    soundLearnBlip();
+  }
+
+  int dropped[KEY_COUNT];
+  int best = -1, bestDepth = 0;
+  for (uint8_t i = 0; i < KEY_COUNT; i++) {
+    dropped[i] = baseline[i] - lo[i];
+    if (dropped[i] < 0) dropped[i] = 0;
+    if (dropped[i] > bestDepth) { bestDepth = dropped[i]; best = i; }
+  }
+  int floorNoise = 0;
+  for (uint8_t i = 0; i < KEY_COUNT; i++) {
+    if ((int) i != best && dropped[i] > floorNoise) floorNoise = dropped[i];
+  }
+
+  if (serialEnabled) {
+    Serial.print(F("  strongest: key ")); Serial.print(best + 1);
+    Serial.print(F("  depth=")); Serial.print(bestDepth);
+    Serial.print(F("  noise floor (other keys)=")); Serial.println(floorNoise);
+  }
+
+  if (best < 0 || bestDepth < floorNoise + 2) {
+    log(F("  !! touch not separable from noise - margin unchanged."));
+    log(F("     Were you touching a lemon? Is the GND clip in your hand?"));
+    soundLearnFail();
+  } else {
+    int m = (floorNoise + bestDepth) / 2;
+    if (m < MARGIN_MIN) m = MARGIN_MIN;
+    if (m > MARGIN_MAX) m = MARGIN_MAX;
+    touchMargin = m;
+    if (serialEnabled) {
+      Serial.print(F("  learned margin=")); Serial.print(touchMargin);
+      Serial.print(F("  (midway between ")); Serial.print(floorNoise);
+      Serial.print(F(" and ")); Serial.print(bestDepth);
+      Serial.print(F(")  key ")); Serial.print(best + 1);
+      Serial.print(F(" threshold=")); Serial.println(thresholdFor(best));
+    }
+    soundLearnOk();
+  }
+
+  resetBoard();
+  showMarginOnBar();
+}
+
+
+//################################
+//#########  BUTTONS #############
+//################################
+int stepSize() {
+  return touchMargin > MARGIN_COARSE_ABOVE ? MARGIN_STEP_COARSE : MARGIN_STEP_FINE;
+}
+
+void nudgeMargin(int direction) {
+  int before = touchMargin;
+  touchMargin += (direction < 0 ? -stepSize() : stepSize());
+  if (touchMargin < MARGIN_MIN) touchMargin = MARGIN_MIN;
+  if (touchMargin > MARGIN_MAX) touchMargin = MARGIN_MAX;
+
+  if (touchMargin == before) {                    // against an end stop
+    if (serialEnabled) {
+      Serial.print(F("!! margin already at the "));
+      Serial.print(before <= MARGIN_MIN ? F("MINIMUM (most sensitive)")
+                                        : F("MAXIMUM (least sensitive)"));
+      Serial.print(F(" = ")); Serial.println(before);
+    }
+    soundLimit();
+    return;
+  }
+  soundTick();
+  if (serialEnabled) {
+    Serial.print(F(">>> margin=")); Serial.print(touchMargin);
+    Serial.print(direction < 0 ? F("  (more sensitive)") : F("  (less sensitive)"));
+    Serial.print(F("  thresholds now ")); Serial.print(thresholdFor(0));
+    Serial.print(F("..")); Serial.println(thresholdFor(KEY_COUNT - 1));
+  }
+  showMarginOnBar();
+}
+
+// SENS_UP is a plain digital pin; SENS_DOWN is A7, analog-in only, so it is read
+// with analogRead against its external pull-up.
+static bool sensUpDown()   { return digitalRead(SENS_UP) == LOW; }
+static bool sensDownDown() { return analogRead(SENS_DOWN) < 512; }
+
+void serviceButtons() {
+  unsigned long now = millis();
+
+  // Both buttons held together = learn the margin from the lemon you are holding.
+  if (sensUpDown() && sensDownDown()) {
+    if (bothHeldSince == 0) {
+      bothHeldSince = now;
+    } else if (now - bothHeldSince > RECAL_HOLD_MS) {
+      bothHeldSince = 0;
+      learnFromTouch();
+      for (uint8_t b = 0; b < 2; b++) {           // swallow this press
+        buttons[b].pressed = true;
+        buttons[b].nextRepeat = now + REPEAT_DELAY_MS * 4;
+      }
+    }
+    return;
+  }
+  bothHeldSince = 0;
+
+  for (uint8_t b = 0; b < 2; b++) {
+    Button &btn = buttons[b];
+    bool down = (b == 0) ? sensUpDown() : sensDownDown();
+
+    if (down != btn.pressed) {
+      if (now - btn.changedAt < BUTTON_DEBOUNCE_MS) continue;    // bounce
+      btn.pressed = down;
+      btn.changedAt = now;
+      if (down) {
+        nudgeMargin(btn.direction);
+        btn.nextRepeat = now + REPEAT_DELAY_MS;
+      }
+    } else if (down && now >= btn.nextRepeat) {
+      nudgeMargin(btn.direction);
+      btn.nextRepeat = now + REPEAT_EVERY_MS;
+    }
+  }
+}
+#endif  // !VELXIO_EMULATION
+
+// The ten-LED bar doubles as a SENSITIVITY METER: how many LEDs are lit shows
+// where the margin sits between MARGIN_MIN and 20 (the useful range on fruit),
+// so the knob can be read across the room without a serial monitor.
+void showMarginOnBar() {
+  int lit = ((long) touchMargin * LED_COUNT) / 20;
+  if (lit < 1) lit = 1;
+  if (lit > LED_COUNT) lit = LED_COUNT;
+  for (uint8_t i = 0; i < LED_COUNT; i++) {
+    digitalWrite(LED_PINS[i], i < lit ? HIGH : LOW);
+  }
+  ledMeterUntil = millis() + LED_METER_MS;
+}
+
+
+//################################
 // Clear the per-round state: progress, last note, edge latches, and the bar.
 void resetBoard() {
   currentStep = 0;
   pressedNote = 0;
   lastCountedKey = -1;   // a new round may legitimately open with the key that
                          // ended the last one
+  lastSoundedKey = -1;
   stopKeyTone();
   activeKey = -1;
   allLedsOff();
@@ -590,9 +926,109 @@ void resetBoard() {
 
 void logGame() {
   if (serialEnabled) {
-    Serial.print(F("Game "));
-    Serial.println(game);
+    Serial.print(F("Level "));
+    Serial.println(level);
   }
+}
+
+
+//################################
+//#######  SOUND (UI) ############
+//################################
+// Every non-key sound is a Super Mario Bros effect now (2026-07-29): coins while
+// calibrating, a power-up when it is ready, 1-up when the smart adjust learns
+// something, the death rattle when it cannot. The tables and their provenance
+// live in include/mario_sfx.h and docs/MARIO-SOUNDS.md.
+
+// One tone, both builds. The browser needs the note-off written by hand (Velxio
+// ends a note only on a Timer2 duty->0 event and noTone() leaves OCR2A set).
+void playTone(int freq, int ms) {
+  if (ms <= 0) return;
+  if (freq <= 0) {            // a rest: silence for the stated time
+    delay(ms);
+    return;
+  }
+  tone(BUZZER, freq);
+  delay(ms);
+  noTone(BUZZER);
+#ifdef VELXIO_EMULATION
+  OCR2A = 0;
+#endif
+}
+
+// Stop a sounding key note RIGHT NOW, without waiting for the lemon to be let go.
+// For moments where the player must keep touching (the smart adjust samples while
+// they hold a key) and the buzzer has to be quiet anyway — a tone playing during a
+// measurement rides into the reading through the shared ground.
+void hushBuzzer() {
+  stopKeyTone();
+  activeKey = -1;
+  delay(SFX_GAP_MS);
+}
+
+// Let a sounding key note FINISH first — its minimum length, and the player's
+// release (capped by SUSTAIN_CAP_MS so a stuck key cannot hang the game) — then a
+// short silence. This is what a win or a miss owes the note that caused it.
+void silenceKeyNote() {
+  if (activeKey >= 0) {
+    waitKeyRelease(activeKey);     // sustains, then stops it
+  } else {
+    stopKeyTone();
+  }
+  delay(SFX_GAP_MS);
+}
+
+// Play a PROGMEM {frequency, milliseconds} table until its {0,0} terminator.
+// With lightShow the LED bar steps along with the notes, so a win is visible as
+// well as audible. Always leaves SFX_TAIL_MS of silence behind it.
+void playSfx(const int *table, bool lightShow) {
+  if (!UI_SOUNDS) return;
+  uint8_t led = 0;
+  for (uint8_t i = 0; i < 96; i += 2) {
+    int freq = (int) pgm_read_word(&table[i]);
+    int ms   = (int) pgm_read_word(&table[i + 1]);
+    if (freq == 0 && ms == 0) break;         // terminator
+    if (lightShow) {
+      allLedsOff();
+      digitalWrite(LED_PINS[led % LED_COUNT], HIGH);
+      led++;
+    }
+    // Articulate: sound most of the note, then a sliver of silence, so adjacent
+    // notes — especially two of the same pitch — are heard as two notes.
+    int sounding = ms - SFX_ARTICULATION_MS;
+    if (freq == 0 || sounding < 20) {
+      playTone(freq, ms);                 // rests and very short blips stay as-is
+    } else {
+      playTone(freq, sounding);
+      delay(ms - sounding);
+    }
+  }
+  if (lightShow) allLedsOff();
+  delay(SFX_TAIL_MS);              // never butt two effects up against each other
+}
+
+// ── the UI vocabulary, in Mario ────────────────────────────────────────────
+void soundCalStart()   { playSfx(sfxFireball); }   // "starting, hands off"
+void soundCalStep()    { playSfx(sfxCoin); }       // one coin per key measured
+void soundCalDone()    { playSfx(sfxPowerUp); }    // "ready" — the mushroom sweep
+void soundLimit()      { playSfx(sfxBump); }       // head on a block: end stop
+void soundLearnBlip()  { playSfx(sfxCoin); }       // smart adjust, still listening
+void soundLearnOk()    { playSfx(sfxOneUp); }      // a genuine gain: 1-up
+void soundLearnFail()  { playSfx(sfxDeath); }      // it did not work
+void soundStuck()      { playSfx(sfxFireball); }   // odd, but carry on
+
+// The sensitivity tick is the coin's grace note alone — the shortest sound in the
+// set — with its PITCH TRACKING THE MARGIN, so holding a button sweeps a
+// glissando and you can hear where the setting sits.
+void soundTick() {
+  if (!UI_SOUNDS) return;
+  // Turning the sensitivity down while holding a lemon is normal; chopping that
+  // lemon's note in half to acknowledge the press is not. The LED meter still
+  // shows the change, so stay quiet instead.
+  if (activeKey >= 0) return;
+  int m = touchMargin > 60 ? 60 : touchMargin;
+  int freq = NOTE_B5 + (long) (60 - m) * (NOTE_E7 - NOTE_B5) / (60 - MARGIN_MIN);
+  playTone(freq, UI_TICK_MS);
 }
 
 
@@ -635,19 +1071,23 @@ void waitKeyRelease(int key) {
   activeKey = -1;
 }
 
-// Short low "you missed" tone.
+// Short low "you missed" tone. Well below every UI chirp and every key note, so
+// it reads as "the game says no" rather than as a state beep.
 void wrongTone() {
-#ifdef VELXIO_EMULATION
-  emuTone(NOTE_C2, WRONG_TONE_MS);
-#else
-  tone(BUZZER, NOTE_C2, WRONG_TONE_MS);
-  delay(WRONG_TONE_MS + 20);
-  noTone(BUZZER);
-#endif
+  playTone(NOTE_C2, WRONG_TONE_MS);
 }
 
 void playVictory() {
-  if (game == 1) {
+  silenceKeyNote();          // in case we got here without the win path's hush
+  if (level == 3) {
+    playSfx(themeUnderwater, true);
+    return;
+  }
+  if (level == 4) {
+    playSfx(themeStarman, true);
+    return;
+  }
+  if (level == 1) {
     playSong(marioNotes, marioTempo, MARIO_VICTORY_FROM, MARIO_LEN);
   } else {
     playSong(underworldNotes, underworldTempo, UNDER_VICTORY_FROM, UNDER_LEN);
@@ -687,9 +1127,9 @@ void buzz(int targetPin, long frequency, long length) {
   }
 #ifdef VELXIO_EMULATION
   // Bit-banged toggling is invisible to Velxio's buzzer part (it listens to
-  // Timer2 duty, not raw edges) — route through emuTone instead.
+  // Timer2 duty, not raw edges) — route through playTone instead.
   (void) targetPin;
-  emuTone(frequency, length);
+  playTone((int) frequency, (int) length);
   return;
 #endif
   long delayValue = 1000000 / frequency / 2;    // half-period in microseconds

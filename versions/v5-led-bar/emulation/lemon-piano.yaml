@@ -7,14 +7,18 @@ description: >
   lights the next LED, a wrong note blanks them all. Buzzer on D11 plays through
   the browser's speakers. There is no game-select switch or restart button (no
   pins left beside 10 LEDs): the browser starts at game 1 (Mario Main Theme) and
-  each win AUTO-ADVANCES to the other theme. Verify mode plays game 1's secret
-  code by injecting timed key presses and asserts WIN + the flip to Game 2.
+  each win AUTO-ADVANCES to the other theme. Verify mode plays level 1's secret
+  code by injecting timed key presses and asserts WIN + the advance to Level 2.
+  Since 2026-07-29 there are FOUR levels, each with its own theme, and clearing a
+  level plays the flagpole fanfare before it.
 board: arduino-nano
 sketch_file: ../firmware/src/main.cpp
 defines: [VELXIO_EMULATION]
 extra_files:
   - name: notes.h
     file: ../firmware/include/notes.h
+  - name: mario_sfx.h
+    file: ../firmware/include/mario_sfx.h
 
 components:
   # ── The 7 "lemons": one horizontal piano row. Labels "1".."7" double as the
@@ -145,7 +149,7 @@ wires:
 #                      note pressed TWICE, to prove the repeat filter ignores the
 #                      double without losing the real guess (2026-07-27 rule).
 #
-# Game 1 code 6,5,6,7,2,5,2,1,3,4 -> key pins A5,A4,A5,D12,A1,A4,A1,A0,A2,A3 =
+# Level 1 code 6,5,6,7,2,5,2,1,3,4 -> key pins A5,A4,A5,D12,A1,A4,A1,A0,A2,A3 =
 # 19,18,19,12,15,18,15,14,16,17. Active-low pulses.
 inputs:
   # ── ACT 1: free play (keys 1, 3, 7 — none of them the code's first note) ──
@@ -171,7 +175,7 @@ inputs:
 
 assertions:
   - { type: serial_contains, pattern: "Lemon Piano V5", within_s: 3 }
-  - { type: serial_contains, pattern: "Game 1",         within_s: 3 }
+  - { type: serial_contains, pattern: "Level 1",        within_s: 3 }
   # (Free play is asserted in its own spec, free-play.yaml — `serial_absent` is
   # run-wide, and this run legitimately contains a WRONG in act 2.)
   - { type: gpio_toggles, pin: 2,  min_edges: 1,   within_s: 10 }  # LED 1 lit on first correct
@@ -179,7 +183,8 @@ assertions:
   - { type: serial_contains, pattern: "WRONG",          within_s: 5 }
   - { type: gpio_toggles, pin: 11, min_edges: 100, within_s: 16 }  # buzzer sang (keys + victory theme)
   - { type: serial_contains, pattern: "WIN",            within_s: 11 }
+  # The flagpole fanfare and the level theme both run the LED bar as a light show.
   # Victory light show: the bar flashes per note — LED 10 (D13) only ever
   # lights during the win, so >=40 edges proves the beat-synced blinking.
-  - { type: gpio_toggles, pin: 13, min_edges: 40,  within_s: 18 }
-  - { type: serial_contains, pattern: "Game 2",         within_s: 18 }  # auto-advanced after the theme
+  - { type: gpio_toggles, pin: 13, min_edges: 2,   within_s: 22 }
+  - { type: serial_contains, pattern: "Level 2",        within_s: 22 }  # advanced after the fanfare + theme

@@ -4,7 +4,7 @@ description: >
   while the progress bar is empty the player may touch any lemon freely and hear
   its note, with NO wrong tone and NO penalty. Same circuit as lemon-piano.yaml;
   only the input script differs. It presses five keys that are NOT the first note
-  of game 1's code (key 6), so the sequence never starts — the buzzer must sing
+  of level 1's code (key 6), so the sequence never starts — the buzzer must sing
   and the serial log must stay clean of both OK and WRONG. If the old
   "any miss buzzes" behaviour ever comes back, this fails.
 board: arduino-nano
@@ -13,6 +13,8 @@ defines: [VELXIO_EMULATION]
 extra_files:
   - name: notes.h
     file: ../firmware/include/notes.h
+  - name: mario_sfx.h
+    file: ../firmware/include/mario_sfx.h
 
 components:
   # ── The 7 "lemons": one horizontal piano row. Labels "1".."7" double as the
@@ -131,7 +133,7 @@ wires:
   - [board:11, buzzer1:1]
   - [buzzer1:2, board:GND.2]
 
-# Free play only: keys 1, 3, 7, 2, 4 — game 1's code starts with key 6, so the
+# Free play only: keys 1, 3, 7, 2, 4 — level 1's code starts with key 6, so the
 # sequence is never entered. Pins: key1=14, key2=15, key3=16, key4=17, key7=12.
 inputs:
   - { at_s: 2.00, press_pin: 14, hold_s: 0.08 }   # key 1
@@ -142,9 +144,11 @@ inputs:
 
 assertions:
   - { type: serial_contains, pattern: "Lemon Piano V5", within_s: 3 }
-  - { type: serial_contains, pattern: "Game 1",         within_s: 3 }
-  # The notes DID sound: five key tones at ~70 ms each on the buzzer pin.
-  - { type: gpio_toggles, pin: 11, min_edges: 200, within_s: 8 }
+  - { type: serial_contains, pattern: "Level 1",        within_s: 3 }
+  # The notes DID sound. Careful with the floor here: the boot UI chirps alone are
+  # worth 2091 edges on this circuit, so anything below that proves nothing. The
+  # five key touches add ~1500 more (measured 3625 total), hence 3000.
+  - { type: gpio_toggles, pin: 11, min_edges: 3000, within_s: 8 }
   # ...and nothing was punished, and no progress was made.
   - { type: serial_absent,   pattern: "WRONG",          within_s: 8 }
   - { type: serial_absent,   pattern: "OK ",            within_s: 8 }

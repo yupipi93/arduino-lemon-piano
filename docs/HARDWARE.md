@@ -9,6 +9,7 @@ shared reference images. Per-board pin maps and BOMs live with their version:
 | V0 — buzzer rig | [../versions/v0-buzzer/HARDWARE.md](../versions/v0-buzzer/HARDWARE.md) |
 | V1 — banana piano | [../versions/v1-banana-piano/HARDWARE.md](../versions/v1-banana-piano/HARDWARE.md) |
 | V2 — keyboard test | [../versions/v2-keyboard-test/HARDWARE.md](../versions/v2-keyboard-test/HARDWARE.md) |
+| V2.5 — live threshold | [../versions/v2.5-threshold-buttons/HARDWARE.md](../versions/v2.5-threshold-buttons/HARDWARE.md) |
 | V3 — game prototype | [../versions/v3-game-prototype/HARDWARE.md](../versions/v3-game-prototype/HARDWARE.md) |
 | V4 — water pump | [../versions/v4-water-pump/HARDWARE.md](../versions/v4-water-pump/HARDWARE.md) |
 | V4.5 — margin buttons | [../versions/v4.5-margin-buttons/HARDWARE.md](../versions/v4.5-margin-buttons/HARDWARE.md) |
@@ -118,6 +119,14 @@ LED lit per note so you can see the firmware running even when you hear nothing.
 Its [HARDWARE.md](../versions/v0-buzzer/HARDWARE.md) has the ordered checklist
 (passive vs active buzzer, polarity, `tone()` vs `buzz()`, accidental emulation
 build on D11).
+
+## The music
+
+Every melody and sound effect the project plays — the four level themes, the coin,
+power-up, 1-up, death, flagpole fanfare and ending melody — is catalogued with its
+note data and its **provenance** in [MARIO-SOUNDS.md](MARIO-SOUNDS.md). Sounds are
+tagged there as sourced verbatim, transcribed from a cited tab, or reconstructed
+from a description, because the accuracy genuinely differs between them.
 
 ## Shared reference images
 

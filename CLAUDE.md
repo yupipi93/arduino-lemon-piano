@@ -15,6 +15,10 @@ all of them active — `versions/v0-buzzer` … `versions/v5-led-bar`.
   version whose board it runs on. Full checklist in `docs/VERSIONING.md`.
 - **Never delete or archive a version.** Every version must keep building. When
   branching a new one, **copy** the closest existing version, never move it.
+- **V2.5 (`versions/v2.5-threshold-buttons/`) is the touch-tuning instrument**:
+  V2's keyboard plus two buttons that move the touch threshold live, with a serial
+  readout of all seven channels against it. Reach for it when touches register
+  wrongly or not at all.
 - **V0 (`versions/v0-buzzer/`) is the diagnostic board**: an ATmega328 + one
   passive buzzer on D8, firmware that plays a scale forever (plus a
   `-DUSE_BUZZ` env for the bit-banged path). Reach for it when the sound is
@@ -107,5 +111,8 @@ python3 tools/wiring_diagrams.py v4.5       # one
 - `docs/VERSIONING.md` — the rule + the checklist for adding a version
 - `docs/HARDWARE.md` — shared fundamentals (touch physics, the V3→V4 polarity
   flip, common parts); per-board pin maps live in `versions/*/HARDWARE.md`
+- `docs/MARIO-SOUNDS.md` — every Mario melody/SFX with note data and provenance
+  tags (sourced / transcribed / reconstruction). Keep it in step with any
+  version's `firmware/include/mario_sfx.h`, and cite a source for new sounds
 - `tools/wiring_diagrams.py` — every version's diagram contract
 - `TODO.md` — backlog · `CHANGELOG.md` — append-only history

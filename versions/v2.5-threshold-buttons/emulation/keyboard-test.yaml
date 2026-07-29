@@ -1,0 +1,161 @@
+name: lemon-piano-v2-5
+description: >
+  Interactive Velxio emulation of the Lemon Piano V2.5 bench rig: the 2019
+  keyboard test with a LIVE SENSITIVITY knob. Seven clickable keys (1-7), two
+  buttons that make the keys more/less sensitive while it runs, and the buzzer.
+  The knob is a MARGIN over each key's own tracked baseline (threshold =
+  baseline -/+ margin), not an absolute reading, so the number means the same
+  thing regardless of drift. Holding both buttons for 1 s recalibrates. V2.5's
+  sensing polarity is the 2019 one — a pin idles HIGH and a touch drags it DOWN —
+  which is exactly what a pushbutton + pull-up does here, so keys 1-6 need no
+  shim: analogRead sees ~1023 idle and ~0 pressed. Three things move in the browser
+  build (../firmware/src/main.cpp, -DVELXIO_EMULATION): the buzzer goes to D11 —
+  which MUST be D11, because Velxio ends a note only on a Timer2 duty->0 event and
+  the explicit note-off is `OCR2A = 0`, i.e. Timer2/OC2A = D11 (on any other pin
+  the note beeps forever: the 2026-07-13 endless-beep bug) — THRESHOLD - moves to
+  D7 to free D11, and key 7 becomes a digital button on D12 (avr8js has no A6).
+  The firmware also holds off until every input reads idle-high, because until the
+  first SPICE solve they all read LOW = "everything pressed". Everything is active-low with an external 10k pull-up,
+  because Velxio does not model the AVR's internal pull-ups — without one, a pin
+  floats near 0 V in the solver and reads permanently pressed.
+board: arduino-nano
+sketch_file: ../firmware/src/main.cpp
+defines: [VELXIO_EMULATION]
+
+components:
+  # ── The 7 keys: one piano row. Labels "1".."7" double as the PC-keyboard
+  # mapping (frontend patch 0002 presses the button labelled with that digit).
+  - { id: key1, type: pushbutton, x: 60,  y: 430, properties: { color: "yellow", label: "1" } }
+  - { id: key2, type: pushbutton, x: 190, y: 430, properties: { color: "yellow", label: "2" } }
+  - { id: key3, type: pushbutton, x: 320, y: 430, properties: { color: "yellow", label: "3" } }
+  - { id: key4, type: pushbutton, x: 450, y: 430, properties: { color: "yellow", label: "4" } }
+  - { id: key5, type: pushbutton, x: 580, y: 430, properties: { color: "yellow", label: "5" } }
+  - { id: key6, type: pushbutton, x: 710, y: 430, properties: { color: "yellow", label: "6" } }
+  - { id: key7, type: pushbutton, x: 840, y: 430, properties: { color: "yellow", label: "7" } }
+  # Pull-ups (10k to 5V), one per key column: pin 1 = left = 5V bus, pin 2 =
+  # right = the key node. REQUIRED — see the description.
+  - { id: rp1, type: resistor, x: 36,  y: 310, properties: { value: "10000" } }
+  - { id: rp2, type: resistor, x: 166, y: 310, properties: { value: "10000" } }
+  - { id: rp3, type: resistor, x: 296, y: 310, properties: { value: "10000" } }
+  - { id: rp4, type: resistor, x: 426, y: 310, properties: { value: "10000" } }
+  - { id: rp5, type: resistor, x: 556, y: 310, properties: { value: "10000" } }
+  - { id: rp6, type: resistor, x: 686, y: 310, properties: { value: "10000" } }
+  - { id: rp7, type: resistor, x: 816, y: 310, properties: { value: "10000" } }
+  # ── The two threshold buttons, on their own row well clear of the keyboard.
+  - { id: btn_up,   type: pushbutton, x: 1080, y: 430, properties: { color: "green", label: "T+" } }
+  - { id: btn_down, type: pushbutton, x: 1240, y: 430, properties: { color: "red",   label: "T-" } }   # on D7 here (D11 = buzzer)
+  - { id: rp_up,   type: resistor, x: 1056, y: 310, properties: { value: "10000" } }
+  - { id: rp_down, type: resistor, x: 1216, y: 310, properties: { value: "10000" } }
+  # ── Buzzer, far right and clear of everything else.
+  - { id: buzzer1, type: buzzer, x: 1420, y: 300, properties: {} }
+  # ── Calibration lamp: on the real board this is the Nano's on-board LED (D13);
+  # the browser board has no visible on-board LED, so the spec adds a real one.
+  - { id: r_cal,   type: resistor, x: 1420, y: 480, properties: { value: "220" } }
+  - { id: led_cal, type: led,      x: 1580, y: 465, properties: { color: "yellow", label: "CALIBRATING" } }
+
+wires:
+  # Key signal columns: board pin -> pull-up bottom (the key node) -> key leg.
+  - [board:A0, rp1:2]
+  - [rp1:2, key1:1.l]
+  - [board:A1, rp2:2]
+  - [rp2:2, key2:1.l]
+  - [board:A2, rp3:2]
+  - [rp3:2, key3:1.l]
+  - [board:A3, rp4:2]
+  - [rp4:2, key4:1.l]
+  - [board:A4, rp5:2]
+  - [rp5:2, key5:1.l]
+  - [board:A5, rp6:2]
+  - [rp6:2, key6:1.l]
+  - [board:12, rp7:2]          # key 7: A6 has no digital pin in the browser AVR
+  - [rp7:2, key7:1.l]
+  # Threshold buttons, same active-low pattern.
+  - [board:10, rp_up:2]
+  - [rp_up:2, btn_up:1.l]
+  - [board:7, rp_down:2]      # THRESHOLD - on D7: D11 is the buzzer in this build
+  - [rp_down:2, btn_down:1.l]
+  # 5V bus: chain along the resistor tops, one drop to the board.
+  - [board:5V, rp1:1]
+  - [rp1:1, rp2:1]
+  - [rp2:1, rp3:1]
+  - [rp3:1, rp4:1]
+  - [rp4:1, rp5:1]
+  - [rp5:1, rp6:1]
+  - [rp6:1, rp7:1]
+  - [rp7:1, rp_up:1]
+  - [rp_up:1, rp_down:1]
+  # GND bus: daisy-chain along the bottom legs, one drop to the board.
+  - [board:GND.1, key1:2.l]
+  - [key1:2.r, key2:2.l]
+  - [key2:2.r, key3:2.l]
+  - [key3:2.r, key4:2.l]
+  - [key4:2.r, key5:2.l]
+  - [key5:2.r, key6:2.l]
+  - [key6:2.r, key7:2.l]
+  - [key7:2.r, btn_up:2.l]
+  - [btn_up:2.r, btn_down:2.l]
+  # Buzzer on D11 — the note-off is `OCR2A = 0` (Timer2/OC2A), so it has to be
+  # this pin. See the description and CHANGELOG.md 2026-07-13.
+  - [board:11, buzzer1:1]
+  - [buzzer1:2, board:GND.2]
+  # Calibration lamp on D13.
+  - [board:13, r_cal:1]
+  - [r_cal:2, led_cal:A]
+  - [led_cal:C, board:GND.2]
+
+# Headless script: prove the notes AND the live threshold. Key pins: key1=A0=14,
+# key2=A1=15, key3=A2=16, key7=D12=12; threshold + = D10, - = D7 (D11 = buzzer).
+inputs:
+  # ── notes ────────────────────────────────────────────────────────────────
+  - { at_s: 2.00, press_pin: 14, hold_s: 0.15 }   # key 1 -> note E6
+  - { at_s: 2.60, press_pin: 15, hold_s: 0.15 }   # key 2 -> note G6
+  - { at_s: 3.20, press_pin: 12, hold_s: 0.15 }   # key 7 -> note G7 (digital)
+  # ── the knob, one count at a time (steps are 1 below margin 20) ───────────
+  - { at_s: 4.00, press_pin: 7, hold_s: 0.10 }    # less sensitive: 4 -> 5
+  - { at_s: 4.60, press_pin: 7, hold_s: 0.10 }    # 5 -> 6
+  - { at_s: 5.20, press_pin: 10, hold_s: 0.10 }   # more sensitive: 6 -> 5
+  - { at_s: 6.00, press_pin: 16, hold_s: 0.15 }   # key 3 still plays -> note A6
+  # ── END STOP: hold "more sensitive" until it bottoms out at MARGIN_MIN and
+  # keeps being pressed -> the limit message and its bonk.
+  - { at_s: 6.80, press_pin: 10, hold_s: 2.50 }
+  # ── SMART ADJUST: hold key 4 and, while it is held, hold BOTH buttons >1 s.
+  # The firmware should pick key 4 as the touched channel and learn from it.
+  - { at_s: 10.00, press_pin: 17, hold_s: 3.00 }  # key 4 held throughout
+  - { at_s: 10.60, press_pin: 10, hold_s: 1.60 }  # both buttons together
+  - { at_s: 10.60, press_pin: 7,  hold_s: 1.60 }
+  # ── a different key still sounds afterwards (the per-key lock released too)
+  - { at_s: 14.00, press_pin: 15, hold_s: 0.15 }  # key 2 -> note G6
+
+assertions:
+  - { type: serial_contains, pattern: "Lemon Piano V2.5", within_s: 3 }
+  # Boot auto-calibration: LED lamp, per-key noise measurement, derived margin.
+  - { type: serial_contains, pattern: "HANDS OFF THE FRUIT",  within_s: 6 }
+  - { type: serial_contains, pattern: "key 1 baseline=1023 noise=", within_s: 6 }
+  - { type: serial_contains, pattern: "auto margin=4",        within_s: 6 }
+  - { type: gpio_toggles, pin: 13, min_edges: 2, within_s: 6 }   # lamp on then off
+  # The keys sound and report which note and what reading triggered them.
+  - { type: serial_contains, pattern: "KEY 1 E6",         within_s: 4 }
+  - { type: serial_contains, pattern: "KEY 2 G6",         within_s: 4 }
+  - { type: serial_contains, pattern: "KEY 7 G7",         within_s: 5 }
+  - { type: serial_contains, pattern: "Inputs idle",      within_s: 5 }  # boot guard ran
+  - { type: gpio_toggles, pin: 11, min_edges: 50, within_s: 6 }   # buzzer sang
+  # The knob really moves, both ways, and says which way it went.
+  - { type: serial_contains, pattern: ">>> margin=5  (less sensitive)", within_s: 6 }
+  - { type: serial_contains, pattern: ">>> margin=6  (less sensitive)", within_s: 7 }
+  - { type: serial_contains, pattern: ">>> margin=5  (more sensitive)", within_s: 8 }
+  # ...and the keyboard still works afterwards.
+  - { type: serial_contains, pattern: "KEY 3 A6",         within_s: 9 }
+  # SMART ADJUST ran, found the held key and learned from it.
+  - { type: serial_contains, pattern: "SMART ADJUST",       within_s: 14 }
+  - { type: serial_contains, pattern: "strongest: key 4",   within_s: 15 }
+  - { type: serial_contains, pattern: "learned margin=",    within_s: 15 }
+  # A different key still sounds after all that.
+  - { type: serial_contains, pattern: "KEY 2 G6",           within_s: 17 }
+  # The knob reports and sounds its end stop instead of silently ignoring you.
+  - { type: serial_contains, pattern: "already at the MINIMUM", within_s: 11 }
+  # The buzzer is still resting silent at the very end, after all the UI chirps.
+  - { type: gpio_state, pin: 11, state: 0, within_s: 20 }
+  # ENDLESS-BEEP REGRESSION (2026-07-13, reintroduced on 2026-07-27 by putting the
+  # emulated buzzer on D9): every note must END. The buzzer pin has to be resting
+  # LOW well after the last note, which is only true if `OCR2A = 0` actually
+  # cleared Timer2 — i.e. only if the buzzer is on D11.

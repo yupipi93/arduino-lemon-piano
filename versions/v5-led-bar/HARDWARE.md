@@ -13,49 +13,63 @@ settle.
 
 ## Pin map (Arduino Nano)
 
+Rewired on 2026-07-28 for buildability: **the bar is one unbroken ascending run,
+LED n on pin n+1**, so you can wire it left to right without looking anything up.
+
 | Pin | Direction | Role |
 |---|---|---|
-| A0–A6 | analog in | 7 lemon keys, left → right, 220 Ω in series (touch sensing) |
-| A7 | analog in | **GAME SELECT** — 5 V ⇒ game 1 (Mario Main), GND ⇒ game 2 (Underworld). Read at boot/restart; sets the *starting* game |
-| D2, D3, D4, D5, D6 | out | **green LEDs 1–5** of the progress bar |
-| D7 | in | **RESTART** button (active-HIGH) — re-reads game select, recalibrates, blanks the bar |
-| D8 | out | **passive buzzer** (`tone()` + bit-banged `buzz()`) |
-| D9, D10, D11, D12, D13 | out | **green LEDs 6–10** of the progress bar |
-| 5V | — | hand-held alligator clip (the player closes the circuit) |
+| A0–A6 | analog in | 7 lemon keys, each with a **220 Ω pull-up to +5 V**; a touch drags the pin **down** |
+| **D2 … D11** | out | **green LEDs 1 … 10** — LED n on pin n+1, in order |
+| **D12** | in | **SENS +** button (more sensitive) — to GND on the internal pull-up |
+| **D13** | out | **passive buzzer** — key notes, victory themes and UI chirps |
+| A7 | analog in | **SENS −** button (less sensitive) — to GND with an **external 10 kΩ pull-up** (A7 has no internal one); read as `analogRead(A7) < 512` |
+| GND | — | hand-held alligator clip (**the player holds GND**) |
+
+### Why the buzzer is on D13 and the button on D12
+
+D13 carries the Nano's **on-board LED through ~1 kΩ**. That load fights a ~30 kΩ
+internal pull-up, so a button there can read as *permanently pressed*. A buzzer
+does not care about the extra load — it just gets a free blink-with-the-audio
+indicator — so D13 is the buzzer's pin and D12 takes the button.
+
+Do not put a button on D0/D1 either: those are the UART, i.e. the serial monitor
+this rig is tuned with and the pins avrdude uses to upload. The spare I/O on this
+board is the analog side (A7), not the UART.
 
 This uses **every I/O line** on the Nano: A0–A7 (8) + D2–D13 (12) = 20, with
 D0/D1 left for the UART.
 
-### Why game select moved to A7
+### Why one button had to be an analog pin
 
-Ten LEDs need ten output pins, so game select had to leave the digital block. A6
-and A7 are **analog-input-only** on the Nano (no digital buffer, no internal
-pull-up), so:
+Ten LEDs plus the buzzer take eleven of the twelve usable digital lines (D2–D13),
+leaving exactly **one** — so the second button had to go on **A7**. A6 and A7 are
+analog-input-only on the Nano (no digital buffer, **no internal pull-up**), so:
 
-- **A6** is fine as key 7 — it is an analog read anyway.
-- **A7** must be actively driven: an SPDT switch between 5 V and GND with the
-  wiper on A7, or a switch to 5 V plus a 10 kΩ pulldown. The firmware reads
-  `analogRead(A7) > 512`. ⚠️ Unconfirmed on real hardware (TODO #15).
+- **A6** is fine as key 7 — it is an analog read anyway;
+- **A7** works as a button only with an **external 10 kΩ pull-up** to +5 V and the
+  button pulling it to GND, read with `analogRead(A7) < 512`. It is the one part on
+  this board beyond keys, LEDs, resistors and buttons.
+- **D12** needs nothing: `INPUT_PULLUP` plus a button to GND.
 
-A classic **Uno has no A6/A7**, which is why V5 dropped the `uno` build env.
+A classic **Uno has no A6/A7**, which is why V5 has no `uno` build env.
 
 ## Bill of materials
 
 | Component | Qty | Notes |
 |---|---|---|
 | **Arduino Nano** (ATmega328P) | 1 | needs A6 **and** A7 → an Uno won't do |
-| Lemons 🍋 + alligator clips | 7 + 8 | 7 keys on A0–A6 + 1 hand-held 5 V clip |
+| Lemons 🍋 + alligator clips | 7 + 8 | 7 keys on A0–A6 + 1 hand-held **GND** clip |
 | **Green LEDs** | **10** | the progress bar |
-| 220 Ω resistors | 7 + 10 | 7 key series resistors + one per LED |
+| 220 Ω resistors | 7 + 10 | 7 key **pull-ups** (pin → +5 V) + one per LED |
+| 10 kΩ resistor | 1 | pull-up for the SENS − button on A7 |
 | Passive buzzer | 1 | D8 |
-| SPDT switch | 1 | GAME SELECT on A7 (or a switch to 5 V + 10 kΩ pulldown) |
-| Push button | 1 | RESTART, D7, to +5 V with a 10 kΩ pulldown |
+| Push buttons | **2** | SENS + on D7 (to GND) · SENS − on A7 (to GND) |
 | Breadboard + jumpers | 1 | |
 
 ## The ten-LED progress bar
 
-`LED_PINS[0..9] = {D2,D3,D4,D5,D6,D9,D10,D11,D12,D13}`, each with its own 220 Ω
-series resistor to a common GND:
+`LED_PINS[0..9] = {D2,D3,D4,D5,D6,D7,D8,D9,D10,D11}` — LED n on pin n+1 — each
+with its own 220 Ω series resistor to a common GND:
 
 ```
  Dn ──[220 Ω]──▶|── GND        (LED n, anode to the pin)
@@ -93,12 +107,12 @@ Standard indicator LEDs (Vf ≈ 2 V): 220 Ω gives ~15 mA at 5 V, within the
 ATmega's per-pin limit. All ten lit ≈ 150 mA — fine on USB, but note the
 ATmega328P's 200 mA total-I/O ceiling leaves little headroom for anything else.
 
-## ⚠️ The pull-downs are not optional (measured 2026-07-27)
+## Why the keyboard is pulled UP again (measured 2026-07-27 / 28)
 
-The analog pins **must** have ~1 MΩ to GND each. Without them this build's
-keyboard cannot be read at all — not "reads badly", cannot be read. Measured on
-the real board with a bench sampler (7 channels, 20 Hz, four held touches of
-1.9-32.5 s):
+This board went back to the 2019 arrangement — **220 Ω pull-up per key, player on
+a GND clip** — because the floating +5 V-clip keyboard could not be read at all.
+Not "read badly": measured on the real board with a bench sampler (7 channels,
+20 Hz, four held touches of 1.9–32.5 s):
 
 | Measure | Result |
 |---|---|
@@ -117,17 +131,25 @@ residue plus mains pickup through the player's body. The idle level also drifts
 ~170 counts on a ~25 s cycle, which is ~75 % of the touch margin `calibrate()`
 computes at boot — so boot-time thresholds go stale within seconds.
 
-1 MΩ per pin to GND fixes all of it at once: the ADC gets a source impedance it
-can sample, the idle level is anchored at 0 V, the mains pickup collapses, and
-each key becomes a real divider (body ≈ hundreds of kΩ against 1 MΩ), so one
-channel rises several hundred counts while the other six stay put.
+A 220 Ω pull-up per pin fixes all of it: the ADC gets a source impedance it can
+sample, the idle level is anchored near the rail, the mains pickup collapses, and
+each key becomes a real divider. Measured after the rewire, on this board:
 
-**How to check it worked:** flash the firmware and read the calibration lines at
-9600 baud. Before the pull-downs they look like `A0 baseline=257 noise=76`; after,
-the baselines should sit near 0 with much smaller noise. Symptoms of a board
-without them: `OK n/10` immediately followed by `WRONG` in the same millisecond
-(one finger read as two different keys), touches that register nothing at all, and
-notes that fire with nobody near the fruit.
+```
+  key 1 baseline=1022 noise=1 -> threshold=1018
+  key 7 baseline=1022 noise=1 -> threshold=1018
+auto margin=4  (worst noise 1 x 2, floor 4)
+```
+
+**Idle 1022 with 1 count of noise, on every channel** — against ~250 with 76–104
+counts of noise and 170 counts of drift before. The trade-off is that the signal is
+small: a touch dips the reading only **3–4 counts** (skin ≈ 1 MΩ against 220 Ω),
+which is exactly where the 2019 sketch's `<= 1019` came from. Hence a margin
+measured in single counts, and the sensitivity buttons.
+
+If you want a *large* signal instead of a merely reliable one, a much weaker
+pull-up (~1 MΩ) would turn those 4 counts into hundreds — at the cost of a slower,
+higher-impedance node.
 
 ## Touch sensing
 
@@ -151,7 +173,7 @@ physics and the 2019-vs-2026 polarity table are in
 
 | File | What it shows |
 |---|---|
-| [images/wiring-v5.png](images/wiring-v5.png) | **full V5 wiring** — 7 keys, ten-LED bar, A7 game-select, restart, buzzer |
+| [images/wiring-v5.png](images/wiring-v5.png) | **full V5 wiring** — 7 pulled-up keys + GND clip, the D2–D11 LED run, both sensitivity buttons, buzzer on D13 |
 | [emulation/lemon-piano.yaml](emulation/lemon-piano.yaml) | the verified browser circuit (10 LEDs + 7 keys + buzzer) |
 | [../../docs/images/keyboard-breadboard-nano.png](../../docs/images/keyboard-breadboard-nano.png) | shared Fritzing keyboard stage (still current) |
 
