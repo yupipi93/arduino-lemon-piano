@@ -137,6 +137,12 @@ const int TOUCH_HYSTERESIS = 2;   // a key is released only when it comes back t
 const uint8_t CAL_SAMPLES = 24;               // ~200 ms for all seven keys
 const int NOISE_FACTOR = 2;                   // auto margin = 2 x worst noise
 const int AUTO_MARGIN_MIN = 4;                // ...never tighter than this
+const unsigned long CAL_STEP_PAUSE_MS = 150;  // extra pause per key, after its
+                                  // coin, purely so the progressive 10-LED
+                                  // fill reads as a deliberate count-up rather
+                                  // than a blur (2026-07-29). Doesn't touch
+                                  // CAL_SAMPLES, so measurement quality is
+                                  // unaffected — this is display pacing only.
 const unsigned long BASELINE_EVERY_MS = 100;  // idle-drift tracking interval
 const int BASELINE_DIVISOR = 8;               // baseline += (reading-baseline)/8
 const unsigned long STUCK_MS = 5000;          // stuck-key re-baseline timeout
@@ -513,7 +519,8 @@ void playEndingLoop();
 bool playSfx(const int *table, bool lightShow = false, bool (*checkAbort)() = nullptr);
 void hushBuzzer();
 void silenceKeyNote();
-void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length);
+void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length,
+              uint16_t ledTotal = 0, uint16_t ledOffset = 0);
 void wrongTone();
 void startKeyTone(int note);
 void stopKeyTone();
@@ -808,7 +815,13 @@ void autoCalibrate() {
 
   int worstNoise = 0;
   for (uint8_t i = 0; i < KEY_COUNT; i++) {
-    digitalWrite(LED_PINS[i], HIGH);        // key i is being measured
+    // Progressive fill across all TEN LEDs, not just the seven keys: LED count
+    // scales with measurement progress ((i+1)*LED_COUNT/KEY_COUNT), so the bar
+    // reaches all ten by the last key regardless of there being only seven.
+    uint8_t lit = (uint8_t) (((uint16_t) (i + 1) * LED_COUNT) / KEY_COUNT);
+    for (uint8_t l = 0; l < LED_COUNT; l++) {
+      digitalWrite(LED_PINS[l], l < lit ? HIGH : LOW);
+    }
     long sum = 0;
     int lo = 1023, hi = 0;
     for (uint8_t n = 0; n < CAL_SAMPLES; n++) {
@@ -823,6 +836,7 @@ void autoCalibrate() {
     if (noiseLevel[i] > worstNoise) worstNoise = noiseLevel[i];
     touchedSince[i] = 0;
     soundCalStep();          // a coin per key: audible progress, hands still off
+    delay(CAL_STEP_PAUSE_MS);  // let the LED count-up read as deliberate
   }
 
   int autoMargin = worstNoise * NOISE_FACTOR;
@@ -1237,12 +1251,18 @@ void wrongTone() {
 
 void playVictory() {
   silenceKeyNote();          // in case we got here without the win path's hush
+  const int *notes; const int *tempo; uint8_t from, length;
   switch (level) {
-    case 1: playSong(marioNotes, marioTempo, MARIO_VICTORY_FROM, MARIO_LEN); break;
-    case 2: playSong(underworldNotes, underworldTempo, UNDER_VICTORY_FROM, UNDER_LEN); break;
-    case 3: playSong(starmanNotes, starmanTempo, STARMAN_VICTORY_FROM, STARMAN_LEN); break;
-    default: playSong(castleNotes, castleTempo, CASTLE_VICTORY_FROM, CASTLE_LEN); break;
+    case 1: notes = marioNotes; tempo = marioTempo; from = MARIO_VICTORY_FROM; length = MARIO_LEN; break;
+    case 2: notes = underworldNotes; tempo = underworldTempo; from = UNDER_VICTORY_FROM; length = UNDER_LEN; break;
+    case 3: notes = starmanNotes; tempo = starmanTempo; from = STARMAN_VICTORY_FROM; length = STARMAN_LEN; break;
+    default: notes = castleNotes; tempo = castleTempo; from = CASTLE_VICTORY_FROM; length = CASTLE_LEN; break;
   }
+  // Progressive fill (2026-07-29): the bar counts up from empty to all ten
+  // LEDs across the whole victory tail, instead of flashing the whole bar per
+  // note — ledTotal = the tail's own note count, so the pace scales with
+  // whichever level's theme is playing (26-50 notes -> ~230-580 ms per LED).
+  playSong(notes, tempo, from, length, (uint16_t) (length - from), 0);
 }
 
 // Level-start announce: the first few notes of the CURRENT level's own theme,
@@ -1286,8 +1306,18 @@ void playEndingLoop() {
 }
 
 // Play a melody from PROGMEM, notes[from..length). Blocking on purpose — the
-// game pauses (with all ten LEDs lit) while the winning theme plays.
-void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length) {
+// game pauses while the theme plays. Two light-show modes:
+//   - ledTotal == 0 (default): the WHOLE bar flashes to the beat — lit while
+//     the note sounds, dark in the inter-note gap and during rests. Used by
+//     the level-start intro.
+//   - ledTotal > 0 (2026-07-29): PROGRESSIVE fill instead — the bar
+//     accumulates from empty to all LED_COUNT lit (and stays lit, note to
+//     note) across ledTotal notes total, so it reads as a count-up rather
+//     than a flash. ledOffset lets a caller span the fill across more than
+//     one playSong() call by telling this call how many of ledTotal's steps
+//     already happened elsewhere. Used by the win theme (playVictory()).
+void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length,
+              uint16_t ledTotal, uint16_t ledOffset) {
   noTone(BUZZER);  // silence any lingering key tone before bit-banging the pin
   for (uint8_t i = from; i < length; i++) {
     int frequency = (int) pgm_read_word(&notes[i]);
@@ -1296,14 +1326,18 @@ void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length)
     // note duration: one second / note type (quarter = 1000/4, eighth = 1000/8...)
     int noteDuration = 1000 / tempo;
 
-    // Light show: the whole LED bar flashes to the beat — lit while the note
-    // sounds (buzz blocks for its duration), dark in the inter-note gap and
-    // during rests.
-    if (frequency > 0) {
+    if (ledTotal > 0) {
+      uint16_t step = ledOffset + (uint16_t) (i - from) + 1;
+      uint8_t lit = (uint8_t) (((uint32_t) step * LED_COUNT) / ledTotal);
+      if (lit > LED_COUNT) lit = LED_COUNT;
+      for (uint8_t l = 0; l < LED_COUNT; l++) {
+        digitalWrite(LED_PINS[l], l < lit ? HIGH : LOW);
+      }
+    } else if (frequency > 0) {
       allLedsOn();
     }
     buzz(BUZZER, frequency, noteDuration);
-    allLedsOff();
+    if (ledTotal == 0) allLedsOff();
 
     // a gap of duration + 30% keeps consecutive notes distinct
     delay((unsigned long)(noteDuration * 1.30));

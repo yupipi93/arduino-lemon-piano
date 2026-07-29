@@ -57,19 +57,19 @@ components:
   - { id: rl3,  type: resistor, x: 1010, y: 195, properties: { value: "220" } }
   - { id: led3, type: led,      x: 1180, y: 180, properties: { color: "green", label: "3" } }
   - { id: rl4,  type: resistor, x: 1010, y: 265, properties: { value: "220" } }
-  - { id: led4, type: led,      x: 1180, y: 250, properties: { color: "green", label: "4" } }
+  - { id: led4, type: led,      x: 1180, y: 250, properties: { color: "yellow", label: "4" } }
   - { id: rl5,  type: resistor, x: 1010, y: 335, properties: { value: "220" } }
-  - { id: led5, type: led,      x: 1180, y: 320, properties: { color: "green", label: "5" } }
+  - { id: led5, type: led,      x: 1180, y: 320, properties: { color: "yellow", label: "5" } }
   - { id: rl6,  type: resistor, x: 1010, y: 405, properties: { value: "220" } }
-  - { id: led6, type: led,      x: 1180, y: 390, properties: { color: "green", label: "6" } }
+  - { id: led6, type: led,      x: 1180, y: 390, properties: { color: "yellow", label: "6" } }
   - { id: rl7,  type: resistor, x: 1010, y: 475, properties: { value: "220" } }
-  - { id: led7, type: led,      x: 1180, y: 460, properties: { color: "green", label: "7" } }
+  - { id: led7, type: led,      x: 1180, y: 460, properties: { color: "orange", label: "7" } }
   - { id: rl8,  type: resistor, x: 1010, y: 545, properties: { value: "220" } }
-  - { id: led8, type: led,      x: 1180, y: 530, properties: { color: "green", label: "8" } }
+  - { id: led8, type: led,      x: 1180, y: 530, properties: { color: "orange", label: "8" } }
   - { id: rl9,  type: resistor, x: 1010, y: 615, properties: { value: "220" } }
-  - { id: led9, type: led,      x: 1180, y: 600, properties: { color: "green", label: "9" } }
+  - { id: led9, type: led,      x: 1180, y: 600, properties: { color: "red", label: "9" } }
   - { id: rl10, type: resistor, x: 1010, y: 685, properties: { value: "220" } }
-  - { id: led10,type: led,      x: 1180, y: 670, properties: { color: "green", label: "10" } }
+  - { id: led10,type: led,      x: 1180, y: 670, properties: { color: "red", label: "10" } }
   # Buzzer, far right and clear of the LED column.
   - { id: buzzer1, type: buzzer, x: 1360, y: 40, properties: {} }
 
@@ -166,11 +166,16 @@ wires:
 #
 # Durations were computed from marioTempo/underworldTempo/castleTempo/
 # starmanTempo in main.cpp (playSong: sound note ≈ 2.3×(1000/tempo), rest ≈
-# 1.3×(1000/tempo)), then cross-checked against a real run's serial timestamps
-# (measured 2026-07-29, after the level 3/4 swap + Castle redesign):
-#   Level 1 @2918 ms -> WIN @8673 -> Level 2 @18624 -> WIN @25671 ->
-#   Level 3 @37958 -> WIN @46172 -> Level 4 @53772 -> WIN @64175 ->
-#   ALL LEVELS CLEAR @78913
+# 1.3×(1000/tempo)), then cross-checked against a real run's serial timestamps.
+# All timestamps below carry a further FLAT +1.05 s (2026-07-29): autoCalibrate()
+# now pauses CAL_STEP_PAUSE_MS (150 ms) x 7 keys longer, so the progressive
+# 10-LED calibration fill reads as a deliberate count-up — a fixed one-time
+# delay at boot, so it shifts every input/marker in this file by the same
+# amount (measured 2026-07-29, after the level 3/4 swap + Castle redesign +
+# the calibration/win-theme LED changes):
+#   Level 1 @3968 ms -> WIN @9737 -> Level 2 @19689 -> WIN @26734 ->
+#   Level 3 @39021 -> WIN @47235 -> Level 4 @54834 -> WIN @65235 ->
+#   ALL LEVELS CLEAR @79971
 # Every input batch above lands comfortably before the next marker with room to
 # spare (the schedule intentionally keeps that margin rather than shaving it to
 # the exact measured values) — re-measure and re-check the margin if a future
@@ -190,67 +195,67 @@ inputs:
   # ── LEVEL 1 code, starting at 5.50s: auto-calibration's boot guard (clears
   # ~2.9s in) PLUS the new level-1 intro announce (~2.0s, blocking, played at
   # the very end of setup()) — any press before that is simply never polled.
-  - { at_s: 5.50, press_pin: 19, hold_s: 0.08 }
-  - { at_s: 5.85, press_pin: 18, hold_s: 0.08 }
-  - { at_s: 6.20, press_pin: 19, hold_s: 0.08 }
-  - { at_s: 6.55, press_pin: 12, hold_s: 0.08 }
-  - { at_s: 6.90, press_pin: 15, hold_s: 0.08 }
-  - { at_s: 7.25, press_pin: 18, hold_s: 0.08 }
-  - { at_s: 7.60, press_pin: 15, hold_s: 0.08 }
-  - { at_s: 7.95, press_pin: 14, hold_s: 0.08 }
-  - { at_s: 8.30, press_pin: 16, hold_s: 0.08 }
-  - { at_s: 8.65, press_pin: 17, hold_s: 0.08 }   # -> WIN, Main Theme tail + fanfare
+  - { at_s: 6.55, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 6.90, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 7.25, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 7.60, press_pin: 12, hold_s: 0.08 }
+  - { at_s: 7.95, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 8.30, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 8.65, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 9.00, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 9.35, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 9.70, press_pin: 17, hold_s: 0.08 }   # -> WIN, Main Theme tail + fanfare
   # ── LEVEL 2 code, starting at 22.50s (level-1 fanfare+theme ~9.95s measured,
   # + phrase gap + level-2 intro ~2.0s, + margin) ─────────────────────────────
-  - { at_s: 22.50, press_pin: 16, hold_s: 0.08 }
-  - { at_s: 22.85, press_pin: 19, hold_s: 0.08 }
-  - { at_s: 23.20, press_pin: 14, hold_s: 0.08 }
-  - { at_s: 23.55, press_pin: 17, hold_s: 0.08 }
-  - { at_s: 23.90, press_pin: 15, hold_s: 0.08 }
-  - { at_s: 24.25, press_pin: 18, hold_s: 0.08 }
-  - { at_s: 24.60, press_pin: 16, hold_s: 0.08 }
-  - { at_s: 24.95, press_pin: 19, hold_s: 0.08 }
-  - { at_s: 25.30, press_pin: 14, hold_s: 0.08 }
-  - { at_s: 25.65, press_pin: 17, hold_s: 0.08 }   # -> WIN, Underworld tail + fanfare
+  - { at_s: 23.55, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 23.90, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 24.25, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 24.60, press_pin: 17, hold_s: 0.08 }
+  - { at_s: 24.95, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 25.30, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 25.65, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 26.00, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 26.35, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 26.70, press_pin: 17, hold_s: 0.08 }   # -> WIN, Underworld tail + fanfare
   # ── LEVEL 3 code, starting at 43.00s (level-2 fanfare+theme 12.287s measured
   # + phrase gap + level-3 (Starman, moved here) intro ~2.25s — much shorter
   # than the old Castle intro — + margin) ─────────────────────────────────────
-  - { at_s: 43.00, press_pin: 15, hold_s: 0.08 }
-  - { at_s: 43.35, press_pin: 17, hold_s: 0.08 }
-  - { at_s: 43.70, press_pin: 19, hold_s: 0.08 }
-  - { at_s: 44.05, press_pin: 14, hold_s: 0.08 }
-  - { at_s: 44.40, press_pin: 18, hold_s: 0.08 }
-  - { at_s: 44.75, press_pin: 16, hold_s: 0.08 }
-  - { at_s: 45.10, press_pin: 12, hold_s: 0.08 }
-  - { at_s: 45.45, press_pin: 17, hold_s: 0.08 }
-  - { at_s: 45.80, press_pin: 15, hold_s: 0.08 }
-  - { at_s: 46.15, press_pin: 19, hold_s: 0.08 }   # -> WIN, Starman tail (full, 26
+  - { at_s: 44.05, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 44.40, press_pin: 17, hold_s: 0.08 }
+  - { at_s: 44.75, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 45.10, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 45.45, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 45.80, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 46.15, press_pin: 12, hold_s: 0.08 }
+  - { at_s: 46.50, press_pin: 17, hold_s: 0.08 }
+  - { at_s: 46.85, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 47.20, press_pin: 19, hold_s: 0.08 }   # -> WIN, Starman tail (full, 26
                                                    # notes, ~5.8s) + fanfare
   # ── LEVEL 4 code, starting at 61.00s (level-3's Starman victory tail is short
   # (~7.3s win total) but level-4 (Castle, moved here — the finale) has the
   # longest intro of the four, ~5.1s, redesigned for recognisability the same
   # day — + phrase gap + margin) ───────────────────────────────────────────────
-  - { at_s: 61.00, press_pin: 18, hold_s: 0.08 }
-  - { at_s: 61.35, press_pin: 14, hold_s: 0.08 }
-  - { at_s: 61.70, press_pin: 16, hold_s: 0.08 }
-  - { at_s: 62.05, press_pin: 12, hold_s: 0.08 }
-  - { at_s: 62.40, press_pin: 15, hold_s: 0.08 }
-  - { at_s: 62.75, press_pin: 19, hold_s: 0.08 }
-  - { at_s: 63.10, press_pin: 17, hold_s: 0.08 }
-  - { at_s: 63.45, press_pin: 14, hold_s: 0.08 }
-  - { at_s: 63.80, press_pin: 18, hold_s: 0.08 }
-  - { at_s: 64.15, press_pin: 16, hold_s: 0.08 }   # -> WIN, Castle tail (full, 40
+  - { at_s: 62.05, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 62.40, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 62.75, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 63.10, press_pin: 12, hold_s: 0.08 }
+  - { at_s: 63.45, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 63.80, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 64.15, press_pin: 17, hold_s: 0.08 }
+  - { at_s: 64.50, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 64.85, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 65.20, press_pin: 16, hold_s: 0.08 }   # -> WIN, Castle tail (full, 40
                                                    # notes, ~12.9s — the longest
                                                    # victory theme) + fanfare,
                                                    # then "ALL LEVELS CLEAR"
 
 assertions:
-  - { type: serial_contains, pattern: "Lemon Piano V5", within_s: 3 }
-  - { type: serial_contains, pattern: "Level 1",        within_s: 6 }
-  - { type: serial_absent,   pattern: "WRONG",           within_s: 90 }
-  - { type: gpio_toggles, pin: 2,  min_edges: 4,   within_s: 80 }   # LED 1 lit each round
-  - { type: serial_contains, pattern: "Level 2",         within_s: 20 }
-  - { type: serial_contains, pattern: "Level 3",         within_s: 42 }
-  - { type: serial_contains, pattern: "Level 4",         within_s: 58 }
-  - { type: gpio_toggles, pin: 11, min_edges: 400,  within_s: 90 }  # buzzer sang all 4 wins
-  - { type: serial_contains, pattern: "ALL LEVELS CLEAR", within_s: 82 }
+  - { type: serial_contains, pattern: "Lemon Piano V5", within_s: 4.05 }
+  - { type: serial_contains, pattern: "Level 1",        within_s: 7.05 }
+  - { type: serial_absent,   pattern: "WRONG",           within_s: 91.05 }
+  - { type: gpio_toggles, pin: 2,  min_edges: 4,   within_s: 81.05 }   # LED 1 lit each round
+  - { type: serial_contains, pattern: "Level 2",         within_s: 21.05 }
+  - { type: serial_contains, pattern: "Level 3",         within_s: 43.05 }
+  - { type: serial_contains, pattern: "Level 4",         within_s: 59.05 }
+  - { type: gpio_toggles, pin: 11, min_edges: 400,  within_s: 91.05 }  # buzzer sang all 4 wins
+  - { type: serial_contains, pattern: "ALL LEVELS CLEAR", within_s: 83.05 }

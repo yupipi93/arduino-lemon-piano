@@ -32,12 +32,15 @@ flashing to the beat, then the game **auto-advances** to the other tune.
 ## How it plays
 
 1. **Power on → auto-calibration.** It measures every key's resting level *and*
-   its idle noise, running the LED bar across as it goes (**LEDs moving = hands
-   off the fruit**), derives the touch margin from the measured noise, chirps when
-   done, and shows the chosen sensitivity on the bar. The game starts at **game 1**
-   and auto-advances on each win, so all four themes are reachable with no switch.
-   Then it **announces the level**: the opening notes of that level's own theme
-   play once, so you know which of the four you landed on before touching a lemon.
+   its idle noise, **counting up all ten LEDs progressively** as it goes
+   (**LEDs filling = hands off the fruit**) — one coin per key measured, seven
+   keys spread proportionally across all ten so the bar always finishes full
+   regardless of there being only seven keys — then derives the touch margin
+   from the measured noise, chirps when done, and shows the chosen sensitivity
+   on the bar. The game starts at **game 1** and auto-advances on each win, so
+   all four themes are reachable with no switch. Then it **announces the
+   level**: the opening notes of that level's own theme play once, so you know
+   which of the four you landed on before touching a lemon.
 2. **Touch lemons.** Hold the **GND** clip in one hand and touch a lemon with the
    other — your body drags that pin down and the note plays on the buzzer.
 3. **Play freely.** While the bar is empty, every key just sounds its note —
@@ -56,12 +59,14 @@ flashing to the beat, then the game **auto-advances** to the other tune.
    "wrong" tone plays **after** the note you pressed has finished — you always
    hear which key was wrong, then the buzz.
 5. **Victory + auto-advance.** Light all ten → that level's own theme plays in
-   full first, with the bar flashing per note, then the **flagpole fanfare**,
-   then the **next level's own intro announces it**, before the game moves to
-   the **next level** (1 → 2 → 3 → 4 → 1 …). Clearing level 4 plays the
-   **game-complete piece on a loop**, after the flagpole fanfare — it keeps
-   celebrating until you hold both sensitivity buttons for 1 s, which resets
-   straight back to level 1 **without recalibrating** (also announced).
+   full first, **the bar counting back up from empty to all ten** across the
+   whole theme (a progressive fill, not a flash — the same "count up" feel as
+   calibration), then the **flagpole fanfare**, then the **next level's own
+   intro announces it**, before the game moves to the **next level**
+   (1 → 2 → 3 → 4 → 1 …). Clearing level 4 plays the **game-complete piece on
+   a loop**, after the flagpole fanfare — it keeps celebrating until you hold
+   both sensitivity buttons for 1 s, which resets straight back to level 1
+   **without recalibrating** (also announced).
 6. **Tune sensitivity while you play**: **D12** = more sensitive, **A7** = less
    sensitive, 1-count steps (5 above margin 20), auto-repeat while held. The bar
    shows the level for a moment after each press, and the tick's pitch tracks the
@@ -167,8 +172,11 @@ $PIPE run --mode verify --spec emulation/lemon-piano.yaml --out emulation/runs
 ```
 
 Clickable lemons (or press `1`–`7` on your keyboard), audible buzzer, the ten-LED
-bar. Because ten LEDs use every free browser pin there is **no game-select switch
-and no restart button**: it starts at game 1 and auto-advances on each win.
+bar — **coloured like a VU meter in the browser** (LEDs 1-3 green, 4-6 yellow,
+7-8 orange, 9-10 red, 2026-07-29) so the progressive fill reads at a glance;
+the real board's ten LEDs are all green (see the BOM), this is an emulation-only
+touch. Because ten LEDs use every free browser pin there is **no game-select
+switch and no restart button**: it starts at game 1 and auto-advances on each win.
 There are **four** headless specs, all green (2026-07-27, +1 on 2026-07-29,
 re-timed three times the same day — for the level-intro feature below, for
 Underwater→Castle at level 3, then again when Castle moved to level 4 and was

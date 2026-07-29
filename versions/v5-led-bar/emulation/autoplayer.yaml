@@ -193,19 +193,19 @@ components:
   - { id: rl3,  type: resistor, x: 1010, y: 195, properties: { value: "220" } }
   - { id: led3, type: led,      x: 1180, y: 180, properties: { color: "green", label: "3" } }
   - { id: rl4,  type: resistor, x: 1010, y: 265, properties: { value: "220" } }
-  - { id: led4, type: led,      x: 1180, y: 250, properties: { color: "green", label: "4" } }
+  - { id: led4, type: led,      x: 1180, y: 250, properties: { color: "yellow", label: "4" } }
   - { id: rl5,  type: resistor, x: 1010, y: 335, properties: { value: "220" } }
-  - { id: led5, type: led,      x: 1180, y: 320, properties: { color: "green", label: "5" } }
+  - { id: led5, type: led,      x: 1180, y: 320, properties: { color: "yellow", label: "5" } }
   - { id: rl6,  type: resistor, x: 1010, y: 405, properties: { value: "220" } }
-  - { id: led6, type: led,      x: 1180, y: 390, properties: { color: "green", label: "6" } }
+  - { id: led6, type: led,      x: 1180, y: 390, properties: { color: "yellow", label: "6" } }
   - { id: rl7,  type: resistor, x: 1010, y: 475, properties: { value: "220" } }
-  - { id: led7, type: led,      x: 1180, y: 460, properties: { color: "green", label: "7" } }
+  - { id: led7, type: led,      x: 1180, y: 460, properties: { color: "orange", label: "7" } }
   - { id: rl8,  type: resistor, x: 1010, y: 545, properties: { value: "220" } }
-  - { id: led8, type: led,      x: 1180, y: 530, properties: { color: "green", label: "8" } }
+  - { id: led8, type: led,      x: 1180, y: 530, properties: { color: "orange", label: "8" } }
   - { id: rl9,  type: resistor, x: 1010, y: 615, properties: { value: "220" } }
-  - { id: led9, type: led,      x: 1180, y: 600, properties: { color: "green", label: "9" } }
+  - { id: led9, type: led,      x: 1180, y: 600, properties: { color: "red", label: "9" } }
   - { id: rl10, type: resistor, x: 1010, y: 685, properties: { value: "220" } }
-  - { id: led10,type: led,      x: 1180, y: 670, properties: { color: "green", label: "10" } }
+  - { id: led10,type: led,      x: 1180, y: 670, properties: { color: "red", label: "10" } }
   - { id: buzzer1, type: buzzer, x: 1360, y: 40, properties: {} }
 
   # ── The autoplayer's own parts, placed well clear of the piano (y: 900+) ──

@@ -103,12 +103,15 @@ with its own 220 Ω series resistor to a common GND:
   With sustain, "finished" means the lemon was released — capped by
   `SUSTAIN_CAP_MS` (2 s) so a stuck or ghosting key cannot freeze the game.
 - **All ten lit = win:** that level's own theme plays in full first, with the bar
-  flashing per note, then the flagpole fanfare, then the game auto-advances to
-  the next level — announced by that level's own intro (`playLevelIntro()`, the
-  first few notes of its theme) before the bar blanks and free play resumes.
-  Clearing level 4 instead loops the game-complete piece (`playEndingLoop()`)
-  until both sensitivity buttons are held for `RECAL_HOLD_MS` (1 s), which resets
-  straight to level 1 without recalibrating — see "The ending loop" below.
+  **progressively filling** (2026-07-29: `playSong()`'s `ledTotal`/`ledOffset`
+  params — LEDs accumulate 0..10 across the whole victory tail, proportional to
+  note count, rather than the whole bar flashing per note) then the flagpole
+  fanfare, then the game auto-advances to the next level — announced by that
+  level's own intro (`playLevelIntro()`, the first few notes of its theme,
+  still whole-bar-flash) before the bar blanks and free play resumes. Clearing
+  level 4 instead loops the game-complete piece (`playEndingLoop()`) until both
+  sensitivity buttons are held for `RECAL_HOLD_MS` (1 s), which resets straight
+  to level 1 without recalibrating — see "The ending loop" below.
 
 Standard indicator LEDs (Vf ≈ 2 V): 220 Ω gives ~15 mA at 5 V, within the
 ATmega's per-pin limit. All ten lit ≈ 150 mA — fine on USB, but note the

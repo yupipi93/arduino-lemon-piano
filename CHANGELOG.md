@@ -2,6 +2,39 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-29 (V5 LEDs) — Progressive 10-LED fill for calibration and the win
+## theme, VU-meter colours in the emulator
+
+Two owner-requested LED/timing changes:
+
+- **Calibration now fills all ten LEDs, not seven.** Only seven keys exist, so
+  the old one-LED-per-key loop never lit LEDs 8-10. `lit = (key_index+1) ×
+  LED_COUNT / KEY_COUNT` spreads the seven measurement steps proportionally
+  across all ten (1,2,4,5,7,8,10 — uneven but always ends at ten), and a new
+  `CAL_STEP_PAUSE_MS` (150 ms) pause per key — after its coin, not touching
+  `CAL_SAMPLES` so measurement quality is unchanged — makes the count-up read
+  as deliberate instead of a blur. Calibration now takes ~1.05 s longer.
+- **The win theme now progressively fills the bar instead of flashing it.**
+  `playSong()` gained two optional parameters, `ledTotal`/`ledOffset`: when
+  `ledTotal > 0` the bar accumulates LEDs (0 to LED_COUNT, staying lit note to
+  note) proportional to position in the theme, instead of the old
+  whole-bar-flash-per-note. `playVictory()` passes the tail's own note count
+  as `ledTotal`, so the fill paces itself to whichever level's theme is
+  playing (26-40 notes) with no separate "make it longer" tuning needed — the
+  existing tail lengths already spread comfortably across ten LEDs (230-580 ms
+  each). The level-start intro keeps the old flash (`ledTotal` defaults to 0,
+  unchanged call site) since only calibration and the win were asked for.
+- **Emulator LEDs recoloured like a VU meter**: 1-3 green, 4-6 yellow, 7-8
+  orange, 9-10 red, across all five spec files that define the ten-LED bar.
+  Emulation-only — the real board's LEDs are all green per the BOM.
+
+**Emulation specs re-timed a fourth time**: the +1.05 s calibration pause is a
+fixed one-time delay at boot, so it shifts every input/marker in every spec by
+the same flat amount — reapplied via a script rather than hand-editing each
+timestamp. All four specs green; cross-checked against a real run (`Level 4`
+@54834 ms, `ALL LEVELS CLEAR` @79971 ms). All three `pio run` envs build clean
+(flash 39.5%/12140 B on hardware, up from 38.8%/11908 B).
+
 ## 2026-07-29 (V5 audio, part 4) — Faster autoplayer, Castle closes the game,
 ## a more recognisable Castle theme
 

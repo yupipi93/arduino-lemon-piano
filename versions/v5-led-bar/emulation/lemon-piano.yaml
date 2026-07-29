@@ -52,19 +52,19 @@ components:
   - { id: rl3,  type: resistor, x: 1010, y: 195, properties: { value: "220" } }
   - { id: led3, type: led,      x: 1180, y: 180, properties: { color: "green", label: "3" } }
   - { id: rl4,  type: resistor, x: 1010, y: 265, properties: { value: "220" } }
-  - { id: led4, type: led,      x: 1180, y: 250, properties: { color: "green", label: "4" } }
+  - { id: led4, type: led,      x: 1180, y: 250, properties: { color: "yellow", label: "4" } }
   - { id: rl5,  type: resistor, x: 1010, y: 335, properties: { value: "220" } }
-  - { id: led5, type: led,      x: 1180, y: 320, properties: { color: "green", label: "5" } }
+  - { id: led5, type: led,      x: 1180, y: 320, properties: { color: "yellow", label: "5" } }
   - { id: rl6,  type: resistor, x: 1010, y: 405, properties: { value: "220" } }
-  - { id: led6, type: led,      x: 1180, y: 390, properties: { color: "green", label: "6" } }
+  - { id: led6, type: led,      x: 1180, y: 390, properties: { color: "yellow", label: "6" } }
   - { id: rl7,  type: resistor, x: 1010, y: 475, properties: { value: "220" } }
-  - { id: led7, type: led,      x: 1180, y: 460, properties: { color: "green", label: "7" } }
+  - { id: led7, type: led,      x: 1180, y: 460, properties: { color: "orange", label: "7" } }
   - { id: rl8,  type: resistor, x: 1010, y: 545, properties: { value: "220" } }
-  - { id: led8, type: led,      x: 1180, y: 530, properties: { color: "green", label: "8" } }
+  - { id: led8, type: led,      x: 1180, y: 530, properties: { color: "orange", label: "8" } }
   - { id: rl9,  type: resistor, x: 1010, y: 615, properties: { value: "220" } }
-  - { id: led9, type: led,      x: 1180, y: 600, properties: { color: "green", label: "9" } }
+  - { id: led9, type: led,      x: 1180, y: 600, properties: { color: "red", label: "9" } }
   - { id: rl10, type: resistor, x: 1010, y: 685, properties: { value: "220" } }
-  - { id: led10,type: led,      x: 1180, y: 670, properties: { color: "green", label: "10" } }
+  - { id: led10,type: led,      x: 1180, y: 670, properties: { color: "red", label: "10" } }
   # Buzzer, far right and clear of the LED column.
   - { id: buzzer1, type: buzzer, x: 1360, y: 40, properties: {} }
 
@@ -159,38 +159,38 @@ wires:
 # 19,18,19,12,15,18,15,14,16,17. Active-low pulses.
 inputs:
   # ── ACT 1: free play (keys 1, 3, 7 — none of them the code's first note) ──
-  - { at_s: 4.00, press_pin: 14, hold_s: 0.08 }   # key 1
-  - { at_s: 4.40, press_pin: 16, hold_s: 0.08 }   # key 3
-  - { at_s: 4.80, press_pin: 12, hold_s: 0.08 }   # key 7
+  - { at_s: 5.05, press_pin: 14, hold_s: 0.08 }   # key 1
+  - { at_s: 5.45, press_pin: 16, hold_s: 0.08 }   # key 3
+  - { at_s: 5.85, press_pin: 12, hold_s: 0.08 }   # key 7
   # ── ACT 2: hit the first note, then miss ─────────────────────────────────
-  - { at_s: 5.40, press_pin: 19, hold_s: 0.08 }   # key 6 -> OK 1/10, LED 1 on
-  - { at_s: 5.80, press_pin: 14, hold_s: 0.08 }   # key 1 -> WRONG (note, gap, low tone)
+  - { at_s: 6.45, press_pin: 19, hold_s: 0.08 }   # key 6 -> OK 1/10, LED 1 on
+  - { at_s: 6.85, press_pin: 14, hold_s: 0.08 }   # key 1 -> WRONG (note, gap, low tone)
   # ── ACT 3: the whole code, clean ─────────────────────────────────────────
-  - { at_s: 6.60, press_pin: 19, hold_s: 0.08 }   # key 6
-  - { at_s: 6.78, press_pin: 19, hold_s: 0.08 }   # key 6 AGAIN -> ignored, and
+  - { at_s: 7.65, press_pin: 19, hold_s: 0.08 }   # key 6
+  - { at_s: 7.83, press_pin: 19, hold_s: 0.08 }   # key 6 AGAIN -> ignored, and
                                                   # must not derail the sequence
-  - { at_s: 6.95, press_pin: 18, hold_s: 0.08 }   # key 5
-  - { at_s: 7.30, press_pin: 19, hold_s: 0.08 }   # key 6
-  - { at_s: 7.65, press_pin: 12, hold_s: 0.08 }   # key 7
-  - { at_s: 8.00, press_pin: 15, hold_s: 0.08 }   # key 2
-  - { at_s: 8.35, press_pin: 18, hold_s: 0.08 }   # key 5
-  - { at_s: 8.70, press_pin: 15, hold_s: 0.08 }   # key 2
-  - { at_s: 9.05, press_pin: 14, hold_s: 0.08 }   # key 1
-  - { at_s: 9.40, press_pin: 16, hold_s: 0.08 }   # key 3
-  - { at_s: 9.75, press_pin: 17, hold_s: 0.08 }   # key 4 -> WIN
+  - { at_s: 8.00, press_pin: 18, hold_s: 0.08 }   # key 5
+  - { at_s: 8.35, press_pin: 19, hold_s: 0.08 }   # key 6
+  - { at_s: 8.70, press_pin: 12, hold_s: 0.08 }   # key 7
+  - { at_s: 9.05, press_pin: 15, hold_s: 0.08 }   # key 2
+  - { at_s: 9.40, press_pin: 18, hold_s: 0.08 }   # key 5
+  - { at_s: 9.75, press_pin: 15, hold_s: 0.08 }   # key 2
+  - { at_s: 10.10, press_pin: 14, hold_s: 0.08 }   # key 1
+  - { at_s: 10.45, press_pin: 16, hold_s: 0.08 }   # key 3
+  - { at_s: 10.80, press_pin: 17, hold_s: 0.08 }   # key 4 -> WIN
 
 assertions:
-  - { type: serial_contains, pattern: "Lemon Piano V5", within_s: 3 }
-  - { type: serial_contains, pattern: "Level 1",        within_s: 3 }
+  - { type: serial_contains, pattern: "Lemon Piano V5", within_s: 4.05 }
+  - { type: serial_contains, pattern: "Level 1",        within_s: 4.05 }
   # (Free play is asserted in its own spec, free-play.yaml — `serial_absent` is
   # run-wide, and this run legitimately contains a WRONG in act 2.)
-  - { type: gpio_toggles, pin: 2,  min_edges: 1,   within_s: 12 }  # LED 1 lit on first correct
+  - { type: gpio_toggles, pin: 2,  min_edges: 1,   within_s: 13.05 }  # LED 1 lit on first correct
   # ACT 2: once the sequence has started, a miss IS punished.
-  - { type: serial_contains, pattern: "WRONG",          within_s: 7 }
-  - { type: gpio_toggles, pin: 11, min_edges: 100, within_s: 18 }  # buzzer sang (keys + victory theme)
-  - { type: serial_contains, pattern: "WIN",            within_s: 13 }
+  - { type: serial_contains, pattern: "WRONG",          within_s: 8.05 }
+  - { type: gpio_toggles, pin: 11, min_edges: 100, within_s: 19.05 }  # buzzer sang (keys + victory theme)
+  - { type: serial_contains, pattern: "WIN",            within_s: 14.05 }
   # The flagpole fanfare and the level theme both run the LED bar as a light show.
   # Victory light show: the bar flashes per note — LED 10 (D13) only ever
   # lights during the win, so >=40 edges proves the beat-synced blinking.
-  - { type: gpio_toggles, pin: 13, min_edges: 2,   within_s: 24 }
-  - { type: serial_contains, pattern: "Level 2",        within_s: 24 }  # advanced after the fanfare + theme
+  - { type: gpio_toggles, pin: 13, min_edges: 2,   within_s: 25.05 }
+  - { type: serial_contains, pattern: "Level 2",        within_s: 25.05 }  # advanced after the fanfare + theme

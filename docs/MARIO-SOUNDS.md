@@ -363,6 +363,23 @@ digital pin is already a LED or a key — so it loops forever there too (fixed
 the point of a *looping* celebration); "reset" in the browser means stopping
 and re-running the simulation, the same as pulling power on real hardware.
 
+**Progressive 10-LED fill, calibration and win alike (2026-07-29):**
+`autoCalibrate()` and `playVictory()` used to only ever light as many LEDs as
+there were things to count (seven keys; the whole bar flashed per note during
+the win theme) — now both progressively fill all ten. Calibration derives
+`lit = (key_index+1) × LED_COUNT / KEY_COUNT` after each key (7 keys spread
+across 10 LEDs: 1,2,4,5,7,8,10 — uneven but monotonic, always ending at all
+ten), plus a new `CAL_STEP_PAUSE_MS` (150 ms) pause per key purely so the
+count-up reads as deliberate rather than a blur (it doesn't touch `CAL_SAMPLES`,
+so noise-measurement quality is unaffected — display pacing only). The win
+theme reuses the same idea through two new `playSong()` parameters,
+`ledTotal`/`ledOffset`: `lit = (note_index+1) × LED_COUNT / ledTotal`, so the
+bar counts up smoothly across whichever level's victory tail is playing
+(26-40 notes), regardless of length — no separate "long enough" tuning needed,
+since the fill always paces itself to the theme's own duration. The
+level-start intro (above) keeps the old whole-bar-flash (`ledTotal` defaults
+to 0) — only calibration and the win theme count up.
+
 Articulation is taken **from** each note, not added to it, so the tempo written in a
 table is the tempo you hear. Measured on the emulator after the fix: the winning
 note plays out, 262 ms of silence, then the fanfare's seven notes at 92/242 ms with

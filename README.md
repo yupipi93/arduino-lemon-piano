@@ -42,7 +42,8 @@ The methodology (what counts as a new version, and the checklist for adding one)
 3. **Guess the secret sequence** (10 notes). Each correct note lights the next
    green LED; a wrong note **blanks all ten** and the sequence restarts.
 4. **Victory + auto-advance.** All ten lit → that level's theme plays in full
-   with the bar flashing to the beat, then the flagpole fanfare, then the next
+   with the bar progressively counting back up from empty to all ten as it
+   plays, then the flagpole fanfare, then the next
    level announces itself (its own theme's opening notes) before play moves on
    to the next of the **four levels**. Clearing level 4 instead loops the
    game-complete piece until you hold both sensitivity buttons for 1 s, which
