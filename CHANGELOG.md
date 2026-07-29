@@ -27,6 +27,26 @@ phrase gap) has had time to finish — durations computed from
 real measured run (WIN → `Level 2` = 9951 ms). Second attempt: clean pass, zero
 `WRONG`s, all four `Level N` markers and `ALL LEVELS CLEAR` in one 62 s run.
 
+**Follow-up, same day**: that spec is a fixed script, not a live control — asked
+for something pressable. Added
+[`emulation/autoplayer.yaml`](versions/v5-led-bar/emulation/autoplayer.yaml) (+
+`autoplayer.vlx`): a **second Arduino** (`player`, an Uno) sharing the canvas
+with the real V5 board (`piano`). It has a LEVEL SELECT button (cycles 1-4, 4
+LEDs show which) and a PLAY button that fires the selected level's code onto
+the SAME key nodes the real lemons use — piano cannot tell a player-board pulse
+from a touch. The 7 lemons stay clickable throughout, so free play and
+deliberate misses are still testable by hand; only the "type the whole code"
+part is now optional.
+
+Confirmed against `docs/PIPELINE_DESIGN.md` §9.3 and by trying both: multi-board
+specs are **interactive-mode only** in this harness — neither `verify` nor
+`document` will run them (`document` fails outright: "multi-board specs are
+interactive-only in v1"). So this one couldn't get the usual headless
+assertion pass; validated instead by compiling each board's sketch standalone
+(`arduino-cli compile --fqbn arduino:avr:nano|uno`, both clean) and confirming
+the `.vlx` generates (`routing: loose` — each key node is now a 3-way junction,
+which the strict lane router flags but the circuit is still fully wired).
+
 ## 2026-07-29 (V5 audio timing) — Fixed the sound race; silences are now policy
 
 Reported after playing it: the win fanfare stepped on the tenth note. Root cause —

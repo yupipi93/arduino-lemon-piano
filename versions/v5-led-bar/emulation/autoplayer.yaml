@@ -1,0 +1,272 @@
+name: lemon-piano-v5-autoplayer
+description: >
+  Interactive-only (multi-board specs run in `--mode interactive` in this
+  harness — the CLI's verify assertions only ever watch one board per run).
+  Two boards: `piano` is the real V5 game (identical circuit to
+  lemon-piano.yaml), and `player` is a small companion Arduino Uno that acts as
+  a "virtual finger": press its LEVEL SELECT button to arm level 1-4 (an LED
+  shows which), then press PLAY and it fires that level's 10-note code onto the
+  SAME key nodes your own lemon clicks use — piano can't tell the difference
+  between a player-board pulse and a real touch. Your 7 lemons stay fully
+  clickable throughout for manual free play / deliberately wrong notes; the
+  autoplayer only ever pulls a key node low the way a press would.
+  The autoplayer has no idea what level `piano` actually thinks it's on — it
+  can only offer levels 1-4 on request. Watch piano's own serial log ("Level
+  N") or match the win/auto-advance you just heard, and press LEVEL SELECT to
+  the right count before hitting PLAY.
+routing: loose   # each key node is now a 3-way junction (piano's own wire +
+                 # button + player's finger wire); the strict lane router
+                 # can't avoid every overlap there, and this circuit is a
+                 # test aid, not the polished diagram — route anyway, report.
+boards:
+  - id: piano
+    kind: arduino-nano
+    sketch_file: ../firmware/src/main.cpp
+    defines: [VELXIO_EMULATION]
+    extra_files:
+      - name: notes.h
+        file: ../firmware/include/notes.h
+      - name: mario_sfx.h
+        file: ../firmware/include/mario_sfx.h
+  - id: player
+    kind: arduino-uno
+    sketch: |
+      // Lemon Piano V5 — interactive-emulation "autoplayer" companion board.
+      // Not part of the game: a virtual finger that plays a chosen level's
+      // secret code onto the piano board's key nodes on request, so a human
+      // tester doesn't have to click all ten correct lemons by hand to reach
+      // a win. Piano's own pull-ups hold each node idle-high; this board does
+      // exactly what a touch does — pulls one node low for a beat, then lets
+      // go — so the piano firmware cannot tell a pulse from a real touch.
+
+      const uint8_t FINGER_PINS[7] = {6, 7, 8, 9, 10, 11, 12};  // key1..key7
+      const uint8_t LEVEL_LEDS[4]  = {2, 3, 4, 5};              // level 1..4
+      const uint8_t PLAY_BTN  = A0;   // to GND, INPUT_PULLUP
+      const uint8_t LEVEL_BTN = A1;   // to GND, INPUT_PULLUP
+      const uint8_t CODE_LEN = 10;
+
+      // Same four secret codes as firmware/src/main.cpp's sequence_1..4, as
+      // key numbers 1-7 (see that file's SECRET SEQUENCES comment).
+      const uint8_t codes[4][CODE_LEN] = {
+        {6, 5, 6, 7, 2, 5, 2, 1, 3, 4},   // level 1 - Overworld
+        {3, 6, 1, 4, 2, 5, 3, 6, 1, 4},   // level 2 - Underworld
+        {2, 4, 6, 1, 5, 3, 7, 4, 2, 6},   // level 3 - Underwater
+        {5, 1, 3, 7, 2, 6, 4, 1, 5, 3},   // level 4 - Starman
+      };
+
+      uint8_t level = 0;   // 0..3 == level 1..4
+      bool playWas = false, levelWas = false;
+
+      void showLevel() {
+        for (uint8_t i = 0; i < 4; i++) {
+          digitalWrite(LEVEL_LEDS[i], i == level ? HIGH : LOW);
+        }
+        Serial.print(F("Autoplayer armed for level "));
+        Serial.println(level + 1);
+      }
+
+      void pressKey(uint8_t keyNumber) {   // 1..7
+        uint8_t pin = FINGER_PINS[keyNumber - 1];
+        digitalWrite(pin, LOW);    // pull the shared node down: a "touch"
+        delay(90);
+        digitalWrite(pin, HIGH);   // let go
+        delay(300);                // gap so the piano's edge logic sees a
+                                    // clean release before the next digit,
+                                    // and two same-key digits (never
+                                    // back-to-back in a real code) still land
+                                    // as distinct presses
+      }
+
+      void playLevel() {
+        digitalWrite(13, HIGH);     // onboard LED: "auto-playing" indicator
+        Serial.print(F("Auto-playing level ")); Serial.println(level + 1);
+        for (uint8_t i = 0; i < CODE_LEN; i++) {
+          pressKey(codes[level][i]);
+        }
+        digitalWrite(13, LOW);
+        Serial.println(F("Auto-play done."));
+      }
+
+      void setup() {
+        for (uint8_t i = 0; i < 7; i++) {
+          pinMode(FINGER_PINS[i], OUTPUT);
+          digitalWrite(FINGER_PINS[i], HIGH);   // idle-high, matches the pull-ups
+        }
+        for (uint8_t i = 0; i < 4; i++) {
+          pinMode(LEVEL_LEDS[i], OUTPUT);
+        }
+        pinMode(PLAY_BTN, INPUT_PULLUP);
+        pinMode(LEVEL_BTN, INPUT_PULLUP);
+        pinMode(13, OUTPUT);
+        Serial.begin(9600);
+        showLevel();
+        Serial.println(F("LEVEL SELECT cycles 1-4 (see the LEDs); PLAY replays"));
+        Serial.println(F("that level's code onto the piano's lemons. Match this"));
+        Serial.println(F("to piano's OWN serial log (\"Level N\") before pressing PLAY."));
+      }
+
+      void loop() {
+        bool playDown  = digitalRead(PLAY_BTN)  == LOW;
+        bool levelDown = digitalRead(LEVEL_BTN) == LOW;
+
+        if (levelDown && !levelWas) {
+          level = (level + 1) % 4;
+          showLevel();
+        }
+        levelWas = levelDown;
+
+        if (playDown && !playWas) {
+          playLevel();
+        }
+        playWas = playDown;
+
+        delay(15);   // cheap debounce; buttons are pressed by a human, not a script
+      }
+
+components:
+  # ── The 7 "lemons" (same layout as lemon-piano.yaml) ──────────────────────
+  - { id: key1, type: pushbutton, x: 60,  y: 430, properties: { color: "yellow", label: "1" } }
+  - { id: key2, type: pushbutton, x: 190, y: 430, properties: { color: "yellow", label: "2" } }
+  - { id: key3, type: pushbutton, x: 320, y: 430, properties: { color: "yellow", label: "3" } }
+  - { id: key4, type: pushbutton, x: 450, y: 430, properties: { color: "yellow", label: "4" } }
+  - { id: key5, type: pushbutton, x: 580, y: 430, properties: { color: "yellow", label: "5" } }
+  - { id: key6, type: pushbutton, x: 710, y: 430, properties: { color: "yellow", label: "6" } }
+  - { id: key7, type: pushbutton, x: 840, y: 430, properties: { color: "yellow", label: "7" } }
+  - { id: rp1, type: resistor, x: 36,  y: 310, properties: { value: "10000" } }
+  - { id: rp2, type: resistor, x: 166, y: 310, properties: { value: "10000" } }
+  - { id: rp3, type: resistor, x: 296, y: 310, properties: { value: "10000" } }
+  - { id: rp4, type: resistor, x: 426, y: 310, properties: { value: "10000" } }
+  - { id: rp5, type: resistor, x: 556, y: 310, properties: { value: "10000" } }
+  - { id: rp6, type: resistor, x: 686, y: 310, properties: { value: "10000" } }
+  - { id: rp7, type: resistor, x: 816, y: 310, properties: { value: "10000" } }
+  # ── The ten-LED progress bar ───────────────────────────────────────────────
+  - { id: rl1,  type: resistor, x: 1010, y: 55,  properties: { value: "220" } }
+  - { id: led1, type: led,      x: 1180, y: 40,  properties: { color: "green", label: "1" } }
+  - { id: rl2,  type: resistor, x: 1010, y: 125, properties: { value: "220" } }
+  - { id: led2, type: led,      x: 1180, y: 110, properties: { color: "green", label: "2" } }
+  - { id: rl3,  type: resistor, x: 1010, y: 195, properties: { value: "220" } }
+  - { id: led3, type: led,      x: 1180, y: 180, properties: { color: "green", label: "3" } }
+  - { id: rl4,  type: resistor, x: 1010, y: 265, properties: { value: "220" } }
+  - { id: led4, type: led,      x: 1180, y: 250, properties: { color: "green", label: "4" } }
+  - { id: rl5,  type: resistor, x: 1010, y: 335, properties: { value: "220" } }
+  - { id: led5, type: led,      x: 1180, y: 320, properties: { color: "green", label: "5" } }
+  - { id: rl6,  type: resistor, x: 1010, y: 405, properties: { value: "220" } }
+  - { id: led6, type: led,      x: 1180, y: 390, properties: { color: "green", label: "6" } }
+  - { id: rl7,  type: resistor, x: 1010, y: 475, properties: { value: "220" } }
+  - { id: led7, type: led,      x: 1180, y: 460, properties: { color: "green", label: "7" } }
+  - { id: rl8,  type: resistor, x: 1010, y: 545, properties: { value: "220" } }
+  - { id: led8, type: led,      x: 1180, y: 530, properties: { color: "green", label: "8" } }
+  - { id: rl9,  type: resistor, x: 1010, y: 615, properties: { value: "220" } }
+  - { id: led9, type: led,      x: 1180, y: 600, properties: { color: "green", label: "9" } }
+  - { id: rl10, type: resistor, x: 1010, y: 685, properties: { value: "220" } }
+  - { id: led10,type: led,      x: 1180, y: 670, properties: { color: "green", label: "10" } }
+  - { id: buzzer1, type: buzzer, x: 1360, y: 40, properties: {} }
+
+  # ── The autoplayer's own parts, placed well clear of the piano (y: 900+) ──
+  - { id: lvlr1,  type: resistor,   x: 36,  y: 900, properties: { value: "220" } }
+  - { id: lvled1, type: led,        x: 60,  y: 980, properties: { color: "blue", label: "L1" } }
+  - { id: lvlr2,  type: resistor,   x: 166, y: 900, properties: { value: "220" } }
+  - { id: lvled2, type: led,        x: 190, y: 980, properties: { color: "blue", label: "L2" } }
+  - { id: lvlr3,  type: resistor,   x: 296, y: 900, properties: { value: "220" } }
+  - { id: lvled3, type: led,        x: 320, y: 980, properties: { color: "blue", label: "L3" } }
+  - { id: lvlr4,  type: resistor,   x: 426, y: 900, properties: { value: "220" } }
+  - { id: lvled4, type: led,        x: 450, y: 980, properties: { color: "blue", label: "L4" } }
+  - { id: playBtn,  type: pushbutton, x: 620, y: 940, properties: { color: "red",   label: "PLAY" } }
+  - { id: levelBtn, type: pushbutton, x: 760, y: 940, properties: { color: "white", label: "LVL" } }
+
+wires:
+  # Signal columns: piano pin -> resistor (key node) -> key leg.
+  - [piano:A0, rp1:2]
+  - [rp1:2, key1:1.l]
+  - [piano:A1, rp2:2]
+  - [rp2:2, key2:1.l]
+  - [piano:A2, rp3:2]
+  - [rp3:2, key3:1.l]
+  - [piano:A3, rp4:2]
+  - [rp4:2, key4:1.l]
+  - [piano:A4, rp5:2]
+  - [rp5:2, key5:1.l]
+  - [piano:A5, rp6:2]
+  - [rp6:2, key6:1.l]
+  - [piano:12, rp7:2]          # A6 has no digital pin; key 7 lives on D12
+  - [rp7:2, key7:1.l]
+  - [piano:5V, rp1:1]
+  - [rp1:1, rp2:1]
+  - [rp2:1, rp3:1]
+  - [rp3:1, rp4:1]
+  - [rp4:1, rp5:1]
+  - [rp5:1, rp6:1]
+  - [rp6:1, rp7:1]
+  - [piano:GND.1, key1:2.l]
+  - [key1:2.r, key2:2.l]
+  - [key2:2.r, key3:2.l]
+  - [key3:2.r, key4:2.l]
+  - [key4:2.r, key5:2.l]
+  - [key5:2.r, key6:2.l]
+  - [key6:2.r, key7:2.l]
+  # Ten-LED bar.
+  - [piano:2,  rl1:1]
+  - [rl1:2,  led1:A]
+  - [piano:3,  rl2:1]
+  - [rl2:2,  led2:A]
+  - [piano:4,  rl3:1]
+  - [rl3:2,  led3:A]
+  - [piano:5,  rl4:1]
+  - [rl4:2,  led4:A]
+  - [piano:6,  rl5:1]
+  - [rl5:2,  led5:A]
+  - [piano:7,  rl6:1]
+  - [rl6:2,  led6:A]
+  - [piano:8,  rl7:1]
+  - [rl7:2,  led7:A]
+  - [piano:9,  rl8:1]
+  - [rl8:2,  led8:A]
+  - [piano:10, rl9:1]
+  - [rl9:2,  led9:A]
+  - [piano:13, rl10:1]
+  - [rl10:2, led10:A]
+  - [led1:C, led2:C]
+  - [led2:C, led3:C]
+  - [led3:C, led4:C]
+  - [led4:C, led5:C]
+  - [led5:C, led6:C]
+  - [led6:C, led7:C]
+  - [led7:C, led8:C]
+  - [led8:C, led9:C]
+  - [led9:C, led10:C]
+  - [led10:C, piano:GND.2]
+  - [piano:11, buzzer1:1]
+  - [buzzer1:2, piano:GND.2]
+
+  # ── The autoplayer's own indicator LEDs ────────────────────────────────────
+  - [player:2, lvlr1:1]
+  - [lvlr1:2, lvled1:A]
+  - [player:3, lvlr2:1]
+  - [lvlr2:2, lvled2:A]
+  - [player:4, lvlr3:1]
+  - [lvlr3:2, lvled3:A]
+  - [player:5, lvlr4:1]
+  - [lvlr4:2, lvled4:A]
+  - [lvled1:C, lvled2:C]
+  - [lvled2:C, lvled3:C]
+  - [lvled3:C, lvled4:C]
+  - [lvled4:C, player:GND.2]
+
+  # ── PLAY / LEVEL SELECT buttons, internal pull-ups (INPUT_PULLUP) ─────────
+  - [player:A0, playBtn:1.l]
+  - [playBtn:2.l, player:GND.2]
+  - [player:A1, levelBtn:1.l]
+  - [levelBtn:2.l, player:GND.2]
+
+  # ── The 7 "fingers": player's outputs join the SAME key nodes as the real
+  # lemon buttons above (one wire per key, landing on that key's pull-up node)
+  - [player:6,  rp1:2]    # finger 1 -> key1 node
+  - [player:7,  rp2:2]    # finger 2 -> key2 node
+  - [player:8,  rp3:2]    # finger 3 -> key3 node
+  - [player:9,  rp4:2]    # finger 4 -> key4 node
+  - [player:10, rp5:2]    # finger 5 -> key5 node
+  - [player:11, rp6:2]    # finger 6 -> key6 node
+  - [player:12, rp7:2]    # finger 7 -> key7 node
+
+  # ── Shared ground reference between the two boards ────────────────────────
+  - [player:GND.1, piano:GND.1]

@@ -39,6 +39,12 @@ all of them active — `versions/v0-buzzer` … `versions/v5-led-bar`.
   should stay as close to the 2019 code as possible (see below).
 - Append a dated entry to `CHANGELOG.md` for every significant change; tick the
   matching `TODO.md` item. Never rewrite old changelog entries.
+- **Commit and push to `origin/main` after every modification** — this repo has
+  no PR/review step, `main` IS the working branch, and the owner wants each
+  change to land on GitHub as it happens rather than sit locally. Applies to
+  code, docs, and generated evidence (`.vlx` files) alike. Skip only for
+  throwaway scratch work the user is still actively iterating on inside a
+  single reply (ask if unsure whether a change is "done").
 
 ## Build / flash (PlatformIO, no IDE)
 

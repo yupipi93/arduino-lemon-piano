@@ -162,6 +162,20 @@ There are **four** headless specs, all green (2026-07-27, +1 on 2026-07-29):
 | `emulation/hold-and-repeat.yaml` | one key held 600 ms then tapped three more times: the note sustains with the touch (584 ms measured), and four touches produce exactly one `OK 1/10` — no `OK 2/10`, no `WRONG` |
 | `emulation/all-levels-win.yaml` | a scripted "virtual button" that plays all **four** levels' secret codes back to back — the only test that has ever exercised levels 3 and 4 (added the day before this spec). Asserts `WIN` -> `Level 2` -> `WIN` -> `Level 3` -> `WIN` -> `Level 4` -> `WIN` -> `ALL LEVELS CLEAR` -> wraps to `Level 1`, zero `WRONG`s |
 
+There's also a **live, pressable** version for manual testing —
+`emulation/autoplayer.yaml`: a second Arduino (Uno) sharing the canvas, with a
+LEVEL SELECT button (cycles 1-4, LEDs show which) and a PLAY button that fires
+that level's code onto the lemons' own key nodes, on demand, as many times as
+you like. Multi-board specs only run in `--mode interactive` in this harness
+(no headless verify/document for them), so open it in the browser:
+
+```bash
+$PIPE run --mode interactive --spec emulation/autoplayer.yaml --out emulation/runs --open
+```
+
+Details, pin map and the two boards' full sketches:
+[emulation/README.md](emulation/README.md#files).
+
 ```bash
 $PIPE run --mode verify --spec emulation/free-play.yaml --out emulation/runs
 $PIPE run --mode verify --spec emulation/hold-and-repeat.yaml --out emulation/runs
