@@ -1,7 +1,7 @@
 {
   "format": "velxio-project",
   "version": 1,
-  "exportedAt": "2026-07-29T07:12:22.315017+00:00",
+  "exportedAt": "2026-07-29T07:35:23.605406+00:00",
   "name": "lemon-piano-v5-autoplayer",
   "boards": [
     {
@@ -41,7 +41,7 @@
     "group-player": [
       {
         "name": "sketch.ino",
-        "content": "// Lemon Piano V5 \u2014 interactive-emulation \"autoplayer\" companion board.\n// Not part of the game: a virtual finger that plays a chosen level's\n// secret code onto the piano board's key nodes on request, so a human\n// tester doesn't have to click all ten correct lemons by hand to reach\n// a win. Piano's own pull-ups hold each node idle-high; this board does\n// exactly what a touch does \u2014 pulls one node low for a beat, then lets\n// go \u2014 so the piano firmware cannot tell a pulse from a real touch.\n\nconst uint8_t FINGER_PINS[7] = {6, 7, 8, 9, 10, 11, 12};  // key1..key7\nconst uint8_t LEVEL_LEDS[4]  = {2, 3, 4, 5};              // level 1..4\nconst uint8_t PLAY_BTN  = A0;   // to GND, INPUT_PULLUP\nconst uint8_t LEVEL_BTN = A1;   // to GND, INPUT_PULLUP\nconst uint8_t CODE_LEN = 10;\n\n// Same four secret codes as firmware/src/main.cpp's sequence_1..4, as\n// key numbers 1-7 (see that file's SECRET SEQUENCES comment).\nconst uint8_t codes[4][CODE_LEN] = {\n  {6, 5, 6, 7, 2, 5, 2, 1, 3, 4},   // level 1 - Overworld\n  {3, 6, 1, 4, 2, 5, 3, 6, 1, 4},   // level 2 - Underworld\n  {2, 4, 6, 1, 5, 3, 7, 4, 2, 6},   // level 3 - Underwater\n  {5, 1, 3, 7, 2, 6, 4, 1, 5, 3},   // level 4 - Starman\n};\n\nuint8_t level = 0;   // 0..3 == level 1..4\nbool playWas = false, levelWas = false;\n\nvoid showLevel() {\n  for (uint8_t i = 0; i < 4; i++) {\n    digitalWrite(LEVEL_LEDS[i], i == level ? HIGH : LOW);\n  }\n  Serial.print(F(\"Autoplayer armed for level \"));\n  Serial.println(level + 1);\n}\n\nvoid pressKey(uint8_t keyNumber) {   // 1..7\n  uint8_t pin = FINGER_PINS[keyNumber - 1];\n  digitalWrite(pin, LOW);    // pull the shared node down: a \"touch\"\n  delay(90);\n  digitalWrite(pin, HIGH);   // let go\n  delay(300);                // gap so the piano's edge logic sees a\n                              // clean release before the next digit,\n                              // and two same-key digits (never\n                              // back-to-back in a real code) still land\n                              // as distinct presses\n}\n\nvoid playLevel() {\n  digitalWrite(13, HIGH);     // onboard LED: \"auto-playing\" indicator\n  Serial.print(F(\"Auto-playing level \")); Serial.println(level + 1);\n  for (uint8_t i = 0; i < CODE_LEN; i++) {\n    pressKey(codes[level][i]);\n  }\n  digitalWrite(13, LOW);\n  Serial.println(F(\"Auto-play done.\"));\n}\n\nvoid setup() {\n  for (uint8_t i = 0; i < 7; i++) {\n    pinMode(FINGER_PINS[i], OUTPUT);\n    digitalWrite(FINGER_PINS[i], HIGH);   // idle-high, matches the pull-ups\n  }\n  for (uint8_t i = 0; i < 4; i++) {\n    pinMode(LEVEL_LEDS[i], OUTPUT);\n  }\n  pinMode(PLAY_BTN, INPUT_PULLUP);\n  pinMode(LEVEL_BTN, INPUT_PULLUP);\n  pinMode(13, OUTPUT);\n  Serial.begin(9600);\n  showLevel();\n  Serial.println(F(\"LEVEL SELECT cycles 1-4 (see the LEDs); PLAY replays\"));\n  Serial.println(F(\"that level's code onto the piano's lemons. Match this\"));\n  Serial.println(F(\"to piano's OWN serial log (\\\"Level N\\\") before pressing PLAY.\"));\n}\n\nvoid loop() {\n  bool playDown  = digitalRead(PLAY_BTN)  == LOW;\n  bool levelDown = digitalRead(LEVEL_BTN) == LOW;\n\n  if (levelDown && !levelWas) {\n    level = (level + 1) % 4;\n    showLevel();\n  }\n  levelWas = levelDown;\n\n  if (playDown && !playWas) {\n    playLevel();\n  }\n  playWas = playDown;\n\n  delay(15);   // cheap debounce; buttons are pressed by a human, not a script\n}\n"
+        "content": "// Lemon Piano V5 \u2014 interactive-emulation \"autoplayer\" companion board.\n// Not part of the game: a virtual finger that plays a chosen level's\n// secret code onto the piano board's key nodes on request, so a human\n// tester doesn't have to click all ten correct lemons by hand to reach\n// a win. Piano's own pull-ups hold each node idle-high; this board does\n// exactly what a touch does \u2014 pulls one node low for a beat, then lets\n// go \u2014 so the piano firmware cannot tell a pulse from a real touch.\n//\n// Two lessons learned the hard way testing v1 of this board:\n//  1. A finger pin must be high-Z (INPUT) while idle, NOT an output\n//     driven HIGH. Piano's own pull-up already holds the node HIGH; an\n//     actively-driven HIGH output on the SAME node fights a real lemon\n//     press (which pulls it to GND), and that contention was silencing\n//     every manual key touch. Only drive LOW, only while \"pressing\" \u2014\n//     released = don't drive the node at all, exactly like a switch.\n//  2. PLAY/LEVEL SELECT must NOT use INPUT_PULLUP. avr8js (the AVR sim\n//     this harness uses) does not simulate the chip's internal weak\n//     pull-up at all \u2014 piano's own 7 keys only work because they have\n//     REAL pull-up resistor components in the circuit. Without one here\n//     both buttons read permanently LOW: one spurious edge at boot\n//     (hence starting on level 2) and dead forever after. Fixed with\n//     external 10k pull-ups (see the wires below) + plain INPUT.\n\nconst uint8_t FINGER_PINS[7] = {6, 7, 8, 9, 10, 11, 12};  // key1..key7\nconst uint8_t LEVEL_LEDS[4]  = {2, 3, 4, 5};              // level 1..4\nconst uint8_t PLAY_BTN  = A0;   // external 10k pull-up to 5V, plain INPUT\nconst uint8_t LEVEL_BTN = A1;   // external 10k pull-up to 5V, plain INPUT\nconst uint8_t CODE_LEN = 10;\n\n// Same four secret codes as firmware/src/main.cpp's sequence_1..4, as\n// key numbers 1-7 (see that file's SECRET SEQUENCES comment).\nconst uint8_t codes[4][CODE_LEN] = {\n  {6, 5, 6, 7, 2, 5, 2, 1, 3, 4},   // level 1 - Overworld\n  {3, 6, 1, 4, 2, 5, 3, 6, 1, 4},   // level 2 - Underworld\n  {2, 4, 6, 1, 5, 3, 7, 4, 2, 6},   // level 3 - Underwater\n  {5, 1, 3, 7, 2, 6, 4, 1, 5, 3},   // level 4 - Starman\n};\n\nuint8_t level = 0;   // 0..3 == level 1..4\nbool playWas = false, levelWas = false;\n\nvoid showLevel() {\n  for (uint8_t i = 0; i < 4; i++) {\n    digitalWrite(LEVEL_LEDS[i], i == level ? HIGH : LOW);\n  }\n  Serial.print(F(\"Autoplayer armed for level \"));\n  Serial.println(level + 1);\n}\n\n// Idle = high-impedance INPUT: don't drive this node at all, so a real\n// lemon click on the SAME node is never fought.\nvoid releaseKey(uint8_t pin) { pinMode(pin, INPUT); }\n// Pressing = actively pull the node to GND, same electrical effect as a\n// touch closing the circuit.\nvoid pressKeyPin(uint8_t pin) { pinMode(pin, OUTPUT); digitalWrite(pin, LOW); }\n\nvoid pressKey(uint8_t keyNumber) {   // 1..7\n  uint8_t pin = FINGER_PINS[keyNumber - 1];\n  pressKeyPin(pin);\n  delay(90);\n  releaseKey(pin);\n  delay(300);                // gap so the piano's edge logic sees a\n                              // clean release before the next digit,\n                              // and two same-key digits (never\n                              // back-to-back in a real code) still land\n                              // as distinct presses\n}\n\nvoid playLevel() {\n  digitalWrite(13, HIGH);     // onboard LED: \"auto-playing\" indicator\n  Serial.print(F(\"Auto-playing level \")); Serial.println(level + 1);\n  for (uint8_t i = 0; i < CODE_LEN; i++) {\n    pressKey(codes[level][i]);\n  }\n  digitalWrite(13, LOW);\n  Serial.println(F(\"Auto-play done.\"));\n}\n\nvoid setup() {\n  for (uint8_t i = 0; i < 7; i++) releaseKey(FINGER_PINS[i]);   // idle: high-Z\n  for (uint8_t i = 0; i < 4; i++) {\n    pinMode(LEVEL_LEDS[i], OUTPUT);\n  }\n  pinMode(PLAY_BTN, INPUT);    // external pull-up does the pull-up job\n  pinMode(LEVEL_BTN, INPUT);   // (avr8js does not simulate INPUT_PULLUP)\n  pinMode(13, OUTPUT);\n  Serial.begin(9600);\n\n  // Boot guard: Velxio's first SPICE solve takes a moment to settle,\n  // and every input reads LOW until it does (same fix piano's own\n  // autoCalibrate() needed) \u2014 wait for both buttons to read idle-HIGH\n  // before trusting any edge, or the settle itself looks like a press.\n  while (digitalRead(PLAY_BTN) == LOW || digitalRead(LEVEL_BTN) == LOW) {\n    delay(10);\n  }\n\n  showLevel();\n  Serial.println(F(\"LEVEL SELECT cycles 1-4 (see the LEDs); PLAY replays\"));\n  Serial.println(F(\"that level's code onto the piano's lemons. Match this\"));\n  Serial.println(F(\"to piano's OWN serial log (\\\"Level N\\\") before pressing PLAY.\"));\n}\n\nvoid loop() {\n  bool playDown  = digitalRead(PLAY_BTN)  == LOW;\n  bool levelDown = digitalRead(LEVEL_BTN) == LOW;\n\n  if (levelDown && !levelWas) {\n    level = (level + 1) % 4;\n    showLevel();\n  }\n  levelWas = levelDown;\n\n  if (playDown && !playWas) {\n    playLevel();\n  }\n  playWas = playDown;\n\n  delay(15);   // cheap debounce; buttons are pressed by a human, not a script\n}\n"
       }
     ]
   },
@@ -392,7 +392,7 @@
       "y": 980,
       "properties": {
         "color": "blue",
-        "label": "L1"
+        "label": "1"
       }
     },
     {
@@ -411,7 +411,7 @@
       "y": 980,
       "properties": {
         "color": "blue",
-        "label": "L2"
+        "label": "2"
       }
     },
     {
@@ -430,7 +430,7 @@
       "y": 980,
       "properties": {
         "color": "blue",
-        "label": "L3"
+        "label": "3"
       }
     },
     {
@@ -449,7 +449,7 @@
       "y": 980,
       "properties": {
         "color": "blue",
-        "label": "L4"
+        "label": "4"
       }
     },
     {
@@ -470,6 +470,24 @@
       "properties": {
         "color": "white",
         "label": "LVL"
+      }
+    },
+    {
+      "id": "playr",
+      "metadataId": "resistor",
+      "x": 620,
+      "y": 860,
+      "properties": {
+        "value": "10000"
+      }
+    },
+    {
+      "id": "levelr",
+      "metadataId": "resistor",
+      "x": 760,
+      "y": 860,
+      "properties": {
+        "value": "10000"
       }
     }
   ],
@@ -532,7 +550,7 @@
           "y": 416
         }
       ],
-      "color": "#3b82f6"
+      "color": "#22c55e"
     },
     {
       "id": "wire-3",
@@ -562,7 +580,7 @@
           "y": 296
         }
       ],
-      "color": "#eab308"
+      "color": "#3b82f6"
     },
     {
       "id": "wire-4",
@@ -592,7 +610,7 @@
           "y": 416
         }
       ],
-      "color": "#a855f7"
+      "color": "#3b82f6"
     },
     {
       "id": "wire-5",
@@ -634,7 +652,7 @@
           "y": 296
         }
       ],
-      "color": "#f97316"
+      "color": "#eab308"
     },
     {
       "id": "wire-6",
@@ -664,7 +682,7 @@
           "y": 416
         }
       ],
-      "color": "#06b6d4"
+      "color": "#eab308"
     },
     {
       "id": "wire-7",
@@ -710,7 +728,7 @@
           "y": 346
         }
       ],
-      "color": "#22c55e"
+      "color": "#a855f7"
     },
     {
       "id": "wire-8",
@@ -740,7 +758,7 @@
           "y": 416
         }
       ],
-      "color": "#3b82f6"
+      "color": "#a855f7"
     },
     {
       "id": "wire-9",
@@ -786,7 +804,7 @@
           "y": 296
         }
       ],
-      "color": "#eab308"
+      "color": "#f97316"
     },
     {
       "id": "wire-10",
@@ -816,7 +834,7 @@
           "y": 416
         }
       ],
-      "color": "#a855f7"
+      "color": "#f97316"
     },
     {
       "id": "wire-11",
@@ -862,7 +880,7 @@
           "y": 346
         }
       ],
-      "color": "#f97316"
+      "color": "#06b6d4"
     },
     {
       "id": "wire-12",
@@ -919,11 +937,11 @@
         },
         {
           "x": -38,
-          "y": 536
+          "y": 526
         },
         {
           "x": 932,
-          "y": 536
+          "y": 526
         },
         {
           "x": 932,
@@ -964,7 +982,7 @@
           "y": 416
         }
       ],
-      "color": "#3b82f6"
+      "color": "#22c55e"
     },
     {
       "id": "wire-15",
@@ -1024,7 +1042,7 @@
           "y": 346
         }
       ],
-      "color": "#eab308"
+      "color": "#cc0000"
     },
     {
       "id": "wire-17",
@@ -1050,7 +1068,7 @@
           "y": 296
         }
       ],
-      "color": "#a855f7"
+      "color": "#cc0000"
     },
     {
       "id": "wire-18",
@@ -1076,7 +1094,7 @@
           "y": 346
         }
       ],
-      "color": "#f97316"
+      "color": "#cc0000"
     },
     {
       "id": "wire-19",
@@ -1102,7 +1120,7 @@
           "y": 296
         }
       ],
-      "color": "#06b6d4"
+      "color": "#cc0000"
     },
     {
       "id": "wire-20",
@@ -1128,7 +1146,7 @@
           "y": 346
         }
       ],
-      "color": "#22c55e"
+      "color": "#cc0000"
     },
     {
       "id": "wire-21",
@@ -1154,7 +1172,7 @@
           "y": 296
         }
       ],
-      "color": "#3b82f6"
+      "color": "#cc0000"
     },
     {
       "id": "wire-22",
@@ -1209,7 +1227,7 @@
         "y": 0
       },
       "waypoints": [],
-      "color": "#eab308"
+      "color": "#3b82f6"
     },
     {
       "id": "wire-24",
@@ -1226,7 +1244,7 @@
         "y": 0
       },
       "waypoints": [],
-      "color": "#a855f7"
+      "color": "#eab308"
     },
     {
       "id": "wire-25",
@@ -1243,7 +1261,7 @@
         "y": 0
       },
       "waypoints": [],
-      "color": "#f97316"
+      "color": "#a855f7"
     },
     {
       "id": "wire-26",
@@ -1260,7 +1278,7 @@
         "y": 0
       },
       "waypoints": [],
-      "color": "#06b6d4"
+      "color": "#f97316"
     },
     {
       "id": "wire-27",
@@ -1277,7 +1295,7 @@
         "y": 0
       },
       "waypoints": [],
-      "color": "#22c55e"
+      "color": "#06b6d4"
     },
     {
       "id": "wire-28",
@@ -1294,7 +1312,7 @@
         "y": 0
       },
       "waypoints": [],
-      "color": "#3b82f6"
+      "color": "#22c55e"
     },
     {
       "id": "wire-29",
@@ -1336,7 +1354,7 @@
           "y": 36
         }
       ],
-      "color": "#eab308"
+      "color": "#3b82f6"
     },
     {
       "id": "wire-30",
@@ -1370,7 +1388,7 @@
           "y": 88
         }
       ],
-      "color": "#a855f7"
+      "color": "#eab308"
     },
     {
       "id": "wire-31",
@@ -1392,23 +1410,27 @@
           "y": 36
         },
         {
-          "x": -18,
-          "y": 36
+          "x": 162,
+          "y": 6
         },
         {
-          "x": -18,
-          "y": 516
+          "x": 532,
+          "y": 6
+        },
+        {
+          "x": 532,
+          "y": 16
         },
         {
           "x": 992,
-          "y": 516
+          "y": 16
         },
         {
           "x": 992,
           "y": 136.7
         }
       ],
-      "color": "#f97316"
+      "color": "#a855f7"
     },
     {
       "id": "wire-32",
@@ -1434,7 +1456,7 @@
           "y": 158
         }
       ],
-      "color": "#06b6d4"
+      "color": "#f97316"
     },
     {
       "id": "wire-33",
@@ -1456,31 +1478,39 @@
           "y": 36
         },
         {
-          "x": 152,
-          "y": 6
+          "x": -28,
+          "y": 36
         },
         {
-          "x": 532,
-          "y": 6
+          "x": -28,
+          "y": 516
         },
         {
-          "x": 532,
-          "y": -4
+          "x": 942,
+          "y": 516
         },
         {
-          "x": 972,
-          "y": -4
+          "x": 942,
+          "y": 376
         },
         {
-          "x": 972,
-          "y": 176
+          "x": 1142,
+          "y": 376
+        },
+        {
+          "x": 1142,
+          "y": 246
+        },
+        {
+          "x": 1012,
+          "y": 246
         },
         {
           "x": 1016,
-          "y": 176
+          "y": 226
         }
       ],
-      "color": "#22c55e"
+      "color": "#06b6d4"
     },
     {
       "id": "wire-34",
@@ -1506,7 +1536,7 @@
           "y": 228
         }
       ],
-      "color": "#3b82f6"
+      "color": "#22c55e"
     },
     {
       "id": "wire-35",
@@ -1588,7 +1618,7 @@
           "y": 296
         }
       ],
-      "color": "#eab308"
+      "color": "#3b82f6"
     },
     {
       "id": "wire-36",
@@ -1614,7 +1644,7 @@
           "y": 298
         }
       ],
-      "color": "#a855f7"
+      "color": "#eab308"
     },
     {
       "id": "wire-37",
@@ -1656,7 +1686,7 @@
           "y": 366
         }
       ],
-      "color": "#f97316"
+      "color": "#a855f7"
     },
     {
       "id": "wire-38",
@@ -1682,7 +1712,7 @@
           "y": 368
         }
       ],
-      "color": "#06b6d4"
+      "color": "#f97316"
     },
     {
       "id": "wire-39",
@@ -1720,35 +1750,35 @@
           "y": -4
         },
         {
-          "x": 332,
+          "x": 262,
           "y": -4
         },
         {
-          "x": 332,
-          "y": 26
-        },
-        {
-          "x": 532,
-          "y": 26
-        },
-        {
-          "x": 532,
-          "y": 16
-        },
-        {
-          "x": 672,
-          "y": 16
-        },
-        {
-          "x": 672,
+          "x": 262,
           "y": 246
         },
         {
-          "x": 1142,
+          "x": 122,
           "y": 246
         },
         {
-          "x": 1142,
+          "x": 122,
+          "y": 276
+        },
+        {
+          "x": 12,
+          "y": 276
+        },
+        {
+          "x": 12,
+          "y": 376
+        },
+        {
+          "x": 922,
+          "y": 376
+        },
+        {
+          "x": 922,
           "y": 386
         },
         {
@@ -1756,7 +1786,7 @@
           "y": 386
         }
       ],
-      "color": "#22c55e"
+      "color": "#06b6d4"
     },
     {
       "id": "wire-40",
@@ -1782,7 +1812,7 @@
           "y": 438
         }
       ],
-      "color": "#3b82f6"
+      "color": "#22c55e"
     },
     {
       "id": "wire-41",
@@ -1817,30 +1847,30 @@
         },
         {
           "x": 42,
-          "y": 276
+          "y": 216
         },
         {
-          "x": 12,
-          "y": 276
+          "x": -8,
+          "y": 216
         },
         {
-          "x": 12,
-          "y": 376
-        },
-        {
-          "x": 32,
-          "y": 376
+          "x": -8,
+          "y": 386
         },
         {
           "x": 32,
-          "y": 546
+          "y": 386
         },
         {
-          "x": 992,
-          "y": 546
+          "x": 32,
+          "y": 536
         },
         {
-          "x": 992,
+          "x": 942,
+          "y": 536
+        },
+        {
+          "x": 942,
           "y": 526
         },
         {
@@ -1852,7 +1882,7 @@
           "y": 506
         }
       ],
-      "color": "#eab308"
+      "color": "#3b82f6"
     },
     {
       "id": "wire-42",
@@ -1878,7 +1908,7 @@
           "y": 508
         }
       ],
-      "color": "#a855f7"
+      "color": "#eab308"
     },
     {
       "id": "wire-43",
@@ -1917,30 +1947,30 @@
         },
         {
           "x": 32,
-          "y": 216
+          "y": 206
         },
         {
-          "x": -8,
-          "y": 216
+          "x": -18,
+          "y": 206
         },
         {
-          "x": -8,
-          "y": 386
-        },
-        {
-          "x": 172,
-          "y": 386
+          "x": -18,
+          "y": 396
         },
         {
           "x": 172,
-          "y": 556
+          "y": 396
         },
         {
-          "x": 992,
-          "y": 556.7
+          "x": 172,
+          "y": 576
+        },
+        {
+          "x": 1016,
+          "y": 576
         }
       ],
-      "color": "#f97316"
+      "color": "#a855f7"
     },
     {
       "id": "wire-44",
@@ -1966,7 +1996,7 @@
           "y": 578
         }
       ],
-      "color": "#06b6d4"
+      "color": "#f97316"
     },
     {
       "id": "wire-45",
@@ -1992,27 +2022,35 @@
           "y": -24
         },
         {
-          "x": -18,
+          "x": -28,
           "y": -24
         },
         {
-          "x": -18,
-          "y": 396
+          "x": -28,
+          "y": 26
+        },
+        {
+          "x": -38,
+          "y": 26
+        },
+        {
+          "x": -38,
+          "y": 406
         },
         {
           "x": 162,
-          "y": 396
+          "y": 406
         },
         {
           "x": 162,
-          "y": 646
+          "y": 596
         },
         {
           "x": 1016,
-          "y": 646
+          "y": 596
         }
       ],
-      "color": "#22c55e"
+      "color": "#06b6d4"
     },
     {
       "id": "wire-46",
@@ -2038,7 +2076,7 @@
           "y": 648
         }
       ],
-      "color": "#3b82f6"
+      "color": "#22c55e"
     },
     {
       "id": "wire-47",
@@ -2061,11 +2099,19 @@
         },
         {
           "x": 82,
-          "y": 296
+          "y": 226
+        },
+        {
+          "x": 42,
+          "y": 226
+        },
+        {
+          "x": 42,
+          "y": 286
         },
         {
           "x": 22,
-          "y": 296
+          "y": 286
         },
         {
           "x": 22,
@@ -2077,11 +2123,11 @@
         },
         {
           "x": 42,
-          "y": 406
+          "y": 386
         },
         {
           "x": 152,
-          "y": 406
+          "y": 386
         },
         {
           "x": 152,
@@ -2092,7 +2138,7 @@
           "y": 666
         }
       ],
-      "color": "#eab308"
+      "color": "#3b82f6"
     },
     {
       "id": "wire-48",
@@ -2122,7 +2168,7 @@
           "y": 746
         }
       ],
-      "color": "#a855f7"
+      "color": "#eab308"
     },
     {
       "id": "wire-49",
@@ -2148,7 +2194,7 @@
           "y": 158
         }
       ],
-      "color": "#f97316"
+      "color": "#000000"
     },
     {
       "id": "wire-50",
@@ -2174,7 +2220,7 @@
           "y": 228
         }
       ],
-      "color": "#06b6d4"
+      "color": "#000000"
     },
     {
       "id": "wire-51",
@@ -2200,7 +2246,7 @@
           "y": 298
         }
       ],
-      "color": "#22c55e"
+      "color": "#000000"
     },
     {
       "id": "wire-52",
@@ -2226,7 +2272,7 @@
           "y": 368
         }
       ],
-      "color": "#3b82f6"
+      "color": "#000000"
     },
     {
       "id": "wire-53",
@@ -2252,7 +2298,7 @@
           "y": 438
         }
       ],
-      "color": "#eab308"
+      "color": "#000000"
     },
     {
       "id": "wire-54",
@@ -2278,7 +2324,7 @@
           "y": 508
         }
       ],
-      "color": "#a855f7"
+      "color": "#000000"
     },
     {
       "id": "wire-55",
@@ -2304,7 +2350,7 @@
           "y": 578
         }
       ],
-      "color": "#f97316"
+      "color": "#000000"
     },
     {
       "id": "wire-56",
@@ -2330,7 +2376,7 @@
           "y": 648
         }
       ],
-      "color": "#06b6d4"
+      "color": "#000000"
     },
     {
       "id": "wire-57",
@@ -2356,7 +2402,7 @@
           "y": 718
         }
       ],
-      "color": "#22c55e"
+      "color": "#000000"
     },
     {
       "id": "wire-58",
@@ -2374,75 +2420,39 @@
       },
       "waypoints": [
         {
-          "x": 1201,
-          "y": 746
+          "x": 1242,
+          "y": 718
         },
         {
-          "x": 1202,
-          "y": 736
+          "x": 1282,
+          "y": 716
+        },
+        {
+          "x": 1282,
+          "y": -4
         },
         {
           "x": 1142,
-          "y": 736
+          "y": -4
         },
         {
           "x": 1142,
-          "y": 586
+          "y": 86
         },
         {
-          "x": 282,
-          "y": 586
+          "x": 672,
+          "y": 86
         },
         {
-          "x": 282,
-          "y": 376
+          "x": 672,
+          "y": -14
         },
         {
-          "x": 52,
-          "y": 376
+          "x": 202,
+          "y": -14
         },
         {
-          "x": 52,
-          "y": 356
-        },
-        {
-          "x": 12,
-          "y": 356
-        },
-        {
-          "x": 12,
-          "y": 286
-        },
-        {
-          "x": 52,
-          "y": 286
-        },
-        {
-          "x": 52,
-          "y": 276
-        },
-        {
-          "x": 122,
-          "y": 276
-        },
-        {
-          "x": 122,
-          "y": 246
-        },
-        {
-          "x": 262,
-          "y": 246
-        },
-        {
-          "x": 262,
-          "y": 46
-        },
-        {
-          "x": 242,
-          "y": 46
-        },
-        {
-          "x": 242,
+          "x": 202,
           "y": 36
         },
         {
@@ -2500,7 +2510,7 @@
           "y": 166
         }
       ],
-      "color": "#3b82f6"
+      "color": "#a855f7"
     },
     {
       "id": "wire-60",
@@ -2526,11 +2536,35 @@
           "y": -24
         },
         {
-          "x": 232,
+          "x": 492,
           "y": -24
         },
         {
-          "x": 232,
+          "x": 492,
+          "y": -4
+        },
+        {
+          "x": 472,
+          "y": -4
+        },
+        {
+          "x": 472,
+          "y": 26
+        },
+        {
+          "x": 322,
+          "y": 26
+        },
+        {
+          "x": 322,
+          "y": 46
+        },
+        {
+          "x": 242,
+          "y": 46
+        },
+        {
+          "x": 242,
           "y": 36
         },
         {
@@ -2573,42 +2607,26 @@
         },
         {
           "x": 962,
-          "y": 236
+          "y": -14
         },
         {
-          "x": 1152,
-          "y": 236
+          "x": 1272,
+          "y": -14
         },
         {
-          "x": 1152,
-          "y": 596
-        },
-        {
-          "x": 992,
-          "y": 596
-        },
-        {
-          "x": 992,
-          "y": 1036
-        },
-        {
-          "x": 572,
-          "y": 1036
-        },
-        {
-          "x": 572,
-          "y": 876
+          "x": 1272,
+          "y": 1086
         },
         {
           "x": 42,
-          "y": 876
+          "y": 1086
         },
         {
           "x": 42,
-          "y": 886
+          "y": 936
         }
       ],
-      "color": "#eab308"
+      "color": "#f97316"
     },
     {
       "id": "wire-62",
@@ -2638,7 +2656,7 @@
           "y": 1028
         }
       ],
-      "color": "#a855f7"
+      "color": "#06b6d4"
     },
     {
       "id": "wire-63",
@@ -2664,11 +2682,11 @@
           "y": 26
         },
         {
-          "x": 992,
+          "x": 972,
           "y": 26
         },
         {
-          "x": 992,
+          "x": 972,
           "y": 6
         },
         {
@@ -2688,7 +2706,7 @@
           "y": 936
         }
       ],
-      "color": "#f97316"
+      "color": "#22c55e"
     },
     {
       "id": "wire-64",
@@ -2718,7 +2736,7 @@
           "y": 1028
         }
       ],
-      "color": "#06b6d4"
+      "color": "#3b82f6"
     },
     {
       "id": "wire-65",
@@ -2768,7 +2786,7 @@
           "y": 936
         }
       ],
-      "color": "#22c55e"
+      "color": "#eab308"
     },
     {
       "id": "wire-66",
@@ -2798,7 +2816,7 @@
           "y": 1028
         }
       ],
-      "color": "#3b82f6"
+      "color": "#a855f7"
     },
     {
       "id": "wire-67",
@@ -2821,30 +2839,42 @@
         },
         {
           "x": 562,
-          "y": 16
+          "y": -4
         },
         {
           "x": 982,
-          "y": 16
+          "y": -4
         },
         {
           "x": 982,
-          "y": 1026
+          "y": 246
         },
         {
-          "x": 562,
-          "y": 1026
+          "x": 992,
+          "y": 246
         },
         {
-          "x": 562,
-          "y": 886
+          "x": 992,
+          "y": 1016
+        },
+        {
+          "x": 522,
+          "y": 1016
+        },
+        {
+          "x": 522,
+          "y": 946
         },
         {
           "x": 432,
-          "y": 886
+          "y": 946
+        },
+        {
+          "x": 432,
+          "y": 936
         }
       ],
-      "color": "#eab308"
+      "color": "#f97316"
     },
     {
       "id": "wire-68",
@@ -2874,7 +2904,7 @@
           "y": 1028
         }
       ],
-      "color": "#a855f7"
+      "color": "#06b6d4"
     },
     {
       "id": "wire-69",
@@ -2891,7 +2921,7 @@
         "y": 0
       },
       "waypoints": [],
-      "color": "#f97316"
+      "color": "#000000"
     },
     {
       "id": "wire-70",
@@ -2908,7 +2938,7 @@
         "y": 0
       },
       "waypoints": [],
-      "color": "#06b6d4"
+      "color": "#000000"
     },
     {
       "id": "wire-71",
@@ -2925,7 +2955,7 @@
         "y": 0
       },
       "waypoints": [],
-      "color": "#22c55e"
+      "color": "#000000"
     },
     {
       "id": "wire-72",
@@ -2986,8 +3016,8 @@
         "y": 0
       },
       "end": {
-        "componentId": "playBtn",
-        "pinName": "1.l",
+        "componentId": "playr",
+        "pinName": "2",
         "x": 0,
         "y": 0
       },
@@ -2997,27 +3027,53 @@
           "y": 286
         },
         {
-          "x": 572,
+          "x": 642,
           "y": 286
         },
         {
-          "x": 572,
-          "y": 296
+          "x": 642,
+          "y": 276
         },
         {
-          "x": 612,
-          "y": 296
+          "x": 962,
+          "y": 276
         },
         {
-          "x": 612,
-          "y": 286
+          "x": 962,
+          "y": 836
         },
         {
-          "x": 952,
-          "y": 286
+          "x": 682,
+          "y": 836
         },
         {
-          "x": 952,
+          "x": 684.8,
+          "y": 846
+        }
+      ],
+      "color": "#22c55e"
+    },
+    {
+      "id": "wire-74",
+      "start": {
+        "componentId": "playr",
+        "pinName": "2",
+        "x": 0,
+        "y": 0
+      },
+      "end": {
+        "componentId": "playBtn",
+        "pinName": "1.l",
+        "x": 0,
+        "y": 0
+      },
+      "waypoints": [
+        {
+          "x": 684.8,
+          "y": 896
+        },
+        {
+          "x": 682,
           "y": 926
         },
         {
@@ -3025,10 +3081,60 @@
           "y": 926
         }
       ],
-      "color": "#3b82f6"
+      "color": "#22c55e"
     },
     {
-      "id": "wire-74",
+      "id": "wire-75",
+      "start": {
+        "componentId": "player",
+        "pinName": "5V",
+        "x": 0,
+        "y": 0
+      },
+      "end": {
+        "componentId": "playr",
+        "pinName": "1",
+        "x": 0,
+        "y": 0
+      },
+      "waypoints": [
+        {
+          "x": 510,
+          "y": 286
+        },
+        {
+          "x": 572,
+          "y": 286
+        },
+        {
+          "x": 572,
+          "y": 296
+        },
+        {
+          "x": 612,
+          "y": 296
+        },
+        {
+          "x": 612,
+          "y": 286
+        },
+        {
+          "x": 952,
+          "y": 286
+        },
+        {
+          "x": 952,
+          "y": 846
+        },
+        {
+          "x": 626,
+          "y": 846
+        }
+      ],
+      "color": "#cc0000"
+    },
+    {
+      "id": "wire-76",
       "start": {
         "componentId": "playBtn",
         "pinName": "2.l",
@@ -3047,119 +3153,19 @@
           "y": 1006
         },
         {
-          "x": 962,
+          "x": 972,
           "y": 1006
         },
         {
-          "x": 962,
-          "y": 276
-        },
-        {
-          "x": 642,
-          "y": 276
-        },
-        {
-          "x": 642,
-          "y": 286
-        },
-        {
-          "x": 519.5,
-          "y": 286
-        }
-      ],
-      "color": "#000000"
-    },
-    {
-      "id": "wire-75",
-      "start": {
-        "componentId": "player",
-        "pinName": "A1",
-        "x": 0,
-        "y": 0
-      },
-      "end": {
-        "componentId": "levelBtn",
-        "pinName": "1.l",
-        "x": 0,
-        "y": 0
-      },
-      "waypoints": [
-        {
-          "x": 567.5,
-          "y": 286
-        },
-        {
-          "x": 572,
-          "y": 296
-        },
-        {
-          "x": 682,
-          "y": 296
-        },
-        {
-          "x": 682,
-          "y": 266
-        },
-        {
           "x": 972,
           "y": 266
         },
         {
-          "x": 972,
-          "y": 1016
+          "x": 672,
+          "y": 266
         },
         {
-          "x": 742,
-          "y": 1016
-        },
-        {
-          "x": 742,
-          "y": 959
-        }
-      ],
-      "color": "#eab308"
-    },
-    {
-      "id": "wire-76",
-      "start": {
-        "componentId": "levelBtn",
-        "pinName": "2.l",
-        "x": 0,
-        "y": 0
-      },
-      "end": {
-        "componentId": "player",
-        "pinName": "GND.2",
-        "x": 0,
-        "y": 0
-      },
-      "waypoints": [
-        {
-          "x": 742,
-          "y": 978
-        },
-        {
-          "x": 712,
-          "y": 976
-        },
-        {
-          "x": 712,
-          "y": 526
-        },
-        {
-          "x": -28,
-          "y": 526
-        },
-        {
-          "x": -28,
-          "y": 16
-        },
-        {
-          "x": 302,
-          "y": 16
-        },
-        {
-          "x": 302,
+          "x": 672,
           "y": 296
         },
         {
@@ -3175,6 +3181,194 @@
     },
     {
       "id": "wire-77",
+      "start": {
+        "componentId": "player",
+        "pinName": "A1",
+        "x": 0,
+        "y": 0
+      },
+      "end": {
+        "componentId": "levelr",
+        "pinName": "2",
+        "x": 0,
+        "y": 0
+      },
+      "waypoints": [
+        {
+          "x": 567.5,
+          "y": 286
+        },
+        {
+          "x": 652,
+          "y": 286
+        },
+        {
+          "x": 652,
+          "y": 256
+        },
+        {
+          "x": 982,
+          "y": 256
+        },
+        {
+          "x": 982,
+          "y": 826
+        },
+        {
+          "x": 822,
+          "y": 826
+        },
+        {
+          "x": 824.8,
+          "y": 846
+        }
+      ],
+      "color": "#3b82f6"
+    },
+    {
+      "id": "wire-78",
+      "start": {
+        "componentId": "levelr",
+        "pinName": "2",
+        "x": 0,
+        "y": 0
+      },
+      "end": {
+        "componentId": "levelBtn",
+        "pinName": "1.l",
+        "x": 0,
+        "y": 0
+      },
+      "waypoints": [
+        {
+          "x": 824.8,
+          "y": 896
+        },
+        {
+          "x": 822,
+          "y": 926
+        },
+        {
+          "x": 766,
+          "y": 926
+        }
+      ],
+      "color": "#3b82f6"
+    },
+    {
+      "id": "wire-79",
+      "start": {
+        "componentId": "player",
+        "pinName": "5V",
+        "x": 0,
+        "y": 0
+      },
+      "end": {
+        "componentId": "levelr",
+        "pinName": "1",
+        "x": 0,
+        "y": 0
+      },
+      "waypoints": [
+        {
+          "x": 510,
+          "y": 286
+        },
+        {
+          "x": 512,
+          "y": 296
+        },
+        {
+          "x": 302,
+          "y": 296
+        },
+        {
+          "x": 302,
+          "y": 16
+        },
+        {
+          "x": -18,
+          "y": 16
+        },
+        {
+          "x": -18,
+          "y": 886
+        },
+        {
+          "x": 602,
+          "y": 886
+        },
+        {
+          "x": 602,
+          "y": 906
+        },
+        {
+          "x": 762,
+          "y": 906
+        },
+        {
+          "x": 766,
+          "y": 896
+        }
+      ],
+      "color": "#cc0000"
+    },
+    {
+      "id": "wire-80",
+      "start": {
+        "componentId": "levelBtn",
+        "pinName": "2.l",
+        "x": 0,
+        "y": 0
+      },
+      "end": {
+        "componentId": "player",
+        "pinName": "GND.2",
+        "x": 0,
+        "y": 0
+      },
+      "waypoints": [
+        {
+          "x": 766,
+          "y": 1006
+        },
+        {
+          "x": 762,
+          "y": 1026
+        },
+        {
+          "x": 1152,
+          "y": 1026
+        },
+        {
+          "x": 1152,
+          "y": 236
+        },
+        {
+          "x": 682,
+          "y": 236
+        },
+        {
+          "x": 682,
+          "y": 296
+        },
+        {
+          "x": 532,
+          "y": 296
+        },
+        {
+          "x": 532,
+          "y": 286
+        },
+        {
+          "x": 519.5,
+          "y": 286
+        }
+      ],
+      "color": "#000000"
+    },
+    {
+      "id": "wire-81",
       "start": {
         "componentId": "player",
         "pinName": "6",
@@ -3213,10 +3407,10 @@
           "y": 296
         }
       ],
-      "color": "#a855f7"
+      "color": "#22c55e"
     },
     {
-      "id": "wire-78",
+      "id": "wire-82",
       "start": {
         "componentId": "player",
         "pinName": "7",
@@ -3255,10 +3449,10 @@
           "y": 296
         }
       ],
-      "color": "#f97316"
+      "color": "#3b82f6"
     },
     {
-      "id": "wire-79",
+      "id": "wire-83",
       "start": {
         "componentId": "player",
         "pinName": "8",
@@ -3293,10 +3487,10 @@
           "y": 296
         }
       ],
-      "color": "#06b6d4"
+      "color": "#eab308"
     },
     {
-      "id": "wire-80",
+      "id": "wire-84",
       "start": {
         "componentId": "player",
         "pinName": "9",
@@ -3331,10 +3525,10 @@
           "y": 296
         }
       ],
-      "color": "#22c55e"
+      "color": "#a855f7"
     },
     {
-      "id": "wire-81",
+      "id": "wire-85",
       "start": {
         "componentId": "player",
         "pinName": "10",
@@ -3369,10 +3563,10 @@
           "y": 296
         }
       ],
-      "color": "#3b82f6"
+      "color": "#f97316"
     },
     {
-      "id": "wire-82",
+      "id": "wire-86",
       "start": {
         "componentId": "player",
         "pinName": "11",
@@ -3403,10 +3597,10 @@
           "y": 296
         }
       ],
-      "color": "#eab308"
+      "color": "#06b6d4"
     },
     {
-      "id": "wire-83",
+      "id": "wire-87",
       "start": {
         "componentId": "player",
         "pinName": "12",
@@ -3437,10 +3631,10 @@
           "y": 296
         }
       ],
-      "color": "#a855f7"
+      "color": "#22c55e"
     },
     {
-      "id": "wire-84",
+      "id": "wire-88",
       "start": {
         "componentId": "player",
         "pinName": "GND.1",

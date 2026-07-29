@@ -14,6 +14,17 @@ description: >
   can only offer levels 1-4 on request. Watch piano's own serial log ("Level
   N") or match the win/auto-advance you just heard, and press LEVEL SELECT to
   the right count before hitting PLAY.
+  v2 (2026-07-29): fixed two bugs a first pass found live. (1) The 7 finger
+  pins used to be OUTPUTs driven HIGH while idle, which fought a real lemon
+  press on the same node and killed manual-touch sound entirely — they are
+  now high-Z (INPUT) while idle, only ever driving LOW to "press". (2) PLAY
+  and LEVEL SELECT used INPUT_PULLUP, but avr8js does not simulate the
+  ATmega's internal pull-up (only real resistor components, like every one of
+  piano's own keys) — both buttons read permanently LOW, causing one spurious
+  edge at boot (armed level 2 on startup) and total unresponsiveness after.
+  Fixed with real external 10k pull-ups + plain INPUT, plus a boot guard
+  (mirrors piano's own autoCalibrate() fix) so the SPICE solve's settling
+  window can't be misread as a press.
 routing: loose   # each key node is now a 3-way junction (piano's own wire +
                  # button + player's finger wire); the strict lane router
                  # can't avoid every overlap there, and this circuit is a
@@ -38,11 +49,26 @@ boards:
       // a win. Piano's own pull-ups hold each node idle-high; this board does
       // exactly what a touch does — pulls one node low for a beat, then lets
       // go — so the piano firmware cannot tell a pulse from a real touch.
+      //
+      // Two lessons learned the hard way testing v1 of this board:
+      //  1. A finger pin must be high-Z (INPUT) while idle, NOT an output
+      //     driven HIGH. Piano's own pull-up already holds the node HIGH; an
+      //     actively-driven HIGH output on the SAME node fights a real lemon
+      //     press (which pulls it to GND), and that contention was silencing
+      //     every manual key touch. Only drive LOW, only while "pressing" —
+      //     released = don't drive the node at all, exactly like a switch.
+      //  2. PLAY/LEVEL SELECT must NOT use INPUT_PULLUP. avr8js (the AVR sim
+      //     this harness uses) does not simulate the chip's internal weak
+      //     pull-up at all — piano's own 7 keys only work because they have
+      //     REAL pull-up resistor components in the circuit. Without one here
+      //     both buttons read permanently LOW: one spurious edge at boot
+      //     (hence starting on level 2) and dead forever after. Fixed with
+      //     external 10k pull-ups (see the wires below) + plain INPUT.
 
       const uint8_t FINGER_PINS[7] = {6, 7, 8, 9, 10, 11, 12};  // key1..key7
       const uint8_t LEVEL_LEDS[4]  = {2, 3, 4, 5};              // level 1..4
-      const uint8_t PLAY_BTN  = A0;   // to GND, INPUT_PULLUP
-      const uint8_t LEVEL_BTN = A1;   // to GND, INPUT_PULLUP
+      const uint8_t PLAY_BTN  = A0;   // external 10k pull-up to 5V, plain INPUT
+      const uint8_t LEVEL_BTN = A1;   // external 10k pull-up to 5V, plain INPUT
       const uint8_t CODE_LEN = 10;
 
       // Same four secret codes as firmware/src/main.cpp's sequence_1..4, as
@@ -65,11 +91,18 @@ boards:
         Serial.println(level + 1);
       }
 
+      // Idle = high-impedance INPUT: don't drive this node at all, so a real
+      // lemon click on the SAME node is never fought.
+      void releaseKey(uint8_t pin) { pinMode(pin, INPUT); }
+      // Pressing = actively pull the node to GND, same electrical effect as a
+      // touch closing the circuit.
+      void pressKeyPin(uint8_t pin) { pinMode(pin, OUTPUT); digitalWrite(pin, LOW); }
+
       void pressKey(uint8_t keyNumber) {   // 1..7
         uint8_t pin = FINGER_PINS[keyNumber - 1];
-        digitalWrite(pin, LOW);    // pull the shared node down: a "touch"
+        pressKeyPin(pin);
         delay(90);
-        digitalWrite(pin, HIGH);   // let go
+        releaseKey(pin);
         delay(300);                // gap so the piano's edge logic sees a
                                     // clean release before the next digit,
                                     // and two same-key digits (never
@@ -88,17 +121,23 @@ boards:
       }
 
       void setup() {
-        for (uint8_t i = 0; i < 7; i++) {
-          pinMode(FINGER_PINS[i], OUTPUT);
-          digitalWrite(FINGER_PINS[i], HIGH);   // idle-high, matches the pull-ups
-        }
+        for (uint8_t i = 0; i < 7; i++) releaseKey(FINGER_PINS[i]);   // idle: high-Z
         for (uint8_t i = 0; i < 4; i++) {
           pinMode(LEVEL_LEDS[i], OUTPUT);
         }
-        pinMode(PLAY_BTN, INPUT_PULLUP);
-        pinMode(LEVEL_BTN, INPUT_PULLUP);
+        pinMode(PLAY_BTN, INPUT);    // external pull-up does the pull-up job
+        pinMode(LEVEL_BTN, INPUT);   // (avr8js does not simulate INPUT_PULLUP)
         pinMode(13, OUTPUT);
         Serial.begin(9600);
+
+        // Boot guard: Velxio's first SPICE solve takes a moment to settle,
+        // and every input reads LOW until it does (same fix piano's own
+        // autoCalibrate() needed) — wait for both buttons to read idle-HIGH
+        // before trusting any edge, or the settle itself looks like a press.
+        while (digitalRead(PLAY_BTN) == LOW || digitalRead(LEVEL_BTN) == LOW) {
+          delay(10);
+        }
+
         showLevel();
         Serial.println(F("LEVEL SELECT cycles 1-4 (see the LEDs); PLAY replays"));
         Serial.println(F("that level's code onto the piano's lemons. Match this"));
@@ -164,15 +203,20 @@ components:
 
   # ── The autoplayer's own parts, placed well clear of the piano (y: 900+) ──
   - { id: lvlr1,  type: resistor,   x: 36,  y: 900, properties: { value: "220" } }
-  - { id: lvled1, type: led,        x: 60,  y: 980, properties: { color: "blue", label: "L1" } }
+  - { id: lvled1, type: led,        x: 60,  y: 980, properties: { color: "blue", label: "1" } }
   - { id: lvlr2,  type: resistor,   x: 166, y: 900, properties: { value: "220" } }
-  - { id: lvled2, type: led,        x: 190, y: 980, properties: { color: "blue", label: "L2" } }
+  - { id: lvled2, type: led,        x: 190, y: 980, properties: { color: "blue", label: "2" } }
   - { id: lvlr3,  type: resistor,   x: 296, y: 900, properties: { value: "220" } }
-  - { id: lvled3, type: led,        x: 320, y: 980, properties: { color: "blue", label: "L3" } }
+  - { id: lvled3, type: led,        x: 320, y: 980, properties: { color: "blue", label: "3" } }
   - { id: lvlr4,  type: resistor,   x: 426, y: 900, properties: { value: "220" } }
-  - { id: lvled4, type: led,        x: 450, y: 980, properties: { color: "blue", label: "L4" } }
+  - { id: lvled4, type: led,        x: 450, y: 980, properties: { color: "blue", label: "4" } }
   - { id: playBtn,  type: pushbutton, x: 620, y: 940, properties: { color: "red",   label: "PLAY" } }
   - { id: levelBtn, type: pushbutton, x: 760, y: 940, properties: { color: "white", label: "LVL" } }
+  # External pull-ups for PLAY/LEVEL SELECT — avr8js does not simulate the
+  # ATmega's internal INPUT_PULLUP, so without a real resistor here (same as
+  # every one of piano's own keys) both buttons would read permanently LOW.
+  - { id: playr,  type: resistor, x: 620, y: 860, properties: { value: "10000" } }
+  - { id: levelr, type: resistor, x: 760, y: 860, properties: { value: "10000" } }
 
 wires:
   # Signal columns: piano pin -> resistor (key node) -> key leg.
@@ -252,10 +296,16 @@ wires:
   - [lvled3:C, lvled4:C]
   - [lvled4:C, player:GND.2]
 
-  # ── PLAY / LEVEL SELECT buttons, internal pull-ups (INPUT_PULLUP) ─────────
-  - [player:A0, playBtn:1.l]
+  # ── PLAY / LEVEL SELECT buttons, EXTERNAL 10k pull-ups to 5V (avr8js does
+  # not simulate INPUT_PULLUP — same reason every piano key has a real
+  # resistor rather than relying on the firmware's internal one) ────────────
+  - [player:A0, playr:2]
+  - [playr:2, playBtn:1.l]
+  - [player:5V, playr:1]
   - [playBtn:2.l, player:GND.2]
-  - [player:A1, levelBtn:1.l]
+  - [player:A1, levelr:2]
+  - [levelr:2, levelBtn:1.l]
+  - [player:5V, levelr:1]
   - [levelBtn:2.l, player:GND.2]
 
   # ── The 7 "fingers": player's outputs join the SAME key nodes as the real

@@ -47,6 +47,41 @@ assertion pass; validated instead by compiling each board's sketch standalone
 the `.vlx` generates (`routing: loose` — each key node is now a 3-way junction,
 which the strict lane router flags but the circuit is still fully wired).
 
+## 2026-07-29 (V5 autoplayer v2) — Two real bugs found by actually clicking it
+
+First live test of `emulation/autoplayer.yaml` surfaced three symptoms: no sound
+on manual lemon presses, PLAY and LEVEL SELECT both doing nothing, and the
+board starting armed on level 2 instead of level 1. Root causes, both now fixed:
+
+1. **The 7 "finger" output pins were `OUTPUT` driven `HIGH` while idle**, only
+   pulsing `LOW` to simulate a press. Piano's own pull-up already holds each
+   key node HIGH; an *actively driven* HIGH output on the same node fights a
+   real lemon press (which pulls it to GND) — that contention was silencing
+   every manual touch. Fixed: idle = high-impedance `INPUT` (don't drive the
+   node at all, exactly like an open switch), `OUTPUT LOW` only while
+   "pressing".
+2. **PLAY / LEVEL SELECT used `INPUT_PULLUP`.** avr8js — the AVR simulator
+   this harness uses — does not simulate the ATmega's internal weak pull-up at
+   all; piano's own 7 keys only work because they have real pull-up
+   **resistor components** in the circuit. With no such resistor here, both
+   buttons read permanently LOW: one spurious edge right at boot (hence
+   starting armed on level 2) and total unresponsiveness after, since the
+   edge-detector's "was it already down" latch never got a chance to release.
+   Fixed with two external 10k pull-ups to 5V (mirroring every piano key) +
+   plain `INPUT`, plus a boot guard mirroring piano's own `autoCalibrate()`
+   fix (Velxio's SPICE solve reads every input LOW for a moment at boot,
+   which would otherwise look exactly like a spurious press).
+
+**Also fixed, in the shared harness** (`velxio-multi-board-emulator`, not this
+repo): `.vlx` generation assigned wire colors by *list position*, so a single
+electrical node split across multiple wire segments (any junction — which
+`autoplayer.yaml`'s key nodes now are, with 3 wires apiece) rendered in
+different colors per segment. Rewrote `_wire_color` into a net-aware pass
+(union-find over every wire's endpoints, classify GND/VCC/signal per net, one
+color per net) — verified against the regenerated `autoplayer.vlx`: 88 wires,
+49 real nets, zero inconsistent colors. Regenerated `lemon-piano.vlx` too
+(still verifies green) so the existing hand-play project picks up the fix.
+
 ## 2026-07-29 (V5 audio timing) — Fixed the sound race; silences are now policy
 
 Reported after playing it: the win fanfare stepped on the tenth note. Root cause —
