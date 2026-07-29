@@ -94,14 +94,14 @@ with its own 220 Ω series resistor to a common GND:
   it means a secret code must never repeat a note back-to-back.
 - Each **correct** note lights `LED_PINS[currentStep]` and advances the step.
 - Once the sequence has started, a **wrong** note calls `allLedsOff()` (blanks all
-  ten) and plays a short low tone — **after** the pressed note has finished
-  (`NOTE_DURATION` 70 ms, then a `WRONG_TONE_GAP_MS` 60 ms silence, then
-  `WRONG_TONE_MS` 200 ms of C2). Measured on the emulator: 69.9 ms note →
-  60.5 ms silence → 200.0 ms tone, no overlap. With sustain, "finished" means the
-  lemon was released — capped by `SUSTAIN_CAP_MS` (2 s) so a stuck or ghosting
-  key cannot freeze the game.
-- **All ten lit = win:** the victory theme plays with the bar flashing per note,
-  then the game auto-advances to the other theme and the bar blanks.
+  ten) and plays `sfxMistake` — a short, 2-note excerpt of the Mario death rattle
+  (`firmware/include/mario_sfx.h`) — **after** the pressed note has finished
+  (`NOTE_DURATION` 70 ms, then a `WRONG_TONE_GAP_MS` 60 ms silence, then the cue).
+  With sustain, "finished" means the lemon was released — capped by
+  `SUSTAIN_CAP_MS` (2 s) so a stuck or ghosting key cannot freeze the game.
+- **All ten lit = win:** that level's own theme plays in full first, with the bar
+  flashing per note, then the flagpole fanfare, then the game auto-advances to
+  the next level and the bar blanks.
 
 Standard indicator LEDs (Vf ≈ 2 V): 220 Ω gives ~15 mA at 5 V, within the
 ATmega's per-pin limit. All ten lit ≈ 150 mA — fine on USB, but note the

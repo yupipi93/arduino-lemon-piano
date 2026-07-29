@@ -153,9 +153,8 @@ const unsigned long REPEAT_EVERY_MS = 120;    // then one step this often
 
 // ── Sound ───────────────────────────────────────────────────────────────────
 const int NOTE_DURATION = 70;     // minimum key tone length; a held key sustains
-const int WRONG_TONE_MS = 200;    // low "you missed" tone
-const int WRONG_TONE_GAP_MS = 60; // silence between the played note and the low
-                                  // tone, so the two never blur together
+const int WRONG_TONE_GAP_MS = 60; // silence between the played note and the
+                                  // mistake cue, so the two never blur together
 const unsigned long SUSTAIN_CAP_MS = 2000;  // how long the wrong tone waits for a
                                   // held key before sounding anyway (a stuck key
                                   // must not freeze the game)
@@ -174,8 +173,8 @@ const int SFX_GAP_MS = 120;      // hush -> silence -> effect: separates an effe
                                  // from whatever was sounding before it
 const int SFX_TAIL_MS = 60;      // silence AFTER every effect, so two effects in a
                                  // row (seven calibration coins) never blur
-const int PHRASE_GAP_MS = 350;   // musical pause between phrases: fanfare -> level
-                                 // theme -> ending melody
+const int PHRASE_GAP_MS = 350;   // musical pause between phrases: level theme ->
+                                 // fanfare -> ending melody
 const int SFX_ARTICULATION_MS = 18;  // silence carved out of the END of each note in
                                  // a table. Without it the notes run together and a
                                  // repeated pitch (Starman's F5 F5) sounds like one
@@ -535,17 +534,18 @@ void handleGuess() {
     }
 
     if (currentStep >= SEQUENCE_LENGTH) {
-      // VICTORY — the flagpole fanfare, then this level's own theme with the
-      // whole bar flashing to the beat, then on to the next level. Clearing the
-      // LAST level plays the ending melody and wraps back to level 1.
+      // VICTORY — this level's own theme plays out in full first (bar flashing
+      // to the beat), THEN the flagpole fanfare, then on to the next level.
+      // Clearing the LAST level plays the ending melody after the fanfare too,
+      // then wraps back to level 1.
       log(F("WIN"));
       // The tenth note is still sounding under the player's finger. Let it play
-      // out, pause, and only then start the fanfare — otherwise the fanfare cuts
+      // out, pause, and only then start the theme — otherwise the theme cuts
       // the winning note off mid-sound.
       silenceKeyNote();
-      playSfx(sfxLevelClear, true);
-      delay(PHRASE_GAP_MS);
       playVictory();
+      delay(PHRASE_GAP_MS);
+      playSfx(sfxLevelClear, true);
       level++;
       if (level > LEVEL_COUNT) {
         log(F("ALL LEVELS CLEAR"));
@@ -1071,10 +1071,10 @@ void waitKeyRelease(int key) {
   activeKey = -1;
 }
 
-// Short low "you missed" tone. Well below every UI chirp and every key note, so
-// it reads as "the game says no" rather than as a state beep.
+// "You missed" cue: the short Mario death excerpt (sfxMistake), so a wrong
+// note reads unmistakably as "the game says no" rather than as a state beep.
 void wrongTone() {
-  playTone(NOTE_C2, WRONG_TONE_MS);
+  playSfx(sfxMistake);
 }
 
 void playVictory() {

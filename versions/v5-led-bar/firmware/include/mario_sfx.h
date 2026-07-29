@@ -56,6 +56,14 @@ const int sfxDeath[] PROGMEM = {
   NOTE_F4, 110, NOTE_E4, 110, NOTE_D4, 140, NOTE_C4, 260, 0, 0
 };
 
+// ── MISTAKE (short death) 📐 excerpt of sfxDeath ───────────────────────────
+// The game's own "wrong note" cue: just the opening C5->G4 "death rattle"
+// fourth from sfxDeath above, clipped to two notes so a miss stays snappy and
+// does not hold up play the way the fuller sfxDeath (smart-adjust failure) can.
+const int sfxMistake[] PROGMEM = {
+  NOTE_C5, 90, NOTE_G4, 90, 0, 0
+};
+
 // ── BUMP 🔨 reconstruction ─────────────────────────────────────────────────
 // Head-on-a-block: the knob is against its end stop and will not move.
 const int sfxBump[] PROGMEM = {

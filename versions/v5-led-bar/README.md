@@ -50,10 +50,11 @@ flashing to the beat, then the game **auto-advances** to the other tune.
    and a wrong note **blanks all ten** and drops you back to free play. The low
    "wrong" tone plays **after** the note you pressed has finished — you always
    hear which key was wrong, then the buzz.
-5. **Victory + auto-advance.** Light all ten → the **flagpole fanfare** plays,
-   then that level's own theme with the bar flashing per note, then the game moves
-   to the **next level** (1 → 2 → 3 → 4 → 1 …). Clearing level 4 plays the
-   **ending melody** first.
+5. **Victory + auto-advance.** Light all ten → that level's own theme plays in
+   full first, with the bar flashing per note, then the **flagpole fanfare**,
+   then the game moves to the **next level** (1 → 2 → 3 → 4 → 1 …). Clearing
+   level 4 plays the **ending melody** last, after the fanfare, before wrapping
+   back to level 1.
 6. **Tune sensitivity while you play**: **D12** = more sensitive, **A7** = less
    sensitive, 1-count steps (5 above margin 20), auto-repeat while held. The bar
    shows the level for a moment after each press, and the tick's pitch tracks the
@@ -111,8 +112,9 @@ where each one came from:
 | Smart adjust listening | a coin per sampling burst |
 | Smart adjust learned | **1-up** |
 | Smart adjust failed | **death rattle** |
-| Level complete | **flagpole fanfare**, then that level's theme |
-| All four levels clear | **ending melody** |
+| Wrong note | **short death rattle** (2 notes) |
+| Level complete | that level's theme, then the **flagpole fanfare** |
+| All four levels clear | fanfare, then the **ending melody** |
 
 Touch sensing is the V2.5 front end: `threshold = baseline − margin`, with the
 baseline measured at boot and tracked while each key is untouched, and the margin

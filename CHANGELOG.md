@@ -2,6 +2,37 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-29 (V5 audio) — Mistake cue is now Mario's death rattle; win order fixed
+
+Two owner-reported issues with V5's sound design:
+
+- **The wrong-note tone was a plain low C2 beep**, not a Mario sound. Replaced
+  with `sfxMistake` (`firmware/include/mario_sfx.h`): the opening `C5, G4` pair
+  of the existing Death jingle, clipped to two notes (~180 ms) so a miss stays
+  snappy — unlike the fuller `sfxDeath` used for a failed smart adjust. `NOTE_C2`
+  and the now-unused `WRONG_TONE_MS` constant are gone; `wrongTone()` just calls
+  `playSfx(sfxMistake)`.
+- **The win sequence played the flagpole fanfare before the level's own theme**,
+  which read as the "win" sound cutting into the middle of the theme that
+  auto-plays afterward. Reordered in `handleGuess()`: the level theme
+  (`playVictory()`) now plays out in full first, then the fanfare
+  (`sfxLevelClear`), then — on clearing level 4 — the ending melody
+  (`sfxEnding`), before advancing/wrapping. Docs (`README.md`,
+  `versions/v5-led-bar/README.md` + `HARDWARE.md`, `docs/MARIO-SOUNDS.md`)
+  updated to match; the "sit below everything" pitch-policy claim for the
+  mistake/death cues was also corrected to describe the real trade-off (their
+  C5/G4 register can sit inside a level's own key range, but they only ever
+  play after the game has already called the guess wrong).
+
+All three `pio run` envs (`nanoatmega328`, `nanoatmega328new`, `emulation`)
+build clean. Headless verify: `lemon-piano.yaml` (covers a `WRONG` and a `WIN`)
+and `all-levels-win.yaml` (all four levels' win sequences back to back) both
+green — zero unexpected `WRONG`s, all `Level N` / `ALL LEVELS CLEAR` markers in
+order. `free-play.yaml` also green. `hold-and-repeat.yaml`'s buzzer edge-count
+assertion fails (3755 vs. required 4000) on this code **and** on the
+pre-change code identically — a pre-existing issue, not a regression from this
+change, left as-is.
+
 ## 2026-07-29 (V5 autoplayer, v5) — Manual clicks came back dead; a real short,
 ## not a mistake
 

@@ -98,6 +98,18 @@ B3(8) F4(8) rest(8) F4(8) F4(6) E4(6) D4(6) C4(8) E3(8) rest(8) E3(8) C3(8)
 C and F — from [Los Doggies](https://www.losdoggies.com/archives/1302); letter-note
 version at [pianoletternotes](https://pianoletternotes.blogspot.com/2017/10/super-mario-death-theme.html).
 
+### Mistake / wrong note 📐 excerpt of Death
+
+The game's own "wrong note" cue, added 2026-07-29 to replace a plain low tone.
+Just the opening `C5, G4` pair of the Death jingle above, clipped to two notes
+so a miss doesn't stall play the way the fuller Death cue (used for a failed
+smart adjust) can.
+
+| # | Note | Hz | Duration |
+|---|---|---|---|
+| 1 | C5 | 523 | 90 ms |
+| 2 | G4 | 392 | 90 ms |
+
 ### Level clear / flagpole fanfare 🔨 reconstruction
 
 Plays when a course is completed. Rendered here as the classic rising figure that
@@ -203,13 +215,15 @@ The frantic loop while you are invincible.
 | Smart adjust learned | **1-Up** | a genuine gain |
 | Smart adjust failed | **Death** (short) | it did not work, and nothing changed |
 | Key stuck / re-baselined | **Fireball** | something odd happened, keep going |
-| Wrong note in the game | low C2 tone | the game's own "no", deliberately unlike the UI chirps |
-| **Level complete** | **Level-clear fanfare** | then the level's own theme plays |
-| **All levels complete** | **Game-over/ending melody** | then it wraps back to level 1 |
+| Wrong note in the game | **Mistake** (short Death excerpt) | the game's own "no" — unmistakably Mario, distinct from the UI chirps |
+| **Level complete** | the level's own theme, **then** the Level-clear fanfare | the theme is the pay-off; the fanfare punctuates it |
+| **All levels complete** | fanfare, **then** the Game-over/ending melody | before wrapping back to level 1 |
 
 Pitch policy: UI sounds and SFX sit **above** the level note sets where possible so
-a state chirp is never mistaken for a played note. The exceptions are deliberate:
-the wrong-note tone (C2) and the death jingle sit *below* everything.
+a state chirp is never mistaken for a played note. The Mistake and Death jingles
+are the deliberate exception — they borrow Death's C5/G4 register, which can sit
+inside a level's own key range, but they only ever play *after* the game has
+already told you the guess was wrong, so there is no ambiguity in context.
 
 ## Timing: why the silences are deliberate
 

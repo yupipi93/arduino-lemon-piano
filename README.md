@@ -41,9 +41,9 @@ The methodology (what counts as a new version, and the checklist for adding one)
    the note plays on the buzzer.
 3. **Guess the secret sequence** (10 notes). Each correct note lights the next
    green LED; a wrong note **blanks all ten** and the sequence restarts.
-4. **Victory + auto-advance.** All ten lit → the flagpole fanfare, then that
-   level's theme with the bar flashing to the beat, then on to the next of the
-   **four levels**.
+4. **Victory + auto-advance.** All ten lit → that level's theme plays in full
+   with the bar flashing to the beat, then the flagpole fanfare, then on to the
+   next of the **four levels**.
 5. **Restart** anytime with the D7 button (re-reads game select, recalibrates).
 
 ### Secret codes (spoilers!)
