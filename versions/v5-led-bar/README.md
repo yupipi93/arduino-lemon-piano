@@ -167,14 +167,20 @@ There's also a **live, on-demand** version for manual testing —
 level number (1-4) into *that board's own Serial Monitor tab* to arm it (its
 4 LEDs show which), then `p`, and it fires that level's code onto the lemons'
 own key nodes — as many times as you like, matching whichever level piano is
-actually on. (An earlier pass tried physical PLAY/LEVEL SELECT buttons instead
-of serial commands; verified live with a headless-Playwright probe that this
-Velxio version binds every pushbutton's click handler to a single global
-simulator rather than one per board, so a button on the second board can't
-reliably drive its own pins — serial I/O doesn't have that limitation, hence
-typing instead of clicking. Details in `emulation/README.md`.) Multi-board
-specs only run in `--mode interactive` in this harness (no headless
-verify/document for them), so open it in the browser:
+actually on. Your own lemon clicks still work at the same time, in the same
+session — verified live (autoplay a win, then click a lemon by hand right
+after: both register correctly, 9/9 repeated runs). (An earlier pass tried
+physical PLAY/LEVEL SELECT buttons instead of serial commands; verified live
+with a headless-Playwright probe that this Velxio version binds every
+pushbutton's click handler to a single global simulator rather than one per
+board, so a button on the second board can't reliably drive its own pins —
+serial I/O doesn't have that limitation, hence typing instead of clicking.
+A later pass fixed manual clicks going dead once the finger wiring correctly
+reached piano's pins — a bare wire was a hard short that always beat a real
+click, fixed with a 220Ω series resistor on each finger wire. Details in
+`emulation/README.md`.) Multi-board specs only run in `--mode interactive` in
+this harness (no headless verify/document for them), so open it in the
+browser:
 
 ```bash
 $PIPE run --mode interactive --spec emulation/autoplayer.yaml --out emulation/runs --open

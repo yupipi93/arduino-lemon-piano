@@ -2,6 +2,37 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-29 (V5 autoplayer, v5) — Manual clicks came back dead; a real short,
+## not a mistake
+
+After v4's fixes, autoplay worked end to end — but manual lemon clicks now did
+nothing at all. Live-tested (Playwright again) with `window.__spiceDebug()`:
+pressing key6 changed the voltage on unrelated nodes but NEVER on key6's own
+node, while the finger wire's board-to-board connection to that exact same
+node stayed rock steady. Root cause: the finger pin is a driven `OUTPUT`
+(idle HIGH) sitting on the SAME node as the button — in the digital
+fast-path both AVR boards use, that's a hard short, and the finger's
+constant HIGH always won, so a real press could never pull the node down.
+
+Tried making the finger pin high-Z (`INPUT`) while idle instead, so it
+wouldn't fight a real click — manual clicks came back, but auto-play went
+dead in the other direction, even with the press held 500 ms. This simulator
+doesn't re-evaluate a pin's cross-board connection when its `pinMode`
+changes at runtime, so once the finger toggled back to `INPUT`, nothing it
+did afterward ever reached piano again.
+
+Fix: keep the finger pin a permanent `OUTPUT` (set once, never toggled), but
+route it through a 220Ω series resistor instead of a bare wire. That turns
+the hard short into an ordinary voltage divider — a real button's near-zero
+contact resistance still wins over 220Ω when someone clicks a lemon, and the
+finger's driven LOW still wins over piano's own pull-up when auto-playing.
+Had to also raise the press hold from 90 ms to 250 ms — the SPICE-resolved
+divider needs time to settle, and 90 ms measured flaky (~1-in-3 misfires
+across repeated live runs); 250 ms measured 9/9 reliable. Verified live, one
+continuous session: autoplay wins level 1 → piano auto-advances to level 2 →
+a manual click on level 2's first note registers a fresh `OK 1/10` right
+after, no interference either direction.
+
 ## 2026-07-29 (V5 emulation) — A "virtual button" that plays every level for you
 
 Levels 3 and 4 (added earlier today) had never been exercised by any automated

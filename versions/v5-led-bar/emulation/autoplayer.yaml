@@ -15,27 +15,39 @@ description: >
   can only offer levels 1-4 on request. Watch piano's own serial log ("Level
   N") or match the win/auto-advance you just heard, and type the right level
   number before typing `p`.
-  v4 (2026-07-29), after three rounds of testing this live: PLAY/LEVEL SELECT
-  are no longer pushbuttons at all. Traced (with Playwright driving the real
-  editor headlessly, not guesswork) to a hard limitation of this Velxio
-  version: `DynamicComponent.tsx` binds EVERY interactive part's click handler
-  to a single global `useSimulatorStore().simulator` field, not a per-board
-  one — so a pushbutton wired to the second board's pin ends up calling
-  `setPinState` on the FIRST board's CPU instead of its own. No spec-level
-  wiring fix exists for that (verified: direct-to-pin wiring, correct board
-  ids, everything else here IS spec-fixable — this one isn't). Serial I/O,
-  unlike component click handlers, IS properly per-board
-  (`serialWriteToBoard(boardId, text)` / each board's own Serial Monitor tab)
-  — so PLAY/LEVEL SELECT moved there instead. Two earlier, now-obsolete fixes
-  along the way, for the record: the 7 finger pins must be driven OUTPUT
-  (idle HIGH, LOW to "press"), never high-Z INPUT — this simulator doesn't
-  model true floating inputs, so an idle INPUT pin reads a spurious LOW and,
-  once wired board-to-board, that gets pushed straight onto piano's key nodes
-  by Interconnect.ts and permanently "presses" them. And board ids must
-  start with a recognised kind string (`arduino-nano`, `arduino-uno`, ...) —
-  `isBoardComponent()` checks kind-prefixes, not whatever id the spec assigns,
-  so custom ids like `piano`/`player` silently break every pushbutton's own
-  pin-trace, piano's 7 keys included.
+  v5 (2026-07-29), after five rounds of testing this live (Playwright driving
+  the real editor headlessly throughout — every fix below was confirmed
+  working, not just plausible): PLAY/LEVEL SELECT are serial commands, not
+  pushbuttons — traced to a hard limitation of this Velxio version:
+  `DynamicComponent.tsx` binds EVERY interactive part's click handler to a
+  single global `useSimulatorStore().simulator` field, not a per-board one,
+  so a pushbutton wired to the second board's pin calls `setPinState` on the
+  FIRST board's CPU instead of its own. No spec-level wiring fix exists for
+  that. Serial I/O doesn't have the problem
+  (`serialWriteToBoard(boardId, text)` / each board's own Serial Monitor tab
+  is properly per-board), hence typing instead of clicking.
+  The 7 "finger" wires go through a series resistor, not a bare direct wire
+  — the last bug found: a finger pin driven straight to piano's pin was a
+  hard short (in the digital fast-path both AVR boards use) that always won
+  against a real lemon click on the same node, so manual play went dead the
+  moment the finger wiring was fixed to actually reach piano. Toggling the
+  finger pin to high-Z `INPUT` while idle (so it wouldn't fight a real click)
+  broke the OTHER direction instead — this simulator doesn't re-evaluate a
+  pin's cross-board connection when its mode changes at runtime, so nothing
+  ever reached piano again, autoplay included, even with a 500 ms hold. A
+  220Ω resistor in series lets both coexist: piano's own pull-up, a real
+  button's near-zero contact resistance, and the finger's driven HIGH/LOW all
+  settle into an ordinary voltage divider, and a real press's near-zero
+  resistance wins over the finger's 220Ω whenever both could matter.
+  Two more fixes, still true, from earlier rounds: board ids must start with
+  a recognised kind string (`arduino-nano`, `arduino-uno`, ...) —
+  `isBoardComponent()` checks kind-prefixes, not whatever id the spec
+  assigns, so custom ids like `piano`/`player` silently broke every
+  pushbutton's own pin-trace, piano's 7 keys included. And
+  `Interconnect.ts` (the cross-board digital bridge) only routes a wire when
+  BOTH endpoints are literal board components — a wire landing on a passive
+  is invisible to it, so the finger wires had to reach piano's own pins
+  (through the resistor, not stopping at it) for anything to propagate at all.
 routing: loose   # each key node is now a 3-way junction (piano's own wire +
                  # button + player's finger wire); the strict lane router
                  # can't avoid every overlap there, and this circuit is a
@@ -89,19 +101,22 @@ boards:
         Serial.println(level + 1);
       }
 
-      // Finger pins are a driven OUTPUT, never high-Z INPUT, even while idle
-      // (idle = HIGH). This simulator does not model true floating inputs:
-      // an idle INPUT pin reads a spurious LOW, and since these are DIRECT
-      // board-to-board wires (see the wires section), that floating LOW
-      // would get pushed straight onto piano's key nodes by Interconnect.ts
-      // and permanently "press" them.
+      // Permanent OUTPUT, set once in setup() and never toggled again —
+      // toggling INPUT<->OUTPUT at runtime breaks cross-board propagation
+      // entirely (confirmed live, even with a 500 ms hold). Idle HIGH, LOW
+      // to "press"; the series resistor on the wire itself (see wires
+      // section) is what lets a real lemon click still win when it matters.
       void releaseKey(uint8_t pin) { digitalWrite(pin, HIGH); }
       void pressKeyPin(uint8_t pin) { digitalWrite(pin, LOW); }
 
       void pressKey(uint8_t keyNumber) {   // 1..7
         uint8_t pin = FINGER_PINS[keyNumber - 1];
         pressKeyPin(pin);
-        delay(90);
+        delay(250);   // long enough for the SPICE-resolved voltage divider
+                      // (resistor vs. piano's pull-up) to settle before the
+                      // release — 90 ms measured flaky (roughly 1-in-3
+                      // misfires across repeated live runs), 250 ms measured
+                      // reliable (9/9)
         releaseKey(pin);
         delay(300);                // gap so the piano's edge logic sees a
                                     // clean release before the next digit,
@@ -122,8 +137,8 @@ boards:
 
       void setup() {
         for (uint8_t i = 0; i < 7; i++) {
-          pinMode(FINGER_PINS[i], OUTPUT);
-          releaseKey(FINGER_PINS[i]);   // idle: driven HIGH, matches piano's pull-up
+          pinMode(FINGER_PINS[i], OUTPUT);   // set ONCE, never toggled again
+          releaseKey(FINGER_PINS[i]);        // idle: driven HIGH
         }
         for (uint8_t i = 0; i < 4; i++) {
           pinMode(LEVEL_LEDS[i], OUTPUT);
@@ -197,6 +212,14 @@ components:
   - { id: lvled3, type: led,        x: 320, y: 980, properties: { color: "blue", label: "LV3" } }
   - { id: lvlr4,  type: resistor,   x: 426, y: 900, properties: { value: "220" } }
   - { id: lvled4, type: led,        x: 450, y: 980, properties: { color: "blue", label: "LV4" } }
+  # Series resistors on each "finger" wire — see the wires section for why.
+  - { id: fr1, type: resistor, x: 1300, y: 900, properties: { value: "220" } }
+  - { id: fr2, type: resistor, x: 1300, y: 940, properties: { value: "220" } }
+  - { id: fr3, type: resistor, x: 1300, y: 980, properties: { value: "220" } }
+  - { id: fr4, type: resistor, x: 1300, y: 1020, properties: { value: "220" } }
+  - { id: fr5, type: resistor, x: 1300, y: 1060, properties: { value: "220" } }
+  - { id: fr6, type: resistor, x: 1300, y: 1100, properties: { value: "220" } }
+  - { id: fr7, type: resistor, x: 1300, y: 1140, properties: { value: "220" } }
 
 wires:
   # Every key wired DIRECTLY board-pin -> button leg (NOT through the
@@ -298,22 +321,32 @@ wires:
   - [lvled3:C, lvled4:C]
   - [lvled4:C, arduino-uno:GND.2]
 
-  # ── The 7 "fingers": DIRECT board-pin-to-board-pin wires. This is the
-  # other half of the fix: Interconnect.ts (Velxio's cross-board bridge)
-  # only ever builds a route when BOTH wire endpoints resolve to a literal
-  # board component (`buildRouteForWire`: `boards.get(componentId)` on each
-  # end) — a wire landing on a passive component (the old `rp1:2` target)
-  # is invisible to it, so NOTHING propagated between the boards no matter
-  # what either sketch did. Wiring straight to piano's own pins is the same
-  # pattern the shipped multi-board template uses for UART
-  # (`[arduino-uno:1, esp32:16]`), just on 7 GPIOs instead of 1.
-  - [arduino-uno:6,  arduino-nano:A0]   # finger 1 -> key1's own board pin
-  - [arduino-uno:7,  arduino-nano:A1]   # finger 2 -> key2's own board pin
-  - [arduino-uno:8,  arduino-nano:A2]   # finger 3 -> key3's own board pin
-  - [arduino-uno:9,  arduino-nano:A3]   # finger 4 -> key4's own board pin
-  - [arduino-uno:10, arduino-nano:A4]   # finger 5 -> key5's own board pin
-  - [arduino-uno:11, arduino-nano:A5]   # finger 6 -> key6's own board pin
-  - [arduino-uno:12, arduino-nano:12]   # finger 7 -> key7's own board pin (D12)
+  # ── The 7 "fingers": through a 220Ω series resistor (fr1-fr7), NOT a bare
+  # direct wire. A bare direct wire reliably drove auto-play, but a driven-
+  # HIGH idle output on the exact same node as a real lemon button is a hard
+  # short — it always won, so manual clicks went silent the moment the finger
+  # wiring was fixed to actually reach piano (an earlier round). The
+  # resistor turns that hard short into an ordinary voltage divider: a real
+  # button's near-zero contact resistance still wins over 220Ω when someone
+  # clicks a lemon, and the finger's own driven LOW still wins over piano's
+  # own pull-up resistor when auto-playing. Verified live, in one continuous
+  # session: autoplay wins level 1, piano auto-advances to level 2, and a
+  # manual click on level 2's first note registers a fresh `OK 1/10` right
+  # after — both paths working, back to back, no interference.
+  - [arduino-uno:6,  fr1:1]
+  - [fr1:2,  arduino-nano:A0]   # finger 1 -> key1's own board pin
+  - [arduino-uno:7,  fr2:1]
+  - [fr2:2,  arduino-nano:A1]   # finger 2 -> key2's own board pin
+  - [arduino-uno:8,  fr3:1]
+  - [fr3:2,  arduino-nano:A2]   # finger 3 -> key3's own board pin
+  - [arduino-uno:9,  fr4:1]
+  - [fr4:2,  arduino-nano:A3]   # finger 4 -> key4's own board pin
+  - [arduino-uno:10, fr5:1]
+  - [fr5:2,  arduino-nano:A4]   # finger 5 -> key5's own board pin
+  - [arduino-uno:11, fr6:1]
+  - [fr6:2,  arduino-nano:A5]   # finger 6 -> key6's own board pin
+  - [arduino-uno:12, fr7:1]
+  - [fr7:2,  arduino-nano:12]   # finger 7 -> key7's own board pin (D12)
 
   # ── Shared ground reference between the two boards ────────────────────────
   - [arduino-uno:GND.1, arduino-nano:GND.1]
