@@ -142,12 +142,27 @@ wires:
 
 # The "virtual button": four back-to-back timed key-press scripts, one per
 # level's secret code, each starting only after the PREVIOUS level's full
-# victory sequence (fanfare + phrase gap + that level's theme + phrase gap) has
-# had time to finish — a key pressed while the AVR is mid-delay() playing a
-# melody is a voltage pulse the firmware never polls for, so it would be lost.
-# Gaps below = computed playback time (from mario_sfx.h / main.cpp's melody
-# tables) + a safety margin; level 1's gap was cross-checked against a real run
-# (WIN at 7772 ms -> "Level 2" at 17724 ms = 9951 ms measured).
+# victory sequence has had time to finish — a key pressed while the AVR is
+# mid-delay() playing a melody is a voltage pulse the firmware never polls
+# for, so it would be lost.
+#
+# Since 2026-07-29 every gap below has TWO new components on top of the old
+# fanfare+theme total: (1) each level's own theme is now a FULL PROGMEM song
+# played via playSong() — levels 3/4 in particular went from a ~15-note
+# playSfx excerpt to a 26-33 note victory tail, much longer than before — and
+# (2) after a level (re)starts, its own playLevelIntro() (the new "which level
+# is this" announce) blocks before free play resumes, and the very first level
+# 1 announce now blocks at the END of setup() too. Durations were computed from
+# marioTempo/underworldTempo/underwaterTempo/starmanTempo in main.cpp
+# (playSong: sound note ≈ 2.3×(1000/tempo), rest ≈ 1.3×(1000/tempo)), then
+# cross-checked against a real run's serial timestamps (measured 2026-07-29):
+#   Level 1 @2918 ms -> WIN @8673 -> Level 2 @18624 -> WIN @25671 ->
+#   Level 3 @37958 -> WIN @50181 -> Level 4 @65537 -> WIN @73180 ->
+#   ALL LEVELS CLEAR @80788 -> Level 1 @82592
+# Every input batch above lands comfortably before the next marker with room to
+# spare (the schedule intentionally keeps that margin rather than shaving it to
+# the exact measured values) — re-measure and re-check the margin if a future
+# change touches the theme tables or SFX_*/PHRASE_* constants.
 #
 # Key -> pin: 1=A0(14) 2=A1(15) 3=A2(16) 4=A3(17) 5=A4(18) 6=A5(19) 7=D12(12).
 #   Level 1  6,5,6,7,2,5,2,1,3,4      -> 19,18,19,12,15,18,15,14,16,17
@@ -155,63 +170,68 @@ wires:
 #   Level 3  2,4,6,1,5,3,7,4,2,6      -> 15,17,19,14,18,16,12,17,15,19
 #   Level 4  5,1,3,7,2,6,4,1,5,3      -> 18,14,16,12,15,19,17,14,18,16
 inputs:
-  # ── LEVEL 1 code, starting at 3.20s. NOT 2.0s: auto-calibration's boot guard
-  # blocks the main loop until the circuit solve is idle-high, which measures
-  # deterministically at 2.918s on this rig (checked against two independent
-  # runs, identical to the cycle) — any press scheduled before that is simply
-  # never polled and is lost. 3.20s clears it with margin. ────────────────────
-  - { at_s: 3.20, press_pin: 19, hold_s: 0.08 }
-  - { at_s: 3.55, press_pin: 18, hold_s: 0.08 }
-  - { at_s: 3.90, press_pin: 19, hold_s: 0.08 }
-  - { at_s: 4.25, press_pin: 12, hold_s: 0.08 }
-  - { at_s: 4.60, press_pin: 15, hold_s: 0.08 }
-  - { at_s: 4.95, press_pin: 18, hold_s: 0.08 }
-  - { at_s: 5.30, press_pin: 15, hold_s: 0.08 }
-  - { at_s: 5.65, press_pin: 14, hold_s: 0.08 }
-  - { at_s: 6.00, press_pin: 16, hold_s: 0.08 }
-  - { at_s: 6.35, press_pin: 17, hold_s: 0.08 }   # -> WIN, fanfare + Main Theme tail
-  # ── LEVEL 2 code, starting at 17.2s (measured level-1 gap 9.95s + margin) ───
-  - { at_s: 17.20, press_pin: 16, hold_s: 0.08 }
-  - { at_s: 17.55, press_pin: 19, hold_s: 0.08 }
-  - { at_s: 17.90, press_pin: 14, hold_s: 0.08 }
-  - { at_s: 18.25, press_pin: 17, hold_s: 0.08 }
-  - { at_s: 18.60, press_pin: 15, hold_s: 0.08 }
-  - { at_s: 18.95, press_pin: 18, hold_s: 0.08 }
-  - { at_s: 19.30, press_pin: 16, hold_s: 0.08 }
-  - { at_s: 19.65, press_pin: 19, hold_s: 0.08 }
-  - { at_s: 20.00, press_pin: 14, hold_s: 0.08 }
-  - { at_s: 20.35, press_pin: 17, hold_s: 0.08 }   # -> WIN, fanfare + Underworld tail
-  # ── LEVEL 3 code, starting at 34.2s (computed gap ~12.2s + margin) ──────────
-  - { at_s: 34.20, press_pin: 15, hold_s: 0.08 }
-  - { at_s: 34.55, press_pin: 17, hold_s: 0.08 }
-  - { at_s: 34.90, press_pin: 19, hold_s: 0.08 }
-  - { at_s: 35.25, press_pin: 14, hold_s: 0.08 }
-  - { at_s: 35.60, press_pin: 18, hold_s: 0.08 }
-  - { at_s: 35.95, press_pin: 16, hold_s: 0.08 }
-  - { at_s: 36.30, press_pin: 12, hold_s: 0.08 }
-  - { at_s: 36.65, press_pin: 17, hold_s: 0.08 }
-  - { at_s: 37.00, press_pin: 15, hold_s: 0.08 }
-  - { at_s: 37.35, press_pin: 19, hold_s: 0.08 }   # -> WIN, fanfare + Underwater excerpt
-  # ── LEVEL 4 code, starting at 45.2s (computed gap ~6.1s + margin) ───────────
-  - { at_s: 45.20, press_pin: 18, hold_s: 0.08 }
-  - { at_s: 45.55, press_pin: 14, hold_s: 0.08 }
-  - { at_s: 45.90, press_pin: 16, hold_s: 0.08 }
-  - { at_s: 46.25, press_pin: 12, hold_s: 0.08 }
-  - { at_s: 46.60, press_pin: 15, hold_s: 0.08 }
-  - { at_s: 46.95, press_pin: 19, hold_s: 0.08 }
-  - { at_s: 47.30, press_pin: 17, hold_s: 0.08 }
-  - { at_s: 47.65, press_pin: 14, hold_s: 0.08 }
-  - { at_s: 48.00, press_pin: 18, hold_s: 0.08 }
-  - { at_s: 48.35, press_pin: 16, hold_s: 0.08 }   # -> WIN, fanfare + Starman excerpt,
-                                                   # then "ALL LEVELS CLEAR" + ending
+  # ── LEVEL 1 code, starting at 5.50s: auto-calibration's boot guard (clears
+  # ~2.9s in) PLUS the new level-1 intro announce (~2.0s, blocking, played at
+  # the very end of setup()) — any press before that is simply never polled.
+  - { at_s: 5.50, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 5.85, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 6.20, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 6.55, press_pin: 12, hold_s: 0.08 }
+  - { at_s: 6.90, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 7.25, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 7.60, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 7.95, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 8.30, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 8.65, press_pin: 17, hold_s: 0.08 }   # -> WIN, Main Theme tail + fanfare
+  # ── LEVEL 2 code, starting at 22.50s (level-1 fanfare+theme ~9.95s measured,
+  # + phrase gap + level-2 intro ~2.0s, + margin) ─────────────────────────────
+  - { at_s: 22.50, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 22.85, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 23.20, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 23.55, press_pin: 17, hold_s: 0.08 }
+  - { at_s: 23.90, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 24.25, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 24.60, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 24.95, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 25.30, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 25.65, press_pin: 17, hold_s: 0.08 }   # -> WIN, Underworld tail + fanfare
+  # ── LEVEL 3 code, starting at 47.00s (level-2 fanfare+theme ~13.85s + phrase
+  # gap + level-3 (Underwater) intro ~5.9s — the longest intro, 13 notes at a
+  # waltz tempo — + margin) ────────────────────────────────────────────────────
+  - { at_s: 47.00, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 47.35, press_pin: 17, hold_s: 0.08 }
+  - { at_s: 47.70, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 48.05, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 48.40, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 48.75, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 49.10, press_pin: 12, hold_s: 0.08 }
+  - { at_s: 49.45, press_pin: 17, hold_s: 0.08 }
+  - { at_s: 49.80, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 50.15, press_pin: 19, hold_s: 0.08 }   # -> WIN, Underwater tail (full, 33
+                                                   # notes) + fanfare
+  # ── LEVEL 4 code, starting at 70.00s (level-3's full Underwater victory tail
+  # alone is ~13.6s — much longer than its old short excerpt — + phrase gap +
+  # fanfare + phrase gap + level-4 (Starman) intro ~2.25s + margin) ───────────
+  - { at_s: 70.00, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 70.35, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 70.70, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 71.05, press_pin: 12, hold_s: 0.08 }
+  - { at_s: 71.40, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 71.75, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 72.10, press_pin: 17, hold_s: 0.08 }
+  - { at_s: 72.45, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 72.80, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 73.15, press_pin: 16, hold_s: 0.08 }   # -> WIN, Starman tail (full, 26
+                                                   # notes) + fanfare, then
+                                                   # "ALL LEVELS CLEAR" + ending
 
 assertions:
   - { type: serial_contains, pattern: "Lemon Piano V5", within_s: 3 }
-  - { type: serial_contains, pattern: "Level 1",        within_s: 4 }
-  - { type: serial_absent,   pattern: "WRONG",           within_s: 62 }
-  - { type: gpio_toggles, pin: 2,  min_edges: 4,   within_s: 52 }   # LED 1 lit each round
-  - { type: serial_contains, pattern: "Level 2",         within_s: 22 }
+  - { type: serial_contains, pattern: "Level 1",        within_s: 6 }
+  - { type: serial_absent,   pattern: "WRONG",           within_s: 90 }
+  - { type: gpio_toggles, pin: 2,  min_edges: 4,   within_s: 80 }   # LED 1 lit each round
+  - { type: serial_contains, pattern: "Level 2",         within_s: 20 }
   - { type: serial_contains, pattern: "Level 3",         within_s: 42 }
-  - { type: serial_contains, pattern: "Level 4",         within_s: 52 }
-  - { type: gpio_toggles, pin: 11, min_edges: 400,  within_s: 62 }  # buzzer sang all 4 wins
-  - { type: serial_contains, pattern: "ALL LEVELS CLEAR", within_s: 62 }
+  - { type: serial_contains, pattern: "Level 4",         within_s: 68 }
+  - { type: gpio_toggles, pin: 11, min_edges: 400,  within_s: 90 }  # buzzer sang all 4 wins
+  - { type: serial_contains, pattern: "ALL LEVELS CLEAR", within_s: 90 }

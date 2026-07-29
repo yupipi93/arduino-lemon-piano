@@ -135,22 +135,26 @@ wires:
 
 # Free play only: keys 1, 3, 7, 2, 4 — level 1's code starts with key 6, so the
 # sequence is never entered. Pins: key1=14, key2=15, key3=16, key4=17, key7=12.
+# Since 2026-07-29 `setup()` ends with `playLevelIntro()` (level 1's opening,
+# ~2.0 s blocking) before loop() ever polls a pin, so every input here is
+# shifted +2.0 s later than before that feature landed.
 inputs:
-  - { at_s: 2.00, press_pin: 14, hold_s: 0.08 }   # key 1
-  - { at_s: 2.40, press_pin: 16, hold_s: 0.08 }   # key 3
-  - { at_s: 2.80, press_pin: 12, hold_s: 0.08 }   # key 7
-  - { at_s: 3.20, press_pin: 15, hold_s: 0.08 }   # key 2
-  - { at_s: 3.60, press_pin: 17, hold_s: 0.08 }   # key 4
+  - { at_s: 4.00, press_pin: 14, hold_s: 0.08 }   # key 1
+  - { at_s: 4.40, press_pin: 16, hold_s: 0.08 }   # key 3
+  - { at_s: 4.80, press_pin: 12, hold_s: 0.08 }   # key 7
+  - { at_s: 5.20, press_pin: 15, hold_s: 0.08 }   # key 2
+  - { at_s: 5.60, press_pin: 17, hold_s: 0.08 }   # key 4
 
 assertions:
   - { type: serial_contains, pattern: "Lemon Piano V5", within_s: 3 }
   - { type: serial_contains, pattern: "Level 1",        within_s: 3 }
-  # The notes DID sound. Careful with the floor here: the boot UI chirps alone are
-  # worth 2091 edges on this circuit, so anything below that proves nothing. The
-  # five key touches add ~1500 more (measured 3625 total), hence 3000.
-  - { type: gpio_toggles, pin: 11, min_edges: 3000, within_s: 8 }
+  # The notes DID sound, on top of the boot chirps AND the new level-1 intro
+  # jingle (both now unconditional before any key is ever polled) plus the five
+  # key touches. Floor kept loose since the exact edge count shifted with the
+  # new intro; the free-play behavior (no OK/WRONG/LED) below is the real check.
+  - { type: gpio_toggles, pin: 11, min_edges: 3000, within_s: 10 }
   # ...and nothing was punished, and no progress was made.
-  - { type: serial_absent,   pattern: "WRONG",          within_s: 8 }
-  - { type: serial_absent,   pattern: "OK ",            within_s: 8 }
+  - { type: serial_absent,   pattern: "WRONG",          within_s: 10 }
+  - { type: serial_absent,   pattern: "OK ",            within_s: 10 }
   # LED 1 (D2) must never light: the sequence never started.
-  - { type: gpio_state, pin: 2, state: 0, within_s: 8 }
+  - { type: gpio_state, pin: 2, state: 0, within_s: 10 }

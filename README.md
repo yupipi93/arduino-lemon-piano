@@ -42,8 +42,9 @@ The methodology (what counts as a new version, and the checklist for adding one)
 3. **Guess the secret sequence** (10 notes). Each correct note lights the next
    green LED; a wrong note **blanks all ten** and the sequence restarts.
 4. **Victory + auto-advance.** All ten lit → that level's theme plays in full
-   with the bar flashing to the beat, then the flagpole fanfare, then on to the
-   next of the **four levels**.
+   with the bar flashing to the beat, then the flagpole fanfare, then the next
+   level announces itself (its own theme's opening notes) before play moves on
+   to the next of the **four levels**.
 5. **Restart** anytime with the D7 button (re-reads game select, recalibrates).
 
 ### Secret codes (spoilers!)
@@ -57,9 +58,9 @@ Keys numbered 1–7, left to right. These two codes have been the same since V3:
 | 3 | Super Mario Bros — Underwater | `2, 4, 6, 1, 5, 3, 7, 4, 2, 6` |
 | 4 | Super Mario Bros — Starman | `5, 1, 3, 7, 2, 6, 4, 1, 5, 3` |
 
-Clear all four and the **ending melody** plays. Every non-key sound is a Mario
-effect (coin, power-up, 1-up, death, flagpole fanfare) — the note data and its
-provenance are in [docs/MARIO-SOUNDS.md](docs/MARIO-SOUNDS.md).
+Clear all four and the **game-complete fanfare** plays. Every non-key sound is a
+Mario effect (coin, power-up, 1-up, death, flagpole fanfare) — the note data and
+its provenance are in [docs/MARIO-SOUNDS.md](docs/MARIO-SOUNDS.md).
 
 ## Quick start
 

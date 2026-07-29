@@ -2,6 +2,61 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-29 (V5 audio, part 2) — Level-start announce, full Underwater/Starman
+## themes, a real castle-clear ending
+
+Three more owner-requested changes to V5's sound design, on top of the same
+day's mistake-cue/win-order fix below:
+
+- **Level-start announce**: new `playLevelIntro()` plays the first few notes of
+  the level's own theme — `MARIO_INTRO_LEN`/`UNDER_INTRO_LEN`/
+  `UNDERWATER_INTRO_LEN`/`STARMAN_INTRO_LEN` notes from index 0 of the SAME
+  table the win jingle already plays from, no extra flash needed. Runs once at
+  boot (level 1) and once every level transition, so the player always hears
+  which of the four they landed on before touching a lemon. Blocking, like
+  every other melody here, so a key touched during it is lost, not queued —
+  documented in the emulation specs that had to be re-timed for it.
+- **Underwater and Starman are now full themes**, same treatment as Overworld/
+  Underworld: `underwaterNotes[]/underwaterTempo[]` and
+  `starmanNotes[]/starmanTempo[]` moved into `main.cpp` as PROGMEM tables
+  played via `playSong()`, each with its own `*_VICTORY_FROM` cut-in — replacing
+  the old short `playSfx()` excerpts in `mario_sfx.h` (now removed). Underwater
+  grew from a 20-note opening to a 55-note piece (opening phrase-pair sourced
+  from the cited tab, a second phrase-pair a step down and a closing bridge
+  are this project's own extension of that tab's repeating structure — see
+  `docs/MARIO-SOUNDS.md` for the honest provenance split). Starman grew from
+  26 to 48 notes — the real theme is a short vamp with nothing further to
+  transcribe, so "full" means the validated figure played through twice before
+  the closing phrase, matching what the NES itself does (loop the vamp).
+  Visual side effect: levels 3/4's win light show changed from `playSfx`'s
+  step-one-LED-per-note to `playSong`'s whole-bar-flash-per-note, now matching
+  levels 1/2.
+- **A real castle-clear ending**: `sfxEnding` (all-four-levels-clear fanfare)
+  was a generic invented descent with no connection to the actual game.
+  Research turned up that SMB1 plays a *different*, more triumphant fanfare
+  after a castle level than after a flagpole (Super Mario Wiki calls it "World
+  Clear") — but no verbatim note-by-note transcription of that specific cue
+  could be found, only a description ("Mario Cadence" idiom, C major, same
+  family as the flagpole fanfare and the power-up SFX). Rebuilt to match that
+  description: the same arpeggio idiom as the flagpole fanfare
+  (`sfxLevelClear`), arranged as a call-and-response resolving a step higher,
+  tagged 🔨 reconstruction like the fanfare it's built from — not claimed as
+  verbatim, which would have been dishonest given what was actually sourceable.
+
+**Emulation specs re-timed**: `playLevelIntro()` adds a new blocking delay at
+boot and every level transition (~2.0 s for levels 1/2/4's intros, ~5.9 s for
+level 3's — 13 notes at a waltz tempo), and levels 3/4's much longer full
+victory themes push every later gap out further still. Recomputed every
+`inputs:` timestamp in `lemon-piano.yaml`, `free-play.yaml`,
+`hold-and-repeat.yaml` and `all-levels-win.yaml` from the melody tables'
+`playSong()` math, then verified the computed numbers against a real run's
+serial timestamps (measured: `Level 2` @18624 ms, `Level 3` @37958 ms, `Level 4`
+@65537 ms, `ALL LEVELS CLEAR` @80788 ms — all comfortably inside the scheduled
+margins). All four specs green, including `hold-and-repeat.yaml`'s buzzer
+edge-count assertion, which incidentally now clears a threshold it fell just
+short of before this change (pre-existing gap, not something this change set
+out to fix). All three `pio run` envs still build clean.
+
 ## 2026-07-29 (V5 audio) — Mistake cue is now Mario's death rattle; win order fixed
 
 Two owner-reported issues with V5's sound design:

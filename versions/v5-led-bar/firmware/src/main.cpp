@@ -294,10 +294,108 @@ const int underworldTempo[] PROGMEM = {
   3, 3, 3
 };
 
+// SUPER MARIO BROS — UNDERWATER THEME (full, 2026-07-29). Victory from
+// UNDERWATER_VICTORY_FROM, intro (level-start announce) is the first
+// UNDERWATER_INTRO_LEN notes. Phrase 1 (the chromatic slide into a rising
+// arpeggio) is transcribed from the cited letter-note tab; phrase 2 (a step
+// down, mirroring phrase 1's shape) and the closing bridge are this project's
+// extension, built to continue the tab's own repeating structure rather than
+// invented from nothing — see docs/MARIO-SOUNDS.md for the honest provenance.
+const int underwaterNotes[] PROGMEM = {
+  NOTE_D5, NOTE_CS5, NOTE_C5, NOTE_G4,
+  NOTE_C5, NOTE_CS5, NOTE_D5, NOTE_D5, NOTE_D5,
+  NOTE_E5, NOTE_F5, NOTE_G5, NOTE_G5,          // index 0-12: intro cuts here
+  0,
+  NOTE_E5, NOTE_F5, NOTE_A5, NOTE_AS5,
+  NOTE_B5, NOTE_B5, NOTE_B5,
+  0,
+  NOTE_C5, NOTE_B4, NOTE_AS4, NOTE_F4,          // index 22 = victory cut-in
+  NOTE_AS4, NOTE_B4, NOTE_C5, NOTE_C5, NOTE_C5,
+  NOTE_D5, NOTE_E5, NOTE_F5, NOTE_F5,
+  0,
+  NOTE_D5, NOTE_E5, NOTE_G5, NOTE_GS5,
+  NOTE_A5, NOTE_A5, NOTE_A5,
+  0,
+  NOTE_G4, NOTE_B4, NOTE_D5, NOTE_G5, NOTE_B5, NOTE_D6,
+  NOTE_G5, NOTE_F5, NOTE_E5, NOTE_D5, 0
+};
+const int underwaterTempo[] PROGMEM = {
+  6, 6, 6, 6,
+  6, 6, 6, 6, 6,
+  6, 6, 3, 3,
+  6,
+  6, 6, 6, 6,
+  6, 6, 3,
+  6,
+  6, 6, 6, 6,
+  6, 6, 6, 6, 6,
+  6, 6, 3, 3,
+  6,
+  6, 6, 6, 6,
+  6, 6, 3,
+  6,
+  8, 8, 8, 8, 8, 4,
+  6, 6, 6, 3, 3
+};
+
+// SUPER MARIO BROS — STARMAN / INVINCIBILITY THEME (full, 2026-07-29). Victory
+// from STARMAN_VICTORY_FROM, intro is the first STARMAN_INTRO_LEN notes. The
+// real theme is a short vamp repeated for as long as invincibility lasts, so
+// "full" here means the validated 2026-07-29 excerpt played through TWICE
+// before the closing phrase, rather than inventing new melodic material.
+const int starmanNotes[] PROGMEM = {
+  NOTE_C6, NOTE_F5, NOTE_F5, NOTE_D5,
+  NOTE_F5, NOTE_F5, NOTE_D5, NOTE_F5,
+  NOTE_D5, NOTE_F5,                            // index 0-9: intro cuts here
+  NOTE_C6, NOTE_F5, NOTE_F5, NOTE_D5,
+  NOTE_E5, NOTE_E5, NOTE_C5, NOTE_E5,
+  NOTE_E5, NOTE_C5, NOTE_E5, NOTE_C5,
+
+  NOTE_C6, NOTE_F5, NOTE_F5, NOTE_D5,          // index 22 = victory cut-in
+  NOTE_F5, NOTE_F5, NOTE_D5, NOTE_F5,
+  NOTE_D5, NOTE_F5,
+  NOTE_C6, NOTE_F5, NOTE_F5, NOTE_D5,
+  NOTE_E5, NOTE_E5, NOTE_C5, NOTE_E5,
+  NOTE_E5, NOTE_C5, NOTE_E5, NOTE_C5,
+
+  0,
+  NOTE_B5, NOTE_A5, NOTE_G5
+};
+const int starmanTempo[] PROGMEM = {
+  11, 11, 11, 11,
+  11, 11, 11, 11,
+  11, 11,
+  11, 11, 11, 11,
+  11, 11, 11, 11,
+  11, 11, 11, 11,
+
+  11, 11, 11, 11,
+  11, 11, 11, 11,
+  11, 11,
+  11, 11, 11, 11,
+  11, 11, 11, 11,
+  11, 11, 11, 11,
+
+  11,
+  8, 8, 4
+};
+
 #define MARIO_LEN          (sizeof(marioNotes) / sizeof(marioNotes[0]))
 #define UNDER_LEN          (sizeof(underworldNotes) / sizeof(underworldNotes[0]))
+#define UNDERWATER_LEN     (sizeof(underwaterNotes) / sizeof(underwaterNotes[0]))
+#define STARMAN_LEN        (sizeof(starmanNotes) / sizeof(starmanNotes[0]))
 const uint8_t MARIO_VICTORY_FROM = 28;   // full theme is 78 notes; cut = tail 50
 const uint8_t UNDER_VICTORY_FROM = 12;   // full theme is 56 notes; cut = tail 44
+const uint8_t UNDERWATER_VICTORY_FROM = 22;  // full theme tail (see above)
+const uint8_t STARMAN_VICTORY_FROM = 22;     // full theme tail (see above)
+
+// Level-start "announce" — the first few notes of the level's OWN theme,
+// played once when a level begins, so the player recognises which of the
+// four they are on and can place the secret code from the theme alone.
+const uint8_t MARIO_INTRO_LEN = 12;
+const uint8_t UNDER_INTRO_LEN = 8;
+const uint8_t UNDERWATER_INTRO_LEN = 13;
+const uint8_t STARMAN_INTRO_LEN = 10;
 
 //################################
 //#####  SECRET SEQUENCES ########
@@ -395,6 +493,7 @@ void resetBoard();
 void logGame();
 void handleGuess();
 void playVictory();
+void playLevelIntro();
 void playSfx(const int *table, bool lightShow = false);
 void hushBuzzer();
 void silenceKeyNote();
@@ -432,6 +531,7 @@ void setup() {
 
   autoCalibrate();                    // measures baselines + noise, sets the margin
   logGame();
+  playLevelIntro();                   // announce level 1 before free play begins
 }
 
 
@@ -535,9 +635,10 @@ void handleGuess() {
 
     if (currentStep >= SEQUENCE_LENGTH) {
       // VICTORY — this level's own theme plays out in full first (bar flashing
-      // to the beat), THEN the flagpole fanfare, then on to the next level.
-      // Clearing the LAST level plays the ending melody after the fanfare too,
-      // then wraps back to level 1.
+      // to the beat), THEN the flagpole fanfare, then on to the next level,
+      // announced by that level's own intro so the player knows where they
+      // landed. Clearing the LAST level plays the ending melody after the
+      // fanfare too, then wraps back to level 1 (also announced).
       log(F("WIN"));
       // The tenth note is still sounding under the player's finger. Let it play
       // out, pause, and only then start the theme — otherwise the theme cuts
@@ -561,6 +662,8 @@ void handleGuess() {
       lastCountedKey = wonWith;
       lastSoundedKey = wonWith;
       logGame();
+      delay(PHRASE_GAP_MS);
+      playLevelIntro();          // announce the new level before free play resumes
     }
   } else if (currentStep > 0) {
     // WRONG — but only once the sequence has actually started (see below).
@@ -1079,19 +1182,26 @@ void wrongTone() {
 
 void playVictory() {
   silenceKeyNote();          // in case we got here without the win path's hush
-  if (level == 3) {
-    playSfx(themeUnderwater, true);
-    return;
+  switch (level) {
+    case 1: playSong(marioNotes, marioTempo, MARIO_VICTORY_FROM, MARIO_LEN); break;
+    case 2: playSong(underworldNotes, underworldTempo, UNDER_VICTORY_FROM, UNDER_LEN); break;
+    case 3: playSong(underwaterNotes, underwaterTempo, UNDERWATER_VICTORY_FROM, UNDERWATER_LEN); break;
+    default: playSong(starmanNotes, starmanTempo, STARMAN_VICTORY_FROM, STARMAN_LEN); break;
   }
-  if (level == 4) {
-    playSfx(themeStarman, true);
-    return;
+}
+
+// Level-start announce: the first few notes of the CURRENT level's own theme,
+// so the player hears which level they are on before touching a lemon. Plays
+// once at boot and once every time a level begins (auto-advance or wrap).
+void playLevelIntro() {
+  hushBuzzer();               // silence + a beat, safe even if nothing was sounding
+  switch (level) {
+    case 1: playSong(marioNotes, marioTempo, 0, MARIO_INTRO_LEN); break;
+    case 2: playSong(underworldNotes, underworldTempo, 0, UNDER_INTRO_LEN); break;
+    case 3: playSong(underwaterNotes, underwaterTempo, 0, UNDERWATER_INTRO_LEN); break;
+    default: playSong(starmanNotes, starmanTempo, 0, STARMAN_INTRO_LEN); break;
   }
-  if (level == 1) {
-    playSong(marioNotes, marioTempo, MARIO_VICTORY_FROM, MARIO_LEN);
-  } else {
-    playSong(underworldNotes, underworldTempo, UNDER_VICTORY_FROM, UNDER_LEN);
-  }
+  delay(SFX_TAIL_MS);         // breathing room before free play begins
 }
 
 // Play a melody from PROGMEM, notes[from..length). Blocking on purpose — the

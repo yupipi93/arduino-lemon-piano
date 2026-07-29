@@ -101,7 +101,8 @@ with its own 220 Ω series resistor to a common GND:
   `SUSTAIN_CAP_MS` (2 s) so a stuck or ghosting key cannot freeze the game.
 - **All ten lit = win:** that level's own theme plays in full first, with the bar
   flashing per note, then the flagpole fanfare, then the game auto-advances to
-  the next level and the bar blanks.
+  the next level — announced by that level's own intro (`playLevelIntro()`, the
+  first few notes of its theme) before the bar blanks and free play resumes.
 
 Standard indicator LEDs (Vf ≈ 2 V): 220 Ω gives ~15 mA at 5 V, within the
 ATmega's per-pin limit. All ten lit ≈ 150 mA — fine on USB, but note the
@@ -162,10 +163,12 @@ physics and the 2019-vs-2026 polarity table are in
 
 ## Buzzer
 
-- `tone()` — key notes and the short low "wrong" tone (non-blocking).
-- `buzz()` — bit-banged square wave used by `playSong()` for the victory themes.
-  Blocking (`delay()` between notes), so the game pauses (bar lit) while the
-  winning theme plays — intentional.
+- `tone()` — key notes and the short UI/mistake cues (`playSfx()`, non-blocking
+  per note).
+- `buzz()` — bit-banged square wave used by `playSong()` for the level themes:
+  the win jingle, the level-start intro, and (since 2026-07-29) all four levels
+  alike, not just 1/2. Blocking (`delay()` between notes), so the game pauses
+  (bar lit, or dark before a level starts) while a theme plays — intentional.
 - In the Velxio build both paths route through `emuTone()` on **D11**; see
   [emulation/README.md](emulation/README.md).
 

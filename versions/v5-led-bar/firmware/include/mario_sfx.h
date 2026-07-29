@@ -1,8 +1,10 @@
-/* mario_sfx.h — Super Mario Bros sound effects and level jingles.
+/* mario_sfx.h — Super Mario Bros sound effects (not the level themes).
  *
- * Every sound the piano makes that is NOT a played key note lives here, plus the
- * two level themes added in 2026-07-29 (underwater and starman). The provenance
- * of each one — sourced verbatim, transcribed from a letter-note tab, or
+ * Every sound the piano makes that is NOT a played key note and NOT one of the
+ * four level themes lives here (the themes — full transcriptions since
+ * 2026-07-29 — are PROGMEM tables in main.cpp, alongside the 2019-era
+ * marioNotes/underworldNotes they now match in treatment). The provenance of
+ * each sound — sourced verbatim, transcribed from a letter-note tab, or
  * reconstructed from a description — is documented in docs/MARIO-SOUNDS.md.
  * Please keep that document in step with this file.
  *
@@ -77,47 +79,23 @@ const int sfxLevelClear[] PROGMEM = {
   NOTE_C6, 110, NOTE_E6, 110, NOTE_G6, 260, NOTE_E6, 260, 0, 0
 };
 
-// ── ENDING / GAME OVER 🔨 reconstruction ───────────────────────────────────
+// ── GAME COMPLETE (castle-clear fanfare) 🔨 reconstruction ─────────────────
 // Played once all four levels are cleared, before wrapping back to level 1.
+// SMB1's real castle/"World Clear" cue could not be found as a verbatim,
+// note-by-note source (unlike the coin/1-up/fireball data above) — even
+// dedicated video-game-music wikis describe it only as "a short fanfare in
+// the same triumphant idiom as the flagpole cue" (the so-called "Mario
+// Cadence": a whole-step-resolving arpeggio, shared with the power-up SFX at
+// a slower speed). Built to match that description rather than the flagpole
+// fanfare verbatim: a call-and-response in the same idiom, ending a step
+// higher than sfxLevelClear so the true finale reads as more conclusive than
+// a single level's fanfare.
 const int sfxEnding[] PROGMEM = {
-  NOTE_C6, 150, NOTE_G5, 150, NOTE_E5, 150,
-  NOTE_A5, 150, NOTE_B5, 150, NOTE_A5, 150,
-  NOTE_GS5, 200, NOTE_AS5, 200, NOTE_GS5, 200,
-  NOTE_G5, 400, 0, 0
-};
-
-
-/* ── LEVEL THEMES 3 and 4 ───────────────────────────────────────────────────
- * Levels 1 and 2 (Overworld, Underworld) have full PROGMEM themes in main.cpp,
- * kept from the 2019 rescue. These two are new and use the {freq, ms} format
- * above, as recognisable excerpts rather than full arrangements.
- */
-
-// ── LEVEL 3 · UNDERWATER 📐 transcribed ────────────────────────────────────
-// The waltzing water theme. From the letter-note tab's opening bars, top voice:
-// D C# C G C C# D D D E F G G — a chromatic slide into a rising arpeggio.
-const int themeUnderwater[] PROGMEM = {
-  NOTE_D5, 200, NOTE_CS5, 200, NOTE_C5, 200,
-  NOTE_G4, 200, NOTE_C5, 200, NOTE_CS5, 200,
-  NOTE_D5, 180, NOTE_D5, 180, NOTE_D5, 180,
-  NOTE_E5, 200, NOTE_F5, 200, NOTE_G5, 320, NOTE_G5, 320,
-  0, 120,
-  NOTE_E5, 200, NOTE_F5, 200, NOTE_A5, 200, NOTE_AS5, 200,
-  NOTE_B5, 180, NOTE_B5, 180, NOTE_B5, 360, 0, 0
-};
-
-// ── LEVEL 4 · STARMAN 📐 transcribed ───────────────────────────────────────
-// The invincibility loop: a hammered C-F pair decorated with D, stepping down to
-// E. Fast and repetitive — that repetition IS the tune.
-const int themeStarman[] PROGMEM = {
-  NOTE_C6, 90, NOTE_F5, 90, NOTE_F5, 90, NOTE_D5, 90,
-  NOTE_F5, 90, NOTE_F5, 90, NOTE_D5, 90, NOTE_F5, 90,
-  NOTE_D5, 90, NOTE_F5, 90,
-  NOTE_C6, 90, NOTE_F5, 90, NOTE_F5, 90, NOTE_D5, 90,
-  NOTE_E5, 90, NOTE_E5, 90, NOTE_C5, 90, NOTE_E5, 90,
-  NOTE_E5, 90, NOTE_C5, 90, NOTE_E5, 90, NOTE_C5, 90,
-  0, 90,                                   // a breath before the closing phrase
-  NOTE_B5, 120, NOTE_A5, 120, NOTE_G5, 240, 0, 0
+  NOTE_C5, 90, NOTE_E5, 90, NOTE_G5, 90,
+  NOTE_C6, 90, NOTE_E6, 90, NOTE_G6, 180,
+  0, 60,
+  NOTE_G6, 90, NOTE_E6, 90, NOTE_C7, 90,
+  NOTE_E6, 90, NOTE_G6, 90, NOTE_C7, 260, 0, 0
 };
 
 #endif  // MARIO_SFX_H

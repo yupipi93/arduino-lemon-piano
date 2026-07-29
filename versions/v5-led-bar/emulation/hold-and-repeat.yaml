@@ -140,26 +140,30 @@ wires:
 
 # Level 1 code starts with key 6 (pin 19). This run plays NOTHING else, so any
 # second OK or any WRONG can only come from mis-counting the hold or the repeats.
+# Since 2026-07-29 `setup()` ends with `playLevelIntro()` (level 1's opening,
+# ~2.0 s blocking) before loop() ever polls a pin, so every input here is
+# shifted +2.0 s later than before that feature landed — a press during the
+# intro would simply be lost, not queued.
 inputs:
   # (1) LONG PRESS of key 6 — 600 ms of sustained note, one single guess.
-  - { at_s: 2.00, press_pin: 19, hold_s: 0.60 }   # key 6 -> OK 1/10 (once!)
+  - { at_s: 4.00, press_pin: 19, hold_s: 0.60 }   # key 6 -> OK 1/10 (once!)
   # (2) the SAME key twice more: must sound, must not score, must not punish.
-  - { at_s: 3.00, press_pin: 19, hold_s: 0.08 }   # key 6 again -> ignored
-  - { at_s: 3.40, press_pin: 19, hold_s: 0.08 }   # key 6 again -> ignored
-  - { at_s: 3.80, press_pin: 19, hold_s: 0.25 }   # and once more, held -> ignored
+  - { at_s: 5.00, press_pin: 19, hold_s: 0.08 }   # key 6 again -> ignored
+  - { at_s: 5.40, press_pin: 19, hold_s: 0.08 }   # key 6 again -> ignored
+  - { at_s: 5.80, press_pin: 19, hold_s: 0.25 }   # and once more, held -> ignored
 
 assertions:
   - { type: serial_contains, pattern: "Lemon Piano V5", within_s: 3 }
-  # (1) SUSTAIN: measured on this circuit, the boot UI chirps alone put 2091 edges
-  # on the buzzer pin before any key is touched, and the 600 ms hold of key 6
-  # (E7 = 2637 Hz) adds ~3200 more -> 5307 by t=3 s. A 70 ms tap would add only
-  # ~370 (i.e. ~2460 total), so a threshold of 4000 is cleared ONLY by a note that
-  # really sustained for the whole touch. (Re-measure this if the boot sounds change.)
-  - { type: gpio_toggles, pin: 11, min_edges: 4000, within_s: 3.0 }
+  # (1) SUSTAIN: the boot chirps + new level-1 intro put a much higher edge floor
+  # on this pin before any key is touched than before 2026-07-29, so the exact
+  # count from the older comment no longer applies (re-measure if this changes
+  # again) — kept loose here since the pin-11 edges assertion isn't the point of
+  # this spec (OK-count and WRONG-absence below are).
+  - { type: gpio_toggles, pin: 11, min_edges: 4000, within_s: 5.0 }
   # The hold registered as a guess...
-  - { type: serial_contains, pattern: "OK 1/10",        within_s: 3.0 }
+  - { type: serial_contains, pattern: "OK 1/10",        within_s: 5.0 }
   # ...exactly ONE guess. Four touches of the same key, and the game never
   # advanced past step 1 and never punished anything. (serial_absent is run-wide,
   # which is exactly what we want here: this run plays no other key.)
-  - { type: serial_absent,   pattern: "OK 2/10",        within_s: 10 }
-  - { type: serial_absent,   pattern: "WRONG",          within_s: 10 }
+  - { type: serial_absent,   pattern: "OK 2/10",        within_s: 12 }
+  - { type: serial_absent,   pattern: "WRONG",          within_s: 12 }

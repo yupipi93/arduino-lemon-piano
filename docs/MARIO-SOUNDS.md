@@ -128,24 +128,43 @@ resolves on the tonic:
 ⚠️ Ours. The original fanfare is polyphonic with a distinctive bass line; this is
 the top voice's contour only.
 
-### Game over / all levels finished 🔨 reconstruction
+### Game complete / castle-clear fanfare 🔨 reconstruction
 
-Used here as the **end-of-game** melody after the last level:
+Used here as the **end-of-game** melody, once all four levels are cleared.
+Replaced 2026-07-29: the original version here was a generic game-over-style
+descent unrelated to any specific SMB1 cue. SMB1 plays a distinct, more
+triumphant fanfare after a **castle** level (touching the axe, before "Thank
+you Mario! But our princess is in another castle!") than after an ordinary
+flagpole — sometimes called the "World Clear" fanfare on fan wikis. A
+verbatim note-by-note transcription of that specific cue could not be
+sourced (unlike the coin/1-up/fireball data above, which comes with hard
+numbers) — even dedicated video-game-music references describe it only in
+general terms: the same triumphant "Mario Cadence" idiom as the flagpole
+fanfare (a whole-step-resolving arpeggio, shared with the power-up SFX at a
+slower speed), in C major.
+
+Built to match that description rather than invent something unrelated: the
+same arpeggio idiom as `sfxLevelClear`, but as a call-and-response that
+resolves a step higher, so the true finale reads as more conclusive than any
+single level's fanfare.
 
 | # | Note | Hz | Duration |
 |---|---|---|---|
-| 1 | C6 | 1047 | 150 ms |
-| 2 | G5 | 784 | 150 ms |
-| 3 | E5 | 659 | 150 ms |
-| 4 | A5 | 880 | 150 ms |
-| 5 | B5 | 988 | 150 ms |
-| 6 | A5 | 880 | 150 ms |
-| 7 | GS5 | 831 | 200 ms |
-| 8 | AS5 | 932 | 200 ms |
-| 9 | GS5 | 831 | 200 ms |
-| 10 | G5 | 784 | 400 ms |
+| 1 | C5 | 523 | 90 ms |
+| 2 | E5 | 659 | 90 ms |
+| 3 | G5 | 784 | 90 ms |
+| 4 | C6 | 1047 | 90 ms |
+| 5 | E6 | 1319 | 90 ms |
+| 6 | G6 | 1568 | 180 ms |
+| — | *(rest)* | — | 60 ms |
+| 7 | G6 | 1568 | 90 ms |
+| 8 | E6 | 1319 | 90 ms |
+| 9 | C7 | 2093 | 90 ms |
+| 10 | E6 | 1319 | 90 ms |
+| 11 | G6 | 1568 | 90 ms |
+| 12 | C7 | 2093 | 260 ms |
 
-⚠️ Ours, in the spirit of the game-over cadence.
+⚠️ Ours, built to match a cited description rather than a verbatim source.
 
 ---
 
@@ -178,25 +197,51 @@ C5,-4 G4,8 rest,4 E4,-4    A4,4 B4,4 AS4,8 A4,4
   (`F3 F4 D3 D4 DS3 DS4 —`). Letter-note cross-check:
   [pianoletternotes](https://pianoletternotes.blogspot.com/2021/07/super-mario-bros-underground-theme.html).
 
-### 3 · Underwater 📐 transcribed
+### 3 · Underwater 📐 transcribed (full theme since 2026-07-29)
 
-The waltzing 3/4 water level theme.
+The waltzing 3/4 water level theme. `underwaterNotes[] / underwaterTempo[]` in
+main.cpp, PROGMEM, same treatment as levels 1/2 — win jingle from
+`UNDERWATER_VICTORY_FROM`, level-start announce is the first
+`UNDERWATER_INTRO_LEN` notes.
 
 - Source tab: [pianoletternotes — Underwater Theme](https://pianoletternotes.blogspot.com/2018/06/underwater-theme-super-mario.html)
-  (letter-note tablature; **uppercase = black key**, lowercase = white).
-- The tab's opening bars, top voice: `d C c g c C d d d e f g g`, i.e.
-  **D, C♯, C, G, C, C♯, D D D, E, F, G, G** — a chromatic slide into a rising
-  arpeggio. The excerpt this project plays is the first phrase only.
+  (letter-note tablature; **uppercase = black key**, lowercase = white; a
+  multi-voice tab — right-hand/melody vs. left-hand/bass isn't labelled on
+  this particular page the way the Starman tab below is, so which row is
+  "the tune" at each system is an editorial call).
+- The tab's opening bars, top voice, verified against the source: `d C c g c
+  C d d d e f g g` then `e f a A b b b`, i.e. **D, C♯, C, G, C, C♯, D D D, E,
+  F, G, G / E, F, A, A♯, B, B, B** — a chromatic slide into a rising arpeggio,
+  then its answering phrase. This opening 20-note pair is the part of the
+  theme most confidently sourced from the tab, and is what the project played
+  (as a short excerpt) before 2026-07-29.
+- **Extended to a full theme** 2026-07-29: a second statement of the same
+  shape a whole step down, then a short rising-arpeggio bridge back to the
+  tonic to loop. This continuation follows the tab's own repeating structure
+  and the piece's known call-and-response form rather than inventing new
+  melodic material, but — unlike the opening 20 notes — it is this project's
+  own extension, not a note-for-note reading of further tab systems.
 - ⚠️ Melody voice only; the original's swung 3/4 accompaniment is dropped.
 
-### 4 · Starman / invincibility 📐 transcribed
+### 4 · Starman / invincibility 📐 transcribed (full theme since 2026-07-29)
 
-The frantic loop while you are invincible.
+The frantic loop while you are invincible. `starmanNotes[] / starmanTempo[]`
+in main.cpp, PROGMEM — win jingle from `STARMAN_VICTORY_FROM`, level-start
+announce is the first `STARMAN_INTRO_LEN` notes.
 
-- Source tab: [pianoletternotes — Starman Theme](https://pianoletternotes.blogspot.com/2019/10/starman-theme-super-mario.html).
+- Source tab: [pianoletternotes — Starman Theme](https://pianoletternotes.blogspot.com/2019/10/starman-theme-super-mario.html),
+  which (unlike the Underwater tab above) explicitly labels its rows `RH`
+  (right hand / melody) and `LH` (left hand / bass) — the least ambiguous of
+  the tabs this project draws on.
 - Characteristic figure, right hand: a repeated `C–F` pair decorated with `D`
   (`c f · f · d f · f · d f d f`) that then steps down to `E`/`c e`, over a bass
-  alternating `D`/`A`. The excerpt here keeps the repeated-pair contour.
+  alternating `D`/`A`.
+- The real theme is a short vamp that repeats for as long as invincibility
+  lasts — there is no "rest of the song" to transcribe further. **"Full"
+  here (2026-07-29) means the validated figure played through TWICE**
+  (mirroring what the NES actually does — loop the vamp) before the closing
+  descending phrase, rather than a longer excerpt of the same ~10 seconds of
+  source material repeated under a different name.
 - ⚠️ Melody voice only; the original's driving bass is what makes it recognisable,
   so a single-voice rendering is a caricature of it.
 
@@ -216,8 +261,9 @@ The frantic loop while you are invincible.
 | Smart adjust failed | **Death** (short) | it did not work, and nothing changed |
 | Key stuck / re-baselined | **Fireball** | something odd happened, keep going |
 | Wrong note in the game | **Mistake** (short Death excerpt) | the game's own "no" — unmistakably Mario, distinct from the UI chirps |
+| **A level (re)starts** | the first few notes of **that level's own theme** | so the player recognises which of the four they landed on before touching a lemon |
 | **Level complete** | the level's own theme, **then** the Level-clear fanfare | the theme is the pay-off; the fanfare punctuates it |
-| **All levels complete** | fanfare, **then** the Game-over/ending melody | before wrapping back to level 1 |
+| **All levels complete** | fanfare, **then** the Game-complete/castle-clear melody | before wrapping back to level 1 (also announced) |
 
 Pitch policy: UI sounds and SFX sit **above** the level note sets where possible so
 a state chirp is never mistaken for a played note. The Mistake and Death jingles
@@ -237,7 +283,7 @@ in the firmware carry the policy:
 | `SFX_GAP_MS` | 120 ms | between whatever was sounding and the start of an effect |
 | `SFX_ARTICULATION_MS` | 18 ms | carved from the END of every note in a table, so adjacent notes — especially two of the same pitch — are heard as two notes |
 | `SFX_TAIL_MS` | 60 ms | after every effect, so two in a row (seven calibration coins) never blur |
-| `PHRASE_GAP_MS` | 350 ms | musical pause between phrases: fanfare → level theme → ending melody |
+| `PHRASE_GAP_MS` | 350 ms | musical pause between phrases: level theme → fanfare → ending melody → the next level's own intro |
 
 Two helpers decide *how* the buzzer is freed:
 
@@ -246,7 +292,20 @@ Two helpers decide *how* the buzzer is freed:
   they owe the note that caused them.
 - **`hushBuzzer()`** stops it immediately, for the smart adjust, where the player
   must keep touching and the buzzer has to be quiet anyway (its current rides into
-  the reading through the shared ground).
+  the reading through the shared ground); also used by `playLevelIntro()` — safe
+  even though nothing is normally sounding at a level start, same defensive pattern
+  as `playVictory()`'s own `silenceKeyNote()` call.
+
+**Level-start intro (2026-07-29):** `playLevelIntro()` plays the first few notes
+of the *new* current level's theme — `MARIO_INTRO_LEN` / `UNDER_INTRO_LEN` /
+`UNDERWATER_INTRO_LEN` / `STARMAN_INTRO_LEN` notes from index 0 of that level's
+table — once at boot (level 1) and once every time a level begins (auto-advance
+or the wrap after all four). It reuses the SAME full PROGMEM tables the win
+jingle plays from — no extra flash for the intro, just a different pair of
+offsets into a table already there. Because it is a blocking `playSong()` call
+at the end of `setup()` and at the end of a win's `handleGuess()` branch, a key
+touched during it is not queued — see the emulation specs' comments for the
+measured delay this adds before free play actually starts.
 
 Articulation is taken **from** each note, not added to it, so the tempo written in a
 table is the tempo you hear. Measured on the emulator after the fix: the winning
@@ -258,7 +317,10 @@ worth remembering if you add a melody with repeated pitches.
 
 ## Adding a sound
 
-1. Add its notes + durations to `mario_sfx.h` in the version's `firmware/include/`.
+1. Add its notes + durations to `mario_sfx.h` in the version's `firmware/include/`
+   (a short UI cue) — or to `main.cpp`'s melody section, alongside
+   `marioNotes`/`underworldNotes`/`underwaterNotes`/`starmanNotes` (a full level
+   theme with its own `*_VICTORY_FROM` and `*_INTRO_LEN` offsets).
 2. Document it here with a provenance tag and a source link.
 3. Map it to a moment in the table above.
 4. Rebuild, run the version's emulation specs, and re-flash.
@@ -270,5 +332,6 @@ worth remembering if you add a melody with repeated pitches.
 - [robsoncouto/arduino-songs](https://github.com/robsoncouto/arduino-songs/blob/master/supermariobros/supermariobros.ino) — overworld theme, note+duration form
 - [MuseScore score 2145](https://musescore.com/user/2123/scores/2145) — the score that transcription came from
 - [pianoletternotes — Underwater](https://pianoletternotes.blogspot.com/2018/06/underwater-theme-super-mario.html) · [Starman](https://pianoletternotes.blogspot.com/2019/10/starman-theme-super-mario.html) · [Underground](https://pianoletternotes.blogspot.com/2021/07/super-mario-bros-underground-theme.html) · [Death](https://pianoletternotes.blogspot.com/2017/10/super-mario-death-theme.html) — letter-note tabs
-- [Wikipedia — Super Mario Bros. theme](https://en.wikipedia.org/wiki/Super_Mario_Bros._theme) — key and tempo
+- [Wikipedia — Super Mario Bros. theme](https://en.wikipedia.org/wiki/Super_Mario_Bros._theme) — key, tempo, and the "Mario Cadence" description used for the castle-clear reconstruction
+- [Super Mario Wiki — Course Clear](https://www.mariowiki.com/Course_Clear_(Super_Mario_Bros.)) · [World Clear](https://www.mariowiki.com/World_Clear_(Super_Mario_Bros.)) — confirms SMB1 uses a *distinct* fanfare for castle levels, described but not transcribed note-for-note
 - [Mario Universe SFX soundboard](https://www.mariouniverse.com/sfx-smb/) · [The Sounds Resource](https://sounds.spriters-resource.com/nes/supermariobros/asset/393915/) — original audio, for listening comparison

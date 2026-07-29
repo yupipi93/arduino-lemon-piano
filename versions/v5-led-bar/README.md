@@ -35,7 +35,9 @@ flashing to the beat, then the game **auto-advances** to the other tune.
    its idle noise, running the LED bar across as it goes (**LEDs moving = hands
    off the fruit**), derives the touch margin from the measured noise, chirps when
    done, and shows the chosen sensitivity on the bar. The game starts at **game 1**
-   and auto-advances on each win, so both themes are reachable with no switch.
+   and auto-advances on each win, so all four themes are reachable with no switch.
+   Then it **announces the level**: the opening notes of that level's own theme
+   play once, so you know which of the four you landed on before touching a lemon.
 2. **Touch lemons.** Hold the **GND** clip in one hand and touch a lemon with the
    other — your body drags that pin down and the note plays on the buzzer.
 3. **Play freely.** While the bar is empty, every key just sounds its note —
@@ -52,9 +54,10 @@ flashing to the beat, then the game **auto-advances** to the other tune.
    hear which key was wrong, then the buzz.
 5. **Victory + auto-advance.** Light all ten → that level's own theme plays in
    full first, with the bar flashing per note, then the **flagpole fanfare**,
-   then the game moves to the **next level** (1 → 2 → 3 → 4 → 1 …). Clearing
-   level 4 plays the **ending melody** last, after the fanfare, before wrapping
-   back to level 1.
+   then the **next level's own intro announces it**, before the game moves to
+   the **next level** (1 → 2 → 3 → 4 → 1 …). Clearing level 4 plays the
+   **game-complete fanfare** last, after the flagpole fanfare, before wrapping
+   back to level 1 (also announced).
 6. **Tune sensitivity while you play**: **D12** = more sensitive, **A7** = less
    sensitive, 1-count steps (5 above margin 20), auto-repeat while held. The bar
    shows the level for a moment after each press, and the tick's pitch tracks the
@@ -74,9 +77,10 @@ warble if a key gets stuck reading touched and is re-baselined.
 
 ### Four levels, four themes (spoilers)
 
-Each level has its own seven key notes, its own 10-note code, and its own theme
-played on the win. Clear level 4 and the **ending melody** plays before it wraps
-back to level 1.
+Each level has its own seven key notes, its own 10-note code, and its own theme —
+played in full (opening announce + win jingle draw from the SAME table) rather
+than a short excerpt. Clear level 4 and the **game-complete fanfare** plays
+before it wraps back to level 1.
 
 | Level | Theme | Code |
 |---|---|---|
@@ -113,8 +117,9 @@ where each one came from:
 | Smart adjust learned | **1-up** |
 | Smart adjust failed | **death rattle** |
 | Wrong note | **short death rattle** (2 notes) |
-| Level complete | that level's theme, then the **flagpole fanfare** |
-| All four levels clear | fanfare, then the **ending melody** |
+| A level (re)starts | opening notes of **that level's own theme** |
+| Level complete | that level's theme (full), then the **flagpole fanfare** |
+| All four levels clear | fanfare, then the **game-complete fanfare** |
 
 Touch sensing is the V2.5 front end: `threshold = baseline − margin`, with the
 baseline measured at boot and tracked while each key is untouched, and the margin
@@ -155,14 +160,22 @@ $PIPE run --mode verify --spec emulation/lemon-piano.yaml --out emulation/runs
 Clickable lemons (or press `1`–`7` on your keyboard), audible buzzer, the ten-LED
 bar. Because ten LEDs use every free browser pin there is **no game-select switch
 and no restart button**: it starts at game 1 and auto-advances on each win.
-There are **four** headless specs, all green (2026-07-27, +1 on 2026-07-29):
+There are **four** headless specs, all green (2026-07-27, +1 on 2026-07-29,
+re-timed the same day for the level-intro feature below):
 
 | Spec | What it proves |
 |---|---|
-| `emulation/lemon-piano.yaml` | free play → first note → a miss (`WRONG`) → the full code (with the first note pressed twice, to show the repeat filter doesn't eat real guesses) → `WIN` → auto-advance to `Game 2`, plus the victory light show |
+| `emulation/lemon-piano.yaml` | free play → first note → a miss (`WRONG`) → the full code (with the first note pressed twice, to show the repeat filter doesn't eat real guesses) → `WIN` → auto-advance to `Level 2`, plus the victory light show |
 | `emulation/free-play.yaml` | five keys that are *not* the code's first note: the buzzer sings, but `WRONG` and `OK` never appear and LED 1 never lights |
-| `emulation/hold-and-repeat.yaml` | one key held 600 ms then tapped three more times: the note sustains with the touch (584 ms measured), and four touches produce exactly one `OK 1/10` — no `OK 2/10`, no `WRONG` |
-| `emulation/all-levels-win.yaml` | a scripted "virtual button" that plays all **four** levels' secret codes back to back — the only test that has ever exercised levels 3 and 4 (added the day before this spec). Asserts `WIN` -> `Level 2` -> `WIN` -> `Level 3` -> `WIN` -> `Level 4` -> `WIN` -> `ALL LEVELS CLEAR` -> wraps to `Level 1`, zero `WRONG`s |
+| `emulation/hold-and-repeat.yaml` | one key held 600 ms then tapped three more times: the note sustains with the touch, and four touches produce exactly one `OK 1/10` — no `OK 2/10`, no `WRONG` |
+| `emulation/all-levels-win.yaml` | a scripted "virtual button" that plays all **four** levels' secret codes back to back — the only test that exercises levels 3 and 4. Asserts `WIN` -> `Level 2` -> `WIN` -> `Level 3` -> `WIN` -> `Level 4` -> `WIN` -> `ALL LEVELS CLEAR` -> wraps to `Level 1`, zero `WRONG`s |
+
+Every input in every spec above is timed around a blocking call: since
+2026-07-29 each level opens with its own **intro announce** (`playLevelIntro()`
+— the level's own theme, first few notes, played once) in addition to the
+existing victory theme + fanfare, so a key pressed too early is simply never
+polled, not queued. See the comments above each spec's `inputs:` for the
+measured timings this depends on.
 
 There's also a **live, on-demand** version for manual testing —
 `emulation/autoplayer.yaml`: a second Arduino (Uno) sharing the canvas. Type a
