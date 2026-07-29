@@ -216,40 +216,17 @@ C5,-4 G4,8 rest,4 E4,-4    A4,4 B4,4 AS4,8 A4,4
   (`F3 F4 D3 D4 DS3 DS4 —`). Letter-note cross-check:
   [pianoletternotes](https://pianoletternotes.blogspot.com/2021/07/super-mario-bros-underground-theme.html).
 
-### 3 · Castle 🔨 reconstruction (replaced Underwater, 2026-07-29)
-
-The dark, driving fortress-level theme — replaced Underwater the same day the
-level themes were made "full", because Underwater's opening (a subtle
-chromatic slide) turned out too hard for players to recognise as a distinct
-level. Castle is one of SMB1's most recognisable pieces after the Overworld
-theme itself. `castleNotes[] / castleTempo[]` in main.cpp, PROGMEM, same
-treatment as the other three levels — win jingle from `CASTLE_VICTORY_FROM`,
-level-start announce is the first `CASTLE_INTRO_LEN` notes.
-
-- **G minor, 90 BPM, 2/2** ([Super Mario Wiki — Castle BGM](https://www.mariowiki.com/Castle_BGM_(Super_Mario_Bros.))).
-  Unlike Overworld/Underworld/Underwater/Starman above, no letter-note tab for
-  this piece could be found on pianoletternotes or elsewhere — the wiki
-  describes its character (driving, syncopated, built around a bassline
-  distinctive enough that even *The Super Mario Bros. Movie* quotes it on its
-  own) but gives no note-by-note breakdown.
-- Built to match that description rather than transcribed verbatim: a
-  repeating four-note "alarm" pulse (`G3 G3 G3 G3`) answered by a descending
-  phrase, in G minor, at a brisk tempo — played twice, then the same shape a
-  whole step up (also twice — the victory tail starts here), then a driving
-  descent to a final cadence that loops cleanly.
-- ⚠️ Reconstruction, not a transcription — tagged 🔨 rather than 📐 because,
-  unlike the other three themes, there was no tab to transcribe *from*.
-
-### 4 · Starman / invincibility 📐 transcribed (full theme since 2026-07-29)
+### 3 · Starman / invincibility 📐 transcribed (full theme since 2026-07-29;
+### moved here from level 4 the same day)
 
 The frantic loop while you are invincible. `starmanNotes[] / starmanTempo[]`
 in main.cpp, PROGMEM — win jingle from `STARMAN_VICTORY_FROM`, level-start
 announce is the first `STARMAN_INTRO_LEN` notes.
 
 - Source tab: [pianoletternotes — Starman Theme](https://pianoletternotes.blogspot.com/2019/10/starman-theme-super-mario.html),
-  which (unlike the Underwater tab above) explicitly labels its rows `RH`
-  (right hand / melody) and `LH` (left hand / bass) — the least ambiguous of
-  the tabs this project draws on.
+  which (unlike the Underwater tab that used to live here) explicitly labels
+  its rows `RH` (right hand / melody) and `LH` (left hand / bass) — the least
+  ambiguous of the tabs this project draws on.
 - Characteristic figure, right hand: a repeated `C–F` pair decorated with `D`
   (`c f · f · d f · f · d f d f`) that then steps down to `E`/`c e`, over a bass
   alternating `D`/`A`.
@@ -261,6 +238,48 @@ announce is the first `STARMAN_INTRO_LEN` notes.
   source material repeated under a different name.
 - ⚠️ Melody voice only; the original's driving bass is what makes it recognisable,
   so a single-voice rendering is a caricature of it.
+
+### 4 · Castle 🔨 reconstruction (replaced Underwater 2026-07-29, moved here
+### from level 3 and redesigned the same day)
+
+The dark, driving fortress-level theme, now the **finale** — moved here from
+level 3 because it makes more sense as the theme that closes the game than as
+a middle level. Castle is one of SMB1's most recognisable pieces after the
+Overworld theme itself. `castleNotes[] / castleTempo[]` in main.cpp, PROGMEM,
+same treatment as the other three levels — win jingle from
+`CASTLE_VICTORY_FROM`, level-start announce is the first `CASTLE_INTRO_LEN`
+notes.
+
+- **G minor** ([Super Mario Wiki — Castle BGM](https://www.mariowiki.com/Castle_BGM_(Super_Mario_Bros.))).
+  No letter-note tab for this piece could be found on pianoletternotes or
+  elsewhere (unlike Overworld/Underworld/Starman above) — the wiki describes
+  its character (driving, syncopated, built around a bassline distinctive
+  enough that even *The Super Mario Bros. Movie* quotes it on its own) but
+  gives no note-by-note breakdown.
+- **Redesigned 2026-07-29** after a player found the first version (a plain
+  four-note pulse) too generic to recognise. This version is built around the
+  two traits every description of the real piece agrees on:
+  - a **fast alternating "pedal" hook** (`G3 D4 G3 D4 A♯3 D4 A♯3 D4`) — the
+    Super Mario Wiki's own trivia notes the opening famously echoes
+    [The Twilight Zone](https://en.wikipedia.org/wiki/Twilight_Zone_(Golden_Earring_song))'s
+    theme, itself built from two guitars each repeating a short figure
+    (one holding a note, the other stepping around it) — the same idea here,
+    one voice alternating between a held pedal and a moving note instead of
+    two guitars;
+  - answered by a **chromatic descending run** (`D4 C♯4 C4 B3 A♯3 A3 G3 F♯3`)
+    — the "tense/danger" quality every analysis of this piece calls out, and
+    deliberately the only theme in this project that moves chromatically
+    (Overworld/Underworld/Starman are all diatonic), so it can't be confused
+    with any of the others even out of context.
+  - The verse (hook + answer) repeats, then the same verse a fourth higher
+    (G→C, the victory tail starts here — a common Nintendo device for raising
+    tension partway through a loop), then a descending coda that resolves hard
+    on the tonic so the loop reads as a fresh start rather than a cut-off.
+- ⚠️ Reconstruction, not a transcription — tagged 🔨 rather than 📐 because,
+  unlike the other three themes, there was no tab to transcribe *from*. The
+  Twilight Zone connection is a documented piece of trivia about the real
+  theme, not something this project verified by ear against the original NES
+  recording — treat the resemblance as a design anchor, not a citation.
 
 ---
 
@@ -371,5 +390,6 @@ worth remembering if you add a melody with repeated pitches.
 - [pianoletternotes — Underwater](https://pianoletternotes.blogspot.com/2018/06/underwater-theme-super-mario.html) · [Starman](https://pianoletternotes.blogspot.com/2019/10/starman-theme-super-mario.html) · [Underground](https://pianoletternotes.blogspot.com/2021/07/super-mario-bros-underground-theme.html) · [Death](https://pianoletternotes.blogspot.com/2017/10/super-mario-death-theme.html) — letter-note tabs (Underwater is no longer used in this repo since the Castle swap, but the tab and its reasoning are kept here for reference)
 - [Wikipedia — Super Mario Bros. theme](https://en.wikipedia.org/wiki/Super_Mario_Bros._theme) — key, tempo, and the "Mario Cadence" description used for the castle-clear reconstruction
 - [Super Mario Wiki — Course Clear](https://www.mariowiki.com/Course_Clear_(Super_Mario_Bros.)) · [World Clear](https://www.mariowiki.com/World_Clear_(Super_Mario_Bros.)) — confirms SMB1 uses a *distinct* fanfare for castle levels, described but not transcribed note-for-note
-- [Super Mario Wiki — Castle BGM](https://www.mariowiki.com/Castle_BGM_(Super_Mario_Bros.)) — key (G minor), tempo (90 BPM, 2/2) and character used for level 3's Castle theme reconstruction; no note-by-note tab found for this piece anywhere searched
+- [Super Mario Wiki — Castle BGM](https://www.mariowiki.com/Castle_BGM_(Super_Mario_Bros.)) — key (G minor), tempo (90 BPM, 2/2) and character used for the Castle theme reconstruction (level 4); no note-by-note tab found for this piece anywhere searched
+- [Twilight Zone (Golden Earring song) — Wikipedia](https://en.wikipedia.org/wiki/Twilight_Zone_(Golden_Earring_song)); the connection is via the original 1959 CBS *Twilight Zone* TV theme, whose famous repeated-note guitar riff the Castle theme's opening is widely noted to resemble — the design anchor for the 2026-07-29 Castle redesign's hook
 - [Mario Universe SFX soundboard](https://www.mariouniverse.com/sfx-smb/) · [The Sounds Resource](https://sounds.spriters-resource.com/nes/supermariobros/asset/393915/) — original audio, for listening comparison

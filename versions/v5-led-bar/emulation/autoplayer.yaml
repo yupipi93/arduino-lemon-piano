@@ -87,8 +87,8 @@ boards:
       const uint8_t codes[4][CODE_LEN] = {
         {6, 5, 6, 7, 2, 5, 2, 1, 3, 4},   // level 1 - Overworld
         {3, 6, 1, 4, 2, 5, 3, 6, 1, 4},   // level 2 - Underworld
-        {2, 4, 6, 1, 5, 3, 7, 4, 2, 6},   // level 3 - Castle (was Underwater)
-        {5, 1, 3, 7, 2, 6, 4, 1, 5, 3},   // level 4 - Starman
+        {2, 4, 6, 1, 5, 3, 7, 4, 2, 6},   // level 3 - Starman (moved from level 4)
+        {5, 1, 3, 7, 2, 6, 4, 1, 5, 3},   // level 4 - Castle (was Underwater, moved from level 3)
       };
 
       uint8_t level = 0;   // 0..3 == level 1..4
@@ -112,13 +112,18 @@ boards:
       void pressKey(uint8_t keyNumber) {   // 1..7
         uint8_t pin = FINGER_PINS[keyNumber - 1];
         pressKeyPin(pin);
-        delay(250);   // long enough for the SPICE-resolved voltage divider
+        delay(160);   // long enough for the SPICE-resolved voltage divider
                       // (resistor vs. piano's pull-up) to settle before the
                       // release — 90 ms measured flaky (roughly 1-in-3
                       // misfires across repeated live runs), 250 ms measured
-                      // reliable (9/9)
+                      // reliable (9/9). 160/200 (2026-07-29, speed request) is
+                      // a middle value chosen to sit comfortably clear of the
+                      // known-flaky 90 ms while noticeably faster than
+                      // 250/300 — NOT re-verified live at 9/9 rigor the way
+                      // 250 ms was; re-measure and pull back toward 250/300
+                      // if this ever misfires in practice.
         releaseKey(pin);
-        delay(300);                // gap so the piano's edge logic sees a
+        delay(200);                // gap so the piano's edge logic sees a
                                     // clean release before the next digit,
                                     // and two same-key digits (never
                                     // back-to-back in a real code) still land

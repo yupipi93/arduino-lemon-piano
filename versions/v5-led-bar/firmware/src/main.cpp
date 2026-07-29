@@ -300,59 +300,49 @@ const int underworldTempo[] PROGMEM = {
   3, 3, 3
 };
 
-// SUPER MARIO BROS — CASTLE THEME (full, 2026-07-29, replaces Underwater —
-// too hard to recognise). Victory from CASTLE_VICTORY_FROM, intro (level-start
-// announce) is the first CASTLE_INTRO_LEN notes. G minor, brisk 2/2 — no
-// letter-note tab could be sourced for this one (unlike the others; the
-// pianoletternotes site this project otherwise draws on has no Castle entry),
-// so it is a 🔨 reconstruction built to match the piece's well-documented key,
-// tempo and driving/syncopated character, not a note-for-note transcription —
-// see docs/MARIO-SOUNDS.md. A repeating four-pulse "alarm" figure answered by
-// a descending phrase (x2), the same shape a step up (x2, victory tail starts
-// here), then a driving descent to a final cadence that loops cleanly.
+// SUPER MARIO BROS — CASTLE THEME (full, redesigned 2026-07-29 for
+// recognisability — a player found the first version too generic). Victory
+// from CASTLE_VICTORY_FROM, intro (level-start announce) is the first
+// CASTLE_INTRO_LEN notes. G minor, brisk. No letter-note tab could be sourced
+// for this one (unlike the others), so it is a 🔨 reconstruction — but this
+// version is built around the two traits every description of the real piece
+// agrees on: a fast alternating "pedal" hook (Super Mario Wiki's own trivia
+// notes the opening famously echoes The Twilight Zone's repeated-note theme),
+// answered by a chromatic descending run (the "danger" quality every analysis
+// calls out) — see docs/MARIO-SOUNDS.md. The verse (hook + answer) repeats,
+// then the same verse a fourth higher (victory tail starts here, a common
+// Nintendo device for raising tension), then a descending coda that resolves
+// hard on the tonic to loop cleanly.
 const int castleNotes[] PROGMEM = {
-  NOTE_G3, NOTE_G3, NOTE_G3, NOTE_G3,
-  NOTE_AS3, NOTE_AS3, NOTE_AS3, NOTE_D4,
-  NOTE_C4, NOTE_AS3, NOTE_G3, NOTE_F3,
-  NOTE_G3, 0,                                  // index 0-13: intro cuts here
-  NOTE_G3, NOTE_G3, NOTE_G3, NOTE_G3,
-  NOTE_AS3, NOTE_AS3, NOTE_AS3, NOTE_D4,
-  NOTE_C4, NOTE_AS3, NOTE_G3, NOTE_F3,
-  NOTE_G3, 0,
+  // verse in G minor, x2 — hook (fast alternating pedal) then chromatic answer
+  NOTE_G3, NOTE_D4, NOTE_G3, NOTE_D4, NOTE_AS3, NOTE_D4, NOTE_AS3, NOTE_D4,
+  NOTE_D4, NOTE_CS4, NOTE_C4, NOTE_B3, NOTE_AS3, NOTE_A3, NOTE_G3, NOTE_FS3,
+                                                // index 0-15: intro cuts here
+  NOTE_G3, NOTE_D4, NOTE_G3, NOTE_D4, NOTE_AS3, NOTE_D4, NOTE_AS3, NOTE_D4,
+  NOTE_D4, NOTE_CS4, NOTE_C4, NOTE_B3, NOTE_AS3, NOTE_A3, NOTE_G3, NOTE_FS3,
 
-  NOTE_A3, NOTE_A3, NOTE_A3, NOTE_A3,          // index 28 = victory cut-in
-  NOTE_C4, NOTE_C4, NOTE_C4, NOTE_DS4,
-  NOTE_D4, NOTE_C4, NOTE_A3, NOTE_G3,
-  NOTE_A3, 0,
-  NOTE_A3, NOTE_A3, NOTE_A3, NOTE_A3,
-  NOTE_C4, NOTE_C4, NOTE_C4, NOTE_DS4,
-  NOTE_D4, NOTE_C4, NOTE_A3, NOTE_G3,
-  NOTE_A3, 0,
+  // the SAME verse a fourth higher (G -> C) — victory cut-in, x2
+  NOTE_C4, NOTE_G4, NOTE_C4, NOTE_G4, NOTE_DS4, NOTE_G4, NOTE_DS4, NOTE_G4,
+  NOTE_G4, NOTE_FS4, NOTE_F4, NOTE_E4, NOTE_DS4, NOTE_D4, NOTE_C4, NOTE_B3,
+  NOTE_C4, NOTE_G4, NOTE_C4, NOTE_G4, NOTE_DS4, NOTE_G4, NOTE_DS4, NOTE_G4,
+  NOTE_G4, NOTE_FS4, NOTE_F4, NOTE_E4, NOTE_DS4, NOTE_D4, NOTE_C4, NOTE_B3,
 
-  NOTE_D4, NOTE_C4, NOTE_AS3, NOTE_G3,
-  NOTE_F3, NOTE_D3, NOTE_G3, NOTE_AS3,
-  NOTE_D4, NOTE_G4, 0
+  // coda: descending run back to the tonic, resolved hard so the loop reads
+  // as a fresh start rather than a cut-off
+  NOTE_D4, NOTE_C4, NOTE_AS3, NOTE_G3, NOTE_F3, NOTE_DS3, NOTE_D3, NOTE_G3
 };
 const int castleTempo[] PROGMEM = {
-  6, 6, 6, 6,
-  6, 6, 6, 3,
-  6, 6, 6, 6,
-  3, 6,
-  6, 6, 6, 6,
-  6, 6, 6, 3,
-  6, 6, 6, 6,
-  3, 6,
+  8, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 8, 8, 4,
+  8, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 8, 8, 4,
 
-  6, 6, 6, 6,
-  6, 6, 6, 3,
-  6, 6, 6, 6,
-  3, 6,
-  6, 6, 6, 6,
-  6, 6, 6, 3,
-  6, 6, 6, 6,
-  3, 6,
+  8, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 8, 8, 4,
+  8, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 8, 8, 4,
 
-  6, 6, 6, 6, 6, 6, 6, 6, 6, 2, 3
+  8, 8, 8, 8, 8, 8, 8, 2
 };
 
 // SUPER MARIO BROS — STARMAN / INVINCIBILITY THEME (full, 2026-07-29). Victory
@@ -403,7 +393,7 @@ const int starmanTempo[] PROGMEM = {
 #define STARMAN_LEN        (sizeof(starmanNotes) / sizeof(starmanNotes[0]))
 const uint8_t MARIO_VICTORY_FROM = 28;   // full theme is 78 notes; cut = tail 50
 const uint8_t UNDER_VICTORY_FROM = 12;   // full theme is 56 notes; cut = tail 44
-const uint8_t CASTLE_VICTORY_FROM = 28;      // full theme tail (see above)
+const uint8_t CASTLE_VICTORY_FROM = 32;      // full theme tail (see above)
 const uint8_t STARMAN_VICTORY_FROM = 22;     // full theme tail (see above)
 
 // Level-start "announce" — the first few notes of the level's OWN theme,
@@ -411,7 +401,7 @@ const uint8_t STARMAN_VICTORY_FROM = 22;     // full theme tail (see above)
 // four they are on and can place the secret code from the theme alone.
 const uint8_t MARIO_INTRO_LEN = 12;
 const uint8_t UNDER_INTRO_LEN = 8;
-const uint8_t CASTLE_INTRO_LEN = 14;
+const uint8_t CASTLE_INTRO_LEN = 16;
 const uint8_t STARMAN_INTRO_LEN = 10;
 
 //################################
@@ -429,10 +419,12 @@ const int keys[LEVEL_COUNT * KEY_COUNT] = {
   NOTE_E6, NOTE_G6, NOTE_A6, NOTE_B6, NOTE_C7, NOTE_E7, NOTE_G7,
   // level 2 — Underworld (the 2019 set)
   NOTE_A3, NOTE_AS3, NOTE_C4, NOTE_A4, NOTE_AS4, NOTE_C5, NOTE_D5,
-  // level 3 — Castle: a plain C major run (unchanged since the 2026-07-29
-  // theme swap from Underwater — only the win jingle changed, not the keys)
+  // level 3 — Starman theme (moved here from level 4, same day): a plain C
+  // major run (unchanged since the 2026-07-29 Underwater->Castle swap and the
+  // later level 3/4 theme swap — only which theme plays here has ever changed)
   NOTE_C5, NOTE_CS5, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_G5, NOTE_A5,
-  // level 4 — Starman: a plain C major run, for the hammered figure
+  // level 4 — Castle theme (moved here from level 3, same day: makes more
+  // sense as the last level): a plain C major run, for the hammered figure
   NOTE_C5, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_G5, NOTE_A5, NOTE_C6,
 };
 
@@ -1248,8 +1240,8 @@ void playVictory() {
   switch (level) {
     case 1: playSong(marioNotes, marioTempo, MARIO_VICTORY_FROM, MARIO_LEN); break;
     case 2: playSong(underworldNotes, underworldTempo, UNDER_VICTORY_FROM, UNDER_LEN); break;
-    case 3: playSong(castleNotes, castleTempo, CASTLE_VICTORY_FROM, CASTLE_LEN); break;
-    default: playSong(starmanNotes, starmanTempo, STARMAN_VICTORY_FROM, STARMAN_LEN); break;
+    case 3: playSong(starmanNotes, starmanTempo, STARMAN_VICTORY_FROM, STARMAN_LEN); break;
+    default: playSong(castleNotes, castleTempo, CASTLE_VICTORY_FROM, CASTLE_LEN); break;
   }
 }
 
@@ -1261,8 +1253,8 @@ void playLevelIntro() {
   switch (level) {
     case 1: playSong(marioNotes, marioTempo, 0, MARIO_INTRO_LEN); break;
     case 2: playSong(underworldNotes, underworldTempo, 0, UNDER_INTRO_LEN); break;
-    case 3: playSong(castleNotes, castleTempo, 0, CASTLE_INTRO_LEN); break;
-    default: playSong(starmanNotes, starmanTempo, 0, STARMAN_INTRO_LEN); break;
+    case 3: playSong(starmanNotes, starmanTempo, 0, STARMAN_INTRO_LEN); break;
+    default: playSong(castleNotes, castleTempo, 0, CASTLE_INTRO_LEN); break;
   }
   delay(SFX_TAIL_MS);         // breathing room before free play begins
 }

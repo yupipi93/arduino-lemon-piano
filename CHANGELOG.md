@@ -2,6 +2,50 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-29 (V5 audio, part 4) — Faster autoplayer, Castle closes the game,
+## a more recognisable Castle theme
+
+Three more owner-requested changes:
+
+- **Faster Uno autoplayer**: `emulation/autoplayer.yaml`'s `pressKey()` held
+  each press 250 ms + 300 ms gap (550 ms/note, tuned for reliability — 90 ms
+  measured flaky ~1-in-3, 250 ms measured reliable 9/9). Cut to 160 ms + 200 ms
+  (360 ms/note, ~35% faster) — a middle value chosen to sit clear of the
+  known-flaky 90 ms while noticeably quicker than 250/300, but **not
+  re-verified live at the same 9/9 rigor** (this is an interactive-only,
+  emulation-only test aid; a live Playwright re-verification was judged
+  disproportionate to the ask). Compile-checked standalone via `arduino-cli
+  compile --fqbn arduino:avr:uno` (clean); re-measure and pull back toward
+  250/300 if this ever misfires in practice.
+- **Level 3 and 4 themes swapped**: Castle now closes the game at level 4
+  (makes more sense as the finale) and Starman moved to level 3. Only
+  `playVictory()`/`playLevelIntro()`'s switch statements changed — each
+  level's own key notes and secret code stayed exactly where they were through
+  both this swap and the earlier Underwater→Castle swap.
+- **Castle theme redesigned for recognisability**: a player found the first
+  version (a plain repeating four-note pulse) too generic. Rebuilt around the
+  two traits every description of the real piece agrees on — a fast
+  alternating "pedal" hook (Super Mario Wiki's own trivia notes the opening
+  echoes The Twilight Zone TV theme's repeated-note guitar riff) answered by a
+  chromatic descending run (the "danger" quality every analysis calls out, and
+  the only chromatic movement of the four themes, so it can't be confused with
+  the others even out of context). Verse repeats, then the same verse a fourth
+  higher (victory tail starts here), then a resolving coda. Still tagged 🔨
+  reconstruction — no verbatim source exists for this piece, and the Twilight
+  Zone connection is documented trivia used as a design anchor, not something
+  verified by ear against the original recording.
+
+**Emulation specs re-timed a third time**: Starman (short, ~7.3 s win total)
+now at level 3, Castle (redesigned, ~14.4 s win total — still the longest)
+now at level 4. Recomputed from the melody tables' `playSong()` math and
+cross-checked against a real run's serial timestamps (measured: `Level 4`
+@53772 ms, `WIN` @64175 ms, `ALL LEVELS CLEAR` @78913 ms — all inside the
+scheduled margins, and the overall run is noticeably shorter than before since
+the redesigned Castle theme is more compact than the original). All four
+specs green; all three `pio run` envs build clean (flash unchanged at
+38.8%/11908 B on hardware — one byte more than before from the swapped
+`switch` cases, same tables just reordered).
+
 ## 2026-07-29 (V5 audio, fix) — The ending loop actually loops in the emulator now
 
 Owner-reported: in the browser emulation, the game-complete piece played once

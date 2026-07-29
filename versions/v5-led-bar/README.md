@@ -93,8 +93,8 @@ before it wraps back to level 1.
 |---|---|---|
 | 1 | Overworld / Main Theme | `6, 5, 6, 7, 2, 5, 2, 1, 3, 4` |
 | 2 | Underworld | `3, 6, 1, 4, 2, 5, 3, 6, 1, 4` |
-| 3 | Castle *(was Underwater — too hard to recognise)* | `2, 4, 6, 1, 5, 3, 7, 4, 2, 6` |
-| 4 | Starman | `5, 1, 3, 7, 2, 6, 4, 1, 5, 3` |
+| 3 | Starman *(moved here from level 4)* | `2, 4, 6, 1, 5, 3, 7, 4, 2, 6` |
+| 4 | Castle *(was Underwater, then moved here from level 3 — makes more sense as the finale)* | `5, 1, 3, 7, 2, 6, 4, 1, 5, 3` |
 
 | Key | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
 |---|---|---|---|---|---|---|---|
@@ -105,8 +105,8 @@ before it wraps back to level 1.
 
 A level's seven notes are always distinct (the game recognises a guess by
 frequency), and no code repeats a note back-to-back (a repeated press of the same
-key is filtered as flaky contact). Level 3's key notes and code are unchanged
-from the Underwater days — only its win jingle changed to Castle.
+key is filtered as flaky contact). Each level's key notes and code have stayed
+put through both theme changes — only which theme plays for which level moved.
 
 ### The sounds are Mario's
 
@@ -170,8 +170,9 @@ Clickable lemons (or press `1`–`7` on your keyboard), audible buzzer, the ten-
 bar. Because ten LEDs use every free browser pin there is **no game-select switch
 and no restart button**: it starts at game 1 and auto-advances on each win.
 There are **four** headless specs, all green (2026-07-27, +1 on 2026-07-29,
-re-timed twice the same day — once for the level-intro feature below, once
-more when level 3's theme swapped from Underwater to the much longer Castle):
+re-timed three times the same day — for the level-intro feature below, for
+Underwater→Castle at level 3, then again when Castle moved to level 4 and was
+redesigned for recognisability):
 
 | Spec | What it proves |
 |---|---|
