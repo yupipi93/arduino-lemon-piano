@@ -339,7 +339,10 @@ the end of a whole loop. That gesture reaching `checkEndingReset()` instead of
 `serviceButtons()`'s own handler means something different here: reset straight
 to level 1 with **no recalibration** (the player may not be anywhere near the
 fruit while the ending is playing). Emulation has no sensitivity buttons — every
-digital pin is already a LED or a key — so there it just plays the piece once.
+digital pin is already a LED or a key — so it loops forever there too (fixed
+2026-07-29: it originally just played once and reset, which quietly defeated
+the point of a *looping* celebration); "reset" in the browser means stopping
+and re-running the simulation, the same as pulling power on real hardware.
 
 Articulation is taken **from** each note, not added to it, so the tempo written in a
 table is the tempo you hear. Measured on the emulator after the fix: the winning

@@ -1273,11 +1273,18 @@ void playLevelIntro() {
 // straight back to level 1 WITHOUT recalibrating. checkEndingReset() is polled
 // between every note of every repeat, so a 1 s hold is honoured almost
 // immediately rather than only at the end of a whole loop. Emulation has no
-// sensitivity buttons (every digital pin is already a LED or a key — see the
-// pin map note above KEY_PINS), so there it just plays the piece once.
+// sensitivity buttons to test that gesture (every digital pin is already a
+// LED or a key — see the pin map note above KEY_PINS), so it loops forever
+// there too rather than returning — playSfx() with no checkAbort always
+// completes normally, so the while below never exits on its own. "Reset" in
+// the browser means stopping and re-running the simulation, same as pulling
+// power on real hardware; the point of an ending that loops is that it
+// actually keeps celebrating, not that it plays once and quietly resets.
 void playEndingLoop() {
 #ifdef VELXIO_EMULATION
-  playSfx(sfxEnding, true);
+  while (playSfx(sfxEnding, true)) {
+    // no reset gesture available here — loop forever, matching hardware
+  }
 #else
   endingHeldSince = 0;
   while (playSfx(sfxEnding, true, checkEndingReset)) {

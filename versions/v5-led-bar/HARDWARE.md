@@ -192,10 +192,15 @@ anywhere near the fruit while the ending is playing, and doesn't want to wait
 through `autoCalibrate()` just to stop the music.
 
 Emulation has no sensitivity buttons at all (every digital pin is already a LED
-or a key — ten LEDs + buzzer + key 7 already use every free line), so there
-`playEndingLoop()` just plays the piece once and returns, same as every other
-emulation-unavailable gesture in this game (verified instead by the button
-hardware itself, same as smart adjust).
+or a key — ten LEDs + buzzer + key 7 already use every free line), so
+`playEndingLoop()` loops there too — `playSfx()` with no `checkAbort` always
+completes normally, so the loop never exits on its own. There is no way to
+test the exit gesture headlessly (verified instead by the button hardware
+itself, same as smart adjust); "reset" in the browser means stopping and
+re-running the simulation, the same as pulling power on real hardware. An
+earlier version of this just played the piece once and reset automatically —
+fixed 2026-07-29, since that quietly defeated the point of an ending that is
+supposed to keep celebrating.
 
 ## Diagrams
 

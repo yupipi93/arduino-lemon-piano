@@ -2,6 +2,34 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-29 (V5 audio, fix) — The ending loop actually loops in the emulator now
+
+Owner-reported: in the browser emulation, the game-complete piece played once
+and the game silently reset to level 1, instead of looping. That was actually
+by design at the time (see "part 3" below) — emulation has no free digital
+pins for the sensitivity buttons the reset gesture needs, so `playEndingLoop()`
+just played `sfxEnding` once and returned rather than looping something it
+could never exit. But that reasoning defeated the entire point of the feature:
+an ending that's supposed to keep celebrating instead quietly played once and
+reset, which is exactly what it looked like from the outside — a bug, not a
+design choice.
+
+Fixed: `playEndingLoop()` now loops forever in emulation too (`while
+(playSfx(sfxEnding, true)) {}` — with no `checkAbort` it always completes
+normally, so the loop never exits on its own). There is genuinely no way to
+test the reset gesture headlessly without sensitivity-button hardware, so
+"reset" in the browser means stopping and re-running the simulation — the
+same as pulling power on real hardware, and consistent with how every other
+emulation-unavailable gesture in this game (smart adjust, sensitivity
+buttons) is handled: verified on the real board, not simulated.
+
+`all-levels-win.yaml` re-verified: the fixed-duration simulated run doesn't
+care that the firmware never returns from the ending loop (no assertion needs
+anything after `ALL LEVELS CLEAR`), and the buzzer-pin edge count roughly
+doubled (58777 -> 86560 over the same window) confirming it actually kept
+playing instead of falling silent. All three `pio run` envs still build
+identically (flash unchanged at 38.7%/11888 B on hardware).
+
 ## 2026-07-29 (V5 audio, part 3) — Stuck-key cue, Castle replaces Underwater,
 ## the ending loops until reset
 
