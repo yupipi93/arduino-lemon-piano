@@ -72,6 +72,18 @@ const int sfxBump[] PROGMEM = {
   NOTE_A2, 70, 0, 40, NOTE_A2, 70, 0, 0
 };
 
+// ── KEY STUCK 🔨 reconstruction ────────────────────────────────────────────
+// A locked lemon (same key pressed again before a different one unlocks it,
+// see KEY_LOCK_COOLDOWN_MS in main.cpp) played AGAIN after the cooldown: a
+// dull rattling triple-hit on one low, muted note — distinct from Bump's two
+// separated low tones ("cannot go further") because this is a different
+// situation ("this key specifically is locked, try another"), and pitched
+// below every level's key range (lowest is level 2's A3) so it is never
+// mistaken for a note.
+const int sfxKeyStuck[] PROGMEM = {
+  NOTE_D3, 45, NOTE_D3, 45, NOTE_D3, 90, 0, 0
+};
+
 // ── LEVEL CLEAR (flagpole fanfare) 🔨 reconstruction ───────────────────────
 // Plays the moment a level's code is completed, before that level's own theme.
 const int sfxLevelClear[] PROGMEM = {
@@ -79,23 +91,42 @@ const int sfxLevelClear[] PROGMEM = {
   NOTE_C6, 110, NOTE_E6, 110, NOTE_G6, 260, NOTE_E6, 260, 0, 0
 };
 
-// ── GAME COMPLETE (castle-clear fanfare) 🔨 reconstruction ─────────────────
-// Played once all four levels are cleared, before wrapping back to level 1.
-// SMB1's real castle/"World Clear" cue could not be found as a verbatim,
-// note-by-note source (unlike the coin/1-up/fireball data above) — even
-// dedicated video-game-music wikis describe it only as "a short fanfare in
-// the same triumphant idiom as the flagpole cue" (the so-called "Mario
-// Cadence": a whole-step-resolving arpeggio, shared with the power-up SFX at
-// a slower speed). Built to match that description rather than the flagpole
-// fanfare verbatim: a call-and-response in the same idiom, ending a step
-// higher than sfxLevelClear so the true finale reads as more conclusive than
-// a single level's fanfare.
+// ── GAME COMPLETE (castle-clear fanfare, extended) 🔨 reconstruction ───────
+// Played on a LOOP once all four levels are cleared (see playEndingLoop() in
+// main.cpp), until the player holds both sensitivity buttons for 1 s — so it
+// needed to be more than the original ~1.4 s jingle. SMB1's real castle/
+// "World Clear" cue could not be found as a verbatim, note-by-note source
+// (unlike the coin/1-up/fireball data above) — even dedicated video-game-music
+// wikis describe it only as "a short fanfare in the same triumphant idiom as
+// the flagpole cue" (the so-called "Mario Cadence": a whole-step-resolving
+// arpeggio, shared with the power-up SFX at a slower speed). Extended 2026-07-29
+// from the original short version (still phrase 1 below) into three phrases:
+// the same call-and-response idiom repeated a third higher (raising the
+// stakes), then a descending flourish that resolves back to the tonic and
+// loops cleanly.
 const int sfxEnding[] PROGMEM = {
+  // Phrase 1: call-and-response, C major arpeggio (the original short jingle)
   NOTE_C5, 90, NOTE_E5, 90, NOTE_G5, 90,
   NOTE_C6, 90, NOTE_E6, 90, NOTE_G6, 180,
   0, 60,
   NOTE_G6, 90, NOTE_E6, 90, NOTE_C7, 90,
-  NOTE_E6, 90, NOTE_G6, 90, NOTE_C7, 260, 0, 0
+  NOTE_E6, 90, NOTE_G6, 90, NOTE_C7, 260,
+  0, 120,
+  // Phrase 2: the same call-and-response, a third higher — raises the stakes
+  NOTE_E5, 90, NOTE_G5, 90, NOTE_C6, 90,
+  NOTE_E6, 90, NOTE_G6, 90, NOTE_C7, 180,
+  0, 60,
+  NOTE_C7, 90, NOTE_G6, 90, NOTE_E7, 90,
+  NOTE_G6, 90, NOTE_C7, 90, NOTE_E7, 260,
+  0, 120,
+  // Phrase 3: descending flourish back to the tonic, then a final chord-run —
+  // the piece's own cadence, so looping it back to phrase 1 reads as a fresh
+  // start rather than a cut-off.
+  NOTE_G6, 130, NOTE_F6, 130, NOTE_E6, 130, NOTE_D6, 130, NOTE_C6, 200,
+  0, 100,
+  NOTE_C5, 70, NOTE_E5, 70, NOTE_G5, 70, NOTE_C6, 70, NOTE_E6, 70, NOTE_G6, 70,
+  NOTE_C7, 420,
+  0, 0
 };
 
 #endif  // MARIO_SFX_H

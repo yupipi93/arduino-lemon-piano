@@ -44,7 +44,9 @@ The methodology (what counts as a new version, and the checklist for adding one)
 4. **Victory + auto-advance.** All ten lit → that level's theme plays in full
    with the bar flashing to the beat, then the flagpole fanfare, then the next
    level announces itself (its own theme's opening notes) before play moves on
-   to the next of the **four levels**.
+   to the next of the **four levels**. Clearing level 4 instead loops the
+   game-complete piece until you hold both sensitivity buttons for 1 s, which
+   resets straight to level 1 without recalibrating.
 5. **Restart** anytime with the D7 button (re-reads game select, recalibrates).
 
 ### Secret codes (spoilers!)
@@ -55,12 +57,13 @@ Keys numbered 1–7, left to right. These two codes have been the same since V3:
 |---|---|---|
 | 1 | Super Mario Bros — Overworld / Main Theme | `6, 5, 6, 7, 2, 5, 2, 1, 3, 4` |
 | 2 | Super Mario Bros — Underworld | `3, 6, 1, 4, 2, 5, 3, 6, 1, 4` |
-| 3 | Super Mario Bros — Underwater | `2, 4, 6, 1, 5, 3, 7, 4, 2, 6` |
+| 3 | Super Mario Bros — Castle | `2, 4, 6, 1, 5, 3, 7, 4, 2, 6` |
 | 4 | Super Mario Bros — Starman | `5, 1, 3, 7, 2, 6, 4, 1, 5, 3` |
 
-Clear all four and the **game-complete fanfare** plays. Every non-key sound is a
-Mario effect (coin, power-up, 1-up, death, flagpole fanfare) — the note data and
-its provenance are in [docs/MARIO-SOUNDS.md](docs/MARIO-SOUNDS.md).
+Clear all four and the **game-complete piece** plays on a loop until reset.
+Every non-key sound is a Mario effect (coin, power-up, 1-up, death, flagpole
+fanfare) — the note data and its provenance are in
+[docs/MARIO-SOUNDS.md](docs/MARIO-SOUNDS.md).
 
 ## Quick start
 

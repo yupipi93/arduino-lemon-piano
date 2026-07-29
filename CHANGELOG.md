@@ -2,6 +2,54 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-29 (V5 audio, part 3) — Stuck-key cue, Castle replaces Underwater,
+## the ending loops until reset
+
+Three more owner-requested changes:
+
+- **Stuck-key cue**: pressing an already-locked key (same lemon again, before
+  a different one unlocks it) used to be completely silent forever — no
+  feedback that anything was even listening. Now it stays silent for the
+  first `KEY_LOCK_COOLDOWN_MS` (500 ms) after release (`lastReleaseAt` tracks
+  this, so a quick accidental double-tap still gets no cue), but a press
+  after that plays `sfxKeyStuck` — a new low, rattling triple-hit, deliberately
+  distinct from Bump's two-tone end-stop cue since it means a different thing
+  ("this key specifically is locked" vs. "the knob can't go further").
+- **Level 3: Castle replaces Underwater.** Underwater's subtle opening
+  (a chromatic slide) turned out too hard to recognise as a distinct level.
+  Castle — SMB1's dark, driving fortress theme, one of its most recognisable
+  pieces after Overworld itself — takes its place: `castleNotes[]/
+  castleTempo[]` in `main.cpp`, same full-theme treatment as the other three
+  (own `CASTLE_VICTORY_FROM`/`CASTLE_INTRO_LEN`). No letter-note tab exists
+  for this piece anywhere searched (unlike Overworld/Underworld/Underwater/
+  Starman), so it's tagged 🔨 reconstruction, built to match the piece's
+  well-documented key (G minor), tempo (90 BPM, 2/2) and driving/syncopated
+  character rather than transcribed note-for-note. Level 3's key notes and
+  secret code are unchanged — only the win jingle and level-start intro moved.
+- **The game-complete piece now loops.** Clearing all four levels used to
+  play the (still fairly new) castle-clear jingle once and move on. Extended
+  it from ~1.4 s to a three-phrase, ~4.8 s piece with its own cadence
+  (`sfxEnding` in `mario_sfx.h`) and added `playEndingLoop()`, which repeats
+  it until the player holds both sensitivity buttons for `RECAL_HOLD_MS`
+  (1 s — the same gesture/duration as smart adjust, but reaching it from here
+  means something different: reset straight to level 1 with **no
+  recalibration**, since the player may not be near the fruit while it plays).
+  `playSfx()` gained an optional `checkAbort` callback, polled after every
+  single note (not just between repeats), so the 1 s hold is honoured almost
+  immediately. Emulation has no sensitivity buttons (every digital pin is
+  already a LED or a key), so there it just plays the piece once.
+
+**Emulation specs re-timed again**: Castle's victory tail (39 notes, ~16.9 s)
+is longer than Underwater's was (33 notes, ~13.6 s), pushing level 4's start
+in `all-levels-win.yaml` later by ~3.5 s. Recomputed from the melody tables'
+`playSong()` math and cross-checked against a real run's serial timestamps
+(measured: `Level 4` @68867 ms, `WIN` @76685 ms, `ALL LEVELS CLEAR` @84293 ms —
+all inside the scheduled margins). `lemon-piano.yaml`, `free-play.yaml` and
+`hold-and-repeat.yaml` needed no changes: none of their scripted repeats
+exceed the new 500 ms stuck-key cooldown, and none of them ever reach level 3
+or the ending. All four specs green; all three `pio run` envs build clean
+(flash 38.7%/11888 B on hardware, up from 36.9%/11324 B).
+
 ## 2026-07-29 (V5 audio, part 2) — Level-start announce, full Underwater/Starman
 ## themes, a real castle-clear ending
 

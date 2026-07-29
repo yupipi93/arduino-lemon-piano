@@ -1,8 +1,9 @@
 name: lemon-piano-v5-all-levels
 description: >
   Regression test for the FOUR-level rework (2026-07-29): plays all four secret
-  codes back to back — level 1 (Overworld), 2 (Underworld), 3 (Underwater, new),
-  4 (Starman, new) — and asserts the game auto-advances through all of them and
+  codes back to back — level 1 (Overworld), 2 (Underworld), 3 (Castle, replaced
+  Underwater the same day for being too hard to recognise), 4 (Starman) — and
+  asserts the game auto-advances through all of them and
   wraps back to level 1 after "ALL LEVELS CLEAR". Same circuit as
   lemon-piano.yaml; only the input script differs. Levels 3 and 4 were added the
   day before this spec and until now had NEVER been exercised by any automated
@@ -149,20 +150,25 @@ wires:
 # Since 2026-07-29 every gap below has TWO new components on top of the old
 # fanfare+theme total: (1) each level's own theme is now a FULL PROGMEM song
 # played via playSong() — levels 3/4 in particular went from a ~15-note
-# playSfx excerpt to a 26-33 note victory tail, much longer than before — and
+# playSfx excerpt to a 26-39 note victory tail, much longer than before — and
 # (2) after a level (re)starts, its own playLevelIntro() (the new "which level
 # is this" announce) blocks before free play resumes, and the very first level
-# 1 announce now blocks at the END of setup() too. Durations were computed from
-# marioTempo/underworldTempo/underwaterTempo/starmanTempo in main.cpp
+# 1 announce now blocks at the END of setup() too. Level 3 was replaced the
+# same day (Underwater -> Castle, too hard to recognise) with an even longer
+# victory tail (39 notes, ~16.9 s — the longest of the four). Durations were
+# computed from marioTempo/underworldTempo/castleTempo/starmanTempo in main.cpp
 # (playSong: sound note ≈ 2.3×(1000/tempo), rest ≈ 1.3×(1000/tempo)), then
-# cross-checked against a real run's serial timestamps (measured 2026-07-29):
+# cross-checked against a real run's serial timestamps (measured 2026-07-29,
+# after the Castle swap):
 #   Level 1 @2918 ms -> WIN @8673 -> Level 2 @18624 -> WIN @25671 ->
-#   Level 3 @37958 -> WIN @50181 -> Level 4 @65537 -> WIN @73180 ->
-#   ALL LEVELS CLEAR @80788 -> Level 1 @82592
+#   Level 3 @37958 -> WIN @50173 -> Level 4 @68867 -> WIN @76685 ->
+#   ALL LEVELS CLEAR @84293 -> Level 1 @89403
 # Every input batch above lands comfortably before the next marker with room to
 # spare (the schedule intentionally keeps that margin rather than shaving it to
 # the exact measured values) — re-measure and re-check the margin if a future
-# change touches the theme tables or SFX_*/PHRASE_* constants.
+# change touches the theme tables or SFX_*/PHRASE_* constants. Note this run's
+# ending played only once (`playEndingLoop()` in emulation, no sensitivity
+# buttons to test the loop-until-reset gesture) — see emulation/README.md.
 #
 # Key -> pin: 1=A0(14) 2=A1(15) 3=A2(16) 4=A3(17) 5=A4(18) 6=A5(19) 7=D12(12).
 #   Level 1  6,5,6,7,2,5,2,1,3,4      -> 19,18,19,12,15,18,15,14,16,17
@@ -196,8 +202,8 @@ inputs:
   - { at_s: 25.30, press_pin: 14, hold_s: 0.08 }
   - { at_s: 25.65, press_pin: 17, hold_s: 0.08 }   # -> WIN, Underworld tail + fanfare
   # ── LEVEL 3 code, starting at 47.00s (level-2 fanfare+theme ~13.85s + phrase
-  # gap + level-3 (Underwater) intro ~5.9s — the longest intro, 13 notes at a
-  # waltz tempo — + margin) ────────────────────────────────────────────────────
+  # gap + level-3 (Castle) intro ~6.1s — 14 notes, replaces the old Underwater
+  # intro — + margin) ──────────────────────────────────────────────────────────
   - { at_s: 47.00, press_pin: 15, hold_s: 0.08 }
   - { at_s: 47.35, press_pin: 17, hold_s: 0.08 }
   - { at_s: 47.70, press_pin: 19, hold_s: 0.08 }
@@ -207,31 +213,33 @@ inputs:
   - { at_s: 49.10, press_pin: 12, hold_s: 0.08 }
   - { at_s: 49.45, press_pin: 17, hold_s: 0.08 }
   - { at_s: 49.80, press_pin: 15, hold_s: 0.08 }
-  - { at_s: 50.15, press_pin: 19, hold_s: 0.08 }   # -> WIN, Underwater tail (full, 33
-                                                   # notes) + fanfare
-  # ── LEVEL 4 code, starting at 70.00s (level-3's full Underwater victory tail
-  # alone is ~13.6s — much longer than its old short excerpt — + phrase gap +
-  # fanfare + phrase gap + level-4 (Starman) intro ~2.25s + margin) ───────────
-  - { at_s: 70.00, press_pin: 18, hold_s: 0.08 }
-  - { at_s: 70.35, press_pin: 14, hold_s: 0.08 }
-  - { at_s: 70.70, press_pin: 16, hold_s: 0.08 }
-  - { at_s: 71.05, press_pin: 12, hold_s: 0.08 }
-  - { at_s: 71.40, press_pin: 15, hold_s: 0.08 }
-  - { at_s: 71.75, press_pin: 19, hold_s: 0.08 }
-  - { at_s: 72.10, press_pin: 17, hold_s: 0.08 }
-  - { at_s: 72.45, press_pin: 14, hold_s: 0.08 }
-  - { at_s: 72.80, press_pin: 18, hold_s: 0.08 }
-  - { at_s: 73.15, press_pin: 16, hold_s: 0.08 }   # -> WIN, Starman tail (full, 26
+  - { at_s: 50.15, press_pin: 19, hold_s: 0.08 }   # -> WIN, Castle tail (full, 39
+                                                   # notes — replaces Underwater,
+                                                   # ~16.9s, the longest victory
+                                                   # theme of the four) + fanfare
+  # ── LEVEL 4 code, starting at 73.50s (level-3's full Castle victory tail alone
+  # is ~16.9s — even longer than Underwater's old ~13.6s — + phrase gap + fanfare
+  # + phrase gap + level-4 (Starman) intro ~2.25s + margin) ───────────────────
+  - { at_s: 73.50, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 73.85, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 74.20, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 74.55, press_pin: 12, hold_s: 0.08 }
+  - { at_s: 74.90, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 75.25, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 75.60, press_pin: 17, hold_s: 0.08 }
+  - { at_s: 75.95, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 76.30, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 76.65, press_pin: 16, hold_s: 0.08 }   # -> WIN, Starman tail (full, 26
                                                    # notes) + fanfare, then
                                                    # "ALL LEVELS CLEAR" + ending
 
 assertions:
   - { type: serial_contains, pattern: "Lemon Piano V5", within_s: 3 }
   - { type: serial_contains, pattern: "Level 1",        within_s: 6 }
-  - { type: serial_absent,   pattern: "WRONG",           within_s: 90 }
-  - { type: gpio_toggles, pin: 2,  min_edges: 4,   within_s: 80 }   # LED 1 lit each round
+  - { type: serial_absent,   pattern: "WRONG",           within_s: 100 }
+  - { type: gpio_toggles, pin: 2,  min_edges: 4,   within_s: 90 }   # LED 1 lit each round
   - { type: serial_contains, pattern: "Level 2",         within_s: 20 }
   - { type: serial_contains, pattern: "Level 3",         within_s: 42 }
-  - { type: serial_contains, pattern: "Level 4",         within_s: 68 }
-  - { type: gpio_toggles, pin: 11, min_edges: 400,  within_s: 90 }  # buzzer sang all 4 wins
-  - { type: serial_contains, pattern: "ALL LEVELS CLEAR", within_s: 90 }
+  - { type: serial_contains, pattern: "Level 4",         within_s: 74 }
+  - { type: gpio_toggles, pin: 11, min_edges: 400,  within_s: 100 }  # buzzer sang all 4 wins
+  - { type: serial_contains, pattern: "ALL LEVELS CLEAR", within_s: 92 }

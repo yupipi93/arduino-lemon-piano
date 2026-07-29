@@ -158,6 +158,12 @@ const int WRONG_TONE_GAP_MS = 60; // silence between the played note and the
 const unsigned long SUSTAIN_CAP_MS = 2000;  // how long the wrong tone waits for a
                                   // held key before sounding anyway (a stuck key
                                   // must not freeze the game)
+const unsigned long KEY_LOCK_COOLDOWN_MS = 500;  // a locked key (pressed again
+                                  // before a different one unlocks it) stays
+                                  // silent for this long after release — a
+                                  // quick accidental double-tap gets no cue.
+                                  // Press it again after the cooldown and it
+                                  // plays sfxKeyStuck instead of staying silent.
 // UI chirps sit ABOVE every game note (game 1 reaches G7 = 3136 Hz, game 2 runs
 // 220..587 Hz), so a state sound can never be mistaken for the piano. 3.3-4.8 kHz
 // is also where a piezo is loudest.
@@ -294,48 +300,59 @@ const int underworldTempo[] PROGMEM = {
   3, 3, 3
 };
 
-// SUPER MARIO BROS — UNDERWATER THEME (full, 2026-07-29). Victory from
-// UNDERWATER_VICTORY_FROM, intro (level-start announce) is the first
-// UNDERWATER_INTRO_LEN notes. Phrase 1 (the chromatic slide into a rising
-// arpeggio) is transcribed from the cited letter-note tab; phrase 2 (a step
-// down, mirroring phrase 1's shape) and the closing bridge are this project's
-// extension, built to continue the tab's own repeating structure rather than
-// invented from nothing — see docs/MARIO-SOUNDS.md for the honest provenance.
-const int underwaterNotes[] PROGMEM = {
-  NOTE_D5, NOTE_CS5, NOTE_C5, NOTE_G4,
-  NOTE_C5, NOTE_CS5, NOTE_D5, NOTE_D5, NOTE_D5,
-  NOTE_E5, NOTE_F5, NOTE_G5, NOTE_G5,          // index 0-12: intro cuts here
-  0,
-  NOTE_E5, NOTE_F5, NOTE_A5, NOTE_AS5,
-  NOTE_B5, NOTE_B5, NOTE_B5,
-  0,
-  NOTE_C5, NOTE_B4, NOTE_AS4, NOTE_F4,          // index 22 = victory cut-in
-  NOTE_AS4, NOTE_B4, NOTE_C5, NOTE_C5, NOTE_C5,
-  NOTE_D5, NOTE_E5, NOTE_F5, NOTE_F5,
-  0,
-  NOTE_D5, NOTE_E5, NOTE_G5, NOTE_GS5,
-  NOTE_A5, NOTE_A5, NOTE_A5,
-  0,
-  NOTE_G4, NOTE_B4, NOTE_D5, NOTE_G5, NOTE_B5, NOTE_D6,
-  NOTE_G5, NOTE_F5, NOTE_E5, NOTE_D5, 0
+// SUPER MARIO BROS — CASTLE THEME (full, 2026-07-29, replaces Underwater —
+// too hard to recognise). Victory from CASTLE_VICTORY_FROM, intro (level-start
+// announce) is the first CASTLE_INTRO_LEN notes. G minor, brisk 2/2 — no
+// letter-note tab could be sourced for this one (unlike the others; the
+// pianoletternotes site this project otherwise draws on has no Castle entry),
+// so it is a 🔨 reconstruction built to match the piece's well-documented key,
+// tempo and driving/syncopated character, not a note-for-note transcription —
+// see docs/MARIO-SOUNDS.md. A repeating four-pulse "alarm" figure answered by
+// a descending phrase (x2), the same shape a step up (x2, victory tail starts
+// here), then a driving descent to a final cadence that loops cleanly.
+const int castleNotes[] PROGMEM = {
+  NOTE_G3, NOTE_G3, NOTE_G3, NOTE_G3,
+  NOTE_AS3, NOTE_AS3, NOTE_AS3, NOTE_D4,
+  NOTE_C4, NOTE_AS3, NOTE_G3, NOTE_F3,
+  NOTE_G3, 0,                                  // index 0-13: intro cuts here
+  NOTE_G3, NOTE_G3, NOTE_G3, NOTE_G3,
+  NOTE_AS3, NOTE_AS3, NOTE_AS3, NOTE_D4,
+  NOTE_C4, NOTE_AS3, NOTE_G3, NOTE_F3,
+  NOTE_G3, 0,
+
+  NOTE_A3, NOTE_A3, NOTE_A3, NOTE_A3,          // index 28 = victory cut-in
+  NOTE_C4, NOTE_C4, NOTE_C4, NOTE_DS4,
+  NOTE_D4, NOTE_C4, NOTE_A3, NOTE_G3,
+  NOTE_A3, 0,
+  NOTE_A3, NOTE_A3, NOTE_A3, NOTE_A3,
+  NOTE_C4, NOTE_C4, NOTE_C4, NOTE_DS4,
+  NOTE_D4, NOTE_C4, NOTE_A3, NOTE_G3,
+  NOTE_A3, 0,
+
+  NOTE_D4, NOTE_C4, NOTE_AS3, NOTE_G3,
+  NOTE_F3, NOTE_D3, NOTE_G3, NOTE_AS3,
+  NOTE_D4, NOTE_G4, 0
 };
-const int underwaterTempo[] PROGMEM = {
+const int castleTempo[] PROGMEM = {
   6, 6, 6, 6,
-  6, 6, 6, 6, 6,
-  6, 6, 3, 3,
-  6,
+  6, 6, 6, 3,
   6, 6, 6, 6,
-  6, 6, 3,
-  6,
+  3, 6,
   6, 6, 6, 6,
-  6, 6, 6, 6, 6,
-  6, 6, 3, 3,
-  6,
+  6, 6, 6, 3,
   6, 6, 6, 6,
-  6, 6, 3,
-  6,
-  8, 8, 8, 8, 8, 4,
-  6, 6, 6, 3, 3
+  3, 6,
+
+  6, 6, 6, 6,
+  6, 6, 6, 3,
+  6, 6, 6, 6,
+  3, 6,
+  6, 6, 6, 6,
+  6, 6, 6, 3,
+  6, 6, 6, 6,
+  3, 6,
+
+  6, 6, 6, 6, 6, 6, 6, 6, 6, 2, 3
 };
 
 // SUPER MARIO BROS — STARMAN / INVINCIBILITY THEME (full, 2026-07-29). Victory
@@ -382,11 +399,11 @@ const int starmanTempo[] PROGMEM = {
 
 #define MARIO_LEN          (sizeof(marioNotes) / sizeof(marioNotes[0]))
 #define UNDER_LEN          (sizeof(underworldNotes) / sizeof(underworldNotes[0]))
-#define UNDERWATER_LEN     (sizeof(underwaterNotes) / sizeof(underwaterNotes[0]))
+#define CASTLE_LEN         (sizeof(castleNotes) / sizeof(castleNotes[0]))
 #define STARMAN_LEN        (sizeof(starmanNotes) / sizeof(starmanNotes[0]))
 const uint8_t MARIO_VICTORY_FROM = 28;   // full theme is 78 notes; cut = tail 50
 const uint8_t UNDER_VICTORY_FROM = 12;   // full theme is 56 notes; cut = tail 44
-const uint8_t UNDERWATER_VICTORY_FROM = 22;  // full theme tail (see above)
+const uint8_t CASTLE_VICTORY_FROM = 28;      // full theme tail (see above)
 const uint8_t STARMAN_VICTORY_FROM = 22;     // full theme tail (see above)
 
 // Level-start "announce" — the first few notes of the level's OWN theme,
@@ -394,7 +411,7 @@ const uint8_t STARMAN_VICTORY_FROM = 22;     // full theme tail (see above)
 // four they are on and can place the secret code from the theme alone.
 const uint8_t MARIO_INTRO_LEN = 12;
 const uint8_t UNDER_INTRO_LEN = 8;
-const uint8_t UNDERWATER_INTRO_LEN = 13;
+const uint8_t CASTLE_INTRO_LEN = 14;
 const uint8_t STARMAN_INTRO_LEN = 10;
 
 //################################
@@ -412,7 +429,8 @@ const int keys[LEVEL_COUNT * KEY_COUNT] = {
   NOTE_E6, NOTE_G6, NOTE_A6, NOTE_B6, NOTE_C7, NOTE_E7, NOTE_G7,
   // level 2 — Underworld (the 2019 set)
   NOTE_A3, NOTE_AS3, NOTE_C4, NOTE_A4, NOTE_AS4, NOTE_C5, NOTE_D5,
-  // level 3 — Underwater: the theme's own chromatic-into-arpeggio material
+  // level 3 — Castle: a plain C major run (unchanged since the 2026-07-29
+  // theme swap from Underwater — only the win jingle changed, not the keys)
   NOTE_C5, NOTE_CS5, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_G5, NOTE_A5,
   // level 4 — Starman: a plain C major run, for the hammered figure
   NOTE_C5, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_G5, NOTE_A5, NOTE_C6,
@@ -440,6 +458,8 @@ int  lastCountedKey = -1;      // last key the GAME accepted; pressing it again 
                                // ignored until a different key is pressed
 int  lastSoundedKey = -1;      // ...and it does not sound again either
 int  pressedNote = 0;          // last note played
+unsigned long lastReleaseAt = 0;  // when the locked key (lastSoundedKey) was let
+                                  // go — starts the KEY_LOCK_COOLDOWN_MS clock
 
 int  baseline[KEY_COUNT];      // each key's resting level (measured, then tracked)
 int  noiseLevel[KEY_COUNT];    // peak-to-peak idle noise, from calibration
@@ -460,6 +480,8 @@ Button buttons[2] = {
   {SENS_DOWN, +1, false, 0, 0},
 };
 unsigned long bothHeldSince = 0;
+unsigned long endingHeldSince = 0;  // separate timer: same both-buttons-1s
+                                     // gesture, but read only by playEndingLoop()
 #endif
 
 //################################
@@ -489,12 +511,14 @@ void soundLearnBlip();
 void soundLearnOk();
 void soundLearnFail();
 void soundStuck();
+void soundKeyStuck();
 void resetBoard();
 void logGame();
 void handleGuess();
 void playVictory();
 void playLevelIntro();
-void playSfx(const int *table, bool lightShow = false);
+void playEndingLoop();
+bool playSfx(const int *table, bool lightShow = false, bool (*checkAbort)() = nullptr);
 void hushBuzzer();
 void silenceKeyNote();
 void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length);
@@ -570,6 +594,7 @@ void loop() {
     long remaining = (long) (keyToneMinEndsAt - millis());
     if (remaining > 0) delay(remaining);
     stopKeyTone();
+    lastReleaseAt = millis();  // starts the locked key's KEY_LOCK_COOLDOWN_MS clock
     activeKey = -1;
     return;
   }
@@ -581,9 +606,21 @@ void loop() {
     if (justPressed != lastSoundedKey) {
       startKeyTone(pressedNote); // it's a piano — a fresh key sounds its note and
                                  // keeps sounding while the lemon is touched
-    } else if (serialEnabled) {
-      Serial.print(F("    key ")); Serial.print(justPressed + 1);
-      Serial.println(F(" again - locked (play another key to unlock it)"));
+    } else {
+      // Locked: this key already reached the game and won't again until a
+      // different one is played. Stay silent for the first KEY_LOCK_COOLDOWN_MS
+      // (a quick accidental double-tap gets no cue) — but a press after that
+      // grace window means the player is genuinely stuck, so say so.
+      bool stillCoolingDown = (millis() - lastReleaseAt) < KEY_LOCK_COOLDOWN_MS;
+      if (!stillCoolingDown) {
+        soundKeyStuck();
+      }
+      if (serialEnabled) {
+        Serial.print(F("    key ")); Serial.print(justPressed + 1);
+        Serial.println(stillCoolingDown
+          ? F(" again - locked (play another key to unlock it)")
+          : F(" again - STUCK (play another key to unlock it)"));
+      }
     }
 #ifdef DEBUG_TOUCH
     Serial.print(F("press key ")); Serial.print(justPressed + 1);
@@ -651,7 +688,8 @@ void handleGuess() {
       if (level > LEVEL_COUNT) {
         log(F("ALL LEVELS CLEAR"));
         delay(PHRASE_GAP_MS);
-        playSfx(sfxEnding, true);
+        playEndingLoop();   // loops until the reset gesture (hardware) or once
+                            // (emulation — no sensitivity buttons to test it)
         level = 1;
       }
       resetBoard();
@@ -961,6 +999,21 @@ void nudgeMargin(int direction) {
 static bool sensUpDown()   { return digitalRead(SENS_UP) == LOW; }
 static bool sensDownDown() { return analogRead(SENS_DOWN) < 512; }
 
+// True once both sensitivity buttons have been held continuously for
+// RECAL_HOLD_MS — the SAME gesture and duration as smart adjust, but this
+// function is polled only from inside playEndingLoop(), where it means
+// something different: "stop celebrating, back to level 1" — no calibration,
+// since the player may not be anywhere near the fruit right now.
+static bool checkEndingReset() {
+  if (sensUpDown() && sensDownDown()) {
+    unsigned long now = millis();
+    if (endingHeldSince == 0) endingHeldSince = now;
+    return (now - endingHeldSince) >= RECAL_HOLD_MS;
+  }
+  endingHeldSince = 0;
+  return false;
+}
+
 void serviceButtons() {
   unsigned long now = millis();
 
@@ -1083,9 +1136,13 @@ void silenceKeyNote() {
 
 // Play a PROGMEM {frequency, milliseconds} table until its {0,0} terminator.
 // With lightShow the LED bar steps along with the notes, so a win is visible as
-// well as audible. Always leaves SFX_TAIL_MS of silence behind it.
-void playSfx(const int *table, bool lightShow) {
-  if (!UI_SOUNDS) return;
+// well as audible. Always leaves SFX_TAIL_MS of silence behind it (unless
+// aborted). checkAbort, if given, is polled after every note; the moment it
+// returns true, playSfx stops early and returns false — used by playEndingLoop()
+// to react to the reset gesture mid-song rather than only between repeats.
+// Returns true if the table played to its natural end without being aborted.
+bool playSfx(const int *table, bool lightShow, bool (*checkAbort)()) {
+  if (!UI_SOUNDS) return true;
   uint8_t led = 0;
   for (uint8_t i = 0; i < 96; i += 2) {
     int freq = (int) pgm_read_word(&table[i]);
@@ -1105,9 +1162,14 @@ void playSfx(const int *table, bool lightShow) {
       playTone(freq, sounding);
       delay(ms - sounding);
     }
+    if (checkAbort && checkAbort()) {
+      if (lightShow) allLedsOff();
+      return false;
+    }
   }
   if (lightShow) allLedsOff();
   delay(SFX_TAIL_MS);              // never butt two effects up against each other
+  return true;
 }
 
 // ── the UI vocabulary, in Mario ────────────────────────────────────────────
@@ -1119,6 +1181,7 @@ void soundLearnBlip()  { playSfx(sfxCoin); }       // smart adjust, still listen
 void soundLearnOk()    { playSfx(sfxOneUp); }      // a genuine gain: 1-up
 void soundLearnFail()  { playSfx(sfxDeath); }      // it did not work
 void soundStuck()      { playSfx(sfxFireball); }   // odd, but carry on
+void soundKeyStuck()   { playSfx(sfxKeyStuck); }   // a locked lemon, pressed again
 
 // The sensitivity tick is the coin's grace note alone — the shortest sound in the
 // set — with its PITCH TRACKING THE MARGIN, so holding a button sweeps a
@@ -1185,7 +1248,7 @@ void playVictory() {
   switch (level) {
     case 1: playSong(marioNotes, marioTempo, MARIO_VICTORY_FROM, MARIO_LEN); break;
     case 2: playSong(underworldNotes, underworldTempo, UNDER_VICTORY_FROM, UNDER_LEN); break;
-    case 3: playSong(underwaterNotes, underwaterTempo, UNDERWATER_VICTORY_FROM, UNDERWATER_LEN); break;
+    case 3: playSong(castleNotes, castleTempo, CASTLE_VICTORY_FROM, CASTLE_LEN); break;
     default: playSong(starmanNotes, starmanTempo, STARMAN_VICTORY_FROM, STARMAN_LEN); break;
   }
 }
@@ -1198,10 +1261,29 @@ void playLevelIntro() {
   switch (level) {
     case 1: playSong(marioNotes, marioTempo, 0, MARIO_INTRO_LEN); break;
     case 2: playSong(underworldNotes, underworldTempo, 0, UNDER_INTRO_LEN); break;
-    case 3: playSong(underwaterNotes, underwaterTempo, 0, UNDERWATER_INTRO_LEN); break;
+    case 3: playSong(castleNotes, castleTempo, 0, CASTLE_INTRO_LEN); break;
     default: playSong(starmanNotes, starmanTempo, 0, STARMAN_INTRO_LEN); break;
   }
   delay(SFX_TAIL_MS);         // breathing room before free play begins
+}
+
+// All four levels cleared: play the game-complete piece (sfxEnding) on a LOOP
+// until the player holds both sensitivity buttons for RECAL_HOLD_MS (the same
+// gesture/duration as smart adjust) — then returns, so the caller can reset
+// straight back to level 1 WITHOUT recalibrating. checkEndingReset() is polled
+// between every note of every repeat, so a 1 s hold is honoured almost
+// immediately rather than only at the end of a whole loop. Emulation has no
+// sensitivity buttons (every digital pin is already a LED or a key — see the
+// pin map note above KEY_PINS), so there it just plays the piece once.
+void playEndingLoop() {
+#ifdef VELXIO_EMULATION
+  playSfx(sfxEnding, true);
+#else
+  endingHeldSince = 0;
+  while (playSfx(sfxEnding, true, checkEndingReset)) {
+    // completed one full loop without the reset firing — play it again
+  }
+#endif
 }
 
 // Play a melody from PROGMEM, notes[from..length). Blocking on purpose — the

@@ -46,7 +46,10 @@ flashing to the beat, then the game **auto-advances** to the other tune.
    quick tap still gets a full 70 ms note), and **pressing the same lemon again
    never counts twice** — only the first press of a key reaches the game, until
    you play a different one. Flaky fruit contact can no longer machine-gun
-   guesses.
+   guesses. It stays silent for the first 500 ms after you let go (a quick
+   accidental double-tap gets no cue), but press the SAME locked key again
+   after that and it plays a low **"stuck key" rattle** — a clear "try another
+   one" instead of nothing at all.
 4. **The puzzle starts when you hit the code's first note** (LED 1 lights). From
    there each correct note lights the next green LED (the bar climbs 1 → 10),
    and a wrong note **blanks all ten** and drops you back to free play. The low
@@ -56,8 +59,9 @@ flashing to the beat, then the game **auto-advances** to the other tune.
    full first, with the bar flashing per note, then the **flagpole fanfare**,
    then the **next level's own intro announces it**, before the game moves to
    the **next level** (1 → 2 → 3 → 4 → 1 …). Clearing level 4 plays the
-   **game-complete fanfare** last, after the flagpole fanfare, before wrapping
-   back to level 1 (also announced).
+   **game-complete piece on a loop**, after the flagpole fanfare — it keeps
+   celebrating until you hold both sensitivity buttons for 1 s, which resets
+   straight back to level 1 **without recalibrating** (also announced).
 6. **Tune sensitivity while you play**: **D12** = more sensitive, **A7** = less
    sensitive, 1-count steps (5 above margin 20), auto-repeat while held. The bar
    shows the level for a moment after each press, and the tick's pitch tracks the
@@ -69,6 +73,9 @@ flashing to the beat, then the game **auto-advances** to the other tune.
    triad means it learned, a falling pair means the touch could not be told from
    noise and **nothing changed**.
 8. **No restart button.** Recalibrate with the smart-adjust gesture or a reset.
+   The SAME both-buttons-1s gesture means something different while the
+   game-complete piece is looping: it stops the music and resets to level 1
+   without recalibrating (see step 5) rather than learning a new margin.
 
 Every state has its own sound, all of them **above** the game notes (3.3–4.7 kHz,
 where a piezo is loudest) so a chirp is never mistaken for a note: calibration
@@ -86,7 +93,7 @@ before it wraps back to level 1.
 |---|---|---|
 | 1 | Overworld / Main Theme | `6, 5, 6, 7, 2, 5, 2, 1, 3, 4` |
 | 2 | Underworld | `3, 6, 1, 4, 2, 5, 3, 6, 1, 4` |
-| 3 | Underwater | `2, 4, 6, 1, 5, 3, 7, 4, 2, 6` |
+| 3 | Castle *(was Underwater — too hard to recognise)* | `2, 4, 6, 1, 5, 3, 7, 4, 2, 6` |
 | 4 | Starman | `5, 1, 3, 7, 2, 6, 4, 1, 5, 3` |
 
 | Key | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
@@ -98,7 +105,8 @@ before it wraps back to level 1.
 
 A level's seven notes are always distinct (the game recognises a guess by
 frequency), and no code repeats a note back-to-back (a repeated press of the same
-key is filtered as flaky contact).
+key is filtered as flaky contact). Level 3's key notes and code are unchanged
+from the Underwater days — only its win jingle changed to Castle.
 
 ### The sounds are Mario's
 
@@ -117,9 +125,10 @@ where each one came from:
 | Smart adjust learned | **1-up** |
 | Smart adjust failed | **death rattle** |
 | Wrong note | **short death rattle** (2 notes) |
+| Locked key, pressed again after 500 ms | **"stuck key" rattle** (low, distinct from Bump) |
 | A level (re)starts | opening notes of **that level's own theme** |
 | Level complete | that level's theme (full), then the **flagpole fanfare** |
-| All four levels clear | fanfare, then the **game-complete fanfare** |
+| All four levels clear | fanfare, then the **game-complete piece, looping** until reset |
 
 Touch sensing is the V2.5 front end: `threshold = baseline − margin`, with the
 baseline measured at boot and tracked while each key is untouched, and the margin
@@ -161,7 +170,8 @@ Clickable lemons (or press `1`–`7` on your keyboard), audible buzzer, the ten-
 bar. Because ten LEDs use every free browser pin there is **no game-select switch
 and no restart button**: it starts at game 1 and auto-advances on each win.
 There are **four** headless specs, all green (2026-07-27, +1 on 2026-07-29,
-re-timed the same day for the level-intro feature below):
+re-timed twice the same day — once for the level-intro feature below, once
+more when level 3's theme swapped from Underwater to the much longer Castle):
 
 | Spec | What it proves |
 |---|---|

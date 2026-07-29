@@ -91,7 +91,10 @@ with its own 220 Ω series resistor to a common GND:
 - Only the **first press of a key** reaches the game (`lastCountedKey`): holding
   or re-tapping the same lemon sounds but never scores or punishes again until a
   different key is played. This is what makes flaky fruit contact harmless — and
-  it means a secret code must never repeat a note back-to-back.
+  it means a secret code must never repeat a note back-to-back. The repeat stays
+  silent for the first `KEY_LOCK_COOLDOWN_MS` (500 ms) after release (`lastReleaseAt`
+  tracks this) — a stray double-tap gets no cue — but a press after that plays
+  `sfxKeyStuck` (2026-07-29), a low rattle distinct from Bump's end-stop tone.
 - Each **correct** note lights `LED_PINS[currentStep]` and advances the step.
 - Once the sequence has started, a **wrong** note calls `allLedsOff()` (blanks all
   ten) and plays `sfxMistake` — a short, 2-note excerpt of the Mario death rattle
@@ -103,6 +106,9 @@ with its own 220 Ω series resistor to a common GND:
   flashing per note, then the flagpole fanfare, then the game auto-advances to
   the next level — announced by that level's own intro (`playLevelIntro()`, the
   first few notes of its theme) before the bar blanks and free play resumes.
+  Clearing level 4 instead loops the game-complete piece (`playEndingLoop()`)
+  until both sensitivity buttons are held for `RECAL_HOLD_MS` (1 s), which resets
+  straight to level 1 without recalibrating — see "The ending loop" below.
 
 Standard indicator LEDs (Vf ≈ 2 V): 220 Ω gives ~15 mA at 5 V, within the
 ATmega's per-pin limit. All ten lit ≈ 150 mA — fine on USB, but note the
@@ -171,6 +177,25 @@ physics and the 2019-vs-2026 polarity table are in
   (bar lit, or dark before a level starts) while a theme plays — intentional.
 - In the Velxio build both paths route through `emuTone()` on **D11**; see
   [emulation/README.md](emulation/README.md).
+
+## The ending loop (2026-07-29)
+
+Clearing level 4 doesn't just play the game-complete jingle once — `playEndingLoop()`
+repeats `sfxEnding` (`playSfx()`) until the player holds **both sensitivity
+buttons for `RECAL_HOLD_MS`** (1 s — the same gesture and duration as smart
+adjust). `playSfx()` gained an optional `checkAbort` callback for this: polled
+after every single note, not just between repeats, so the 1 s hold is honoured
+almost immediately rather than only at the end of a whole loop. Reaching that
+gesture from inside the ending loop means something different from smart
+adjust: **reset straight to level 1, no recalibration** — the player may not be
+anywhere near the fruit while the ending is playing, and doesn't want to wait
+through `autoCalibrate()` just to stop the music.
+
+Emulation has no sensitivity buttons at all (every digital pin is already a LED
+or a key — ten LEDs + buzzer + key 7 already use every free line), so there
+`playEndingLoop()` just plays the piece once and returns, same as every other
+emulation-unavailable gesture in this game (verified instead by the button
+hardware itself, same as smart adjust).
 
 ## Diagrams
 
