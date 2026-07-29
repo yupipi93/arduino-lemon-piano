@@ -162,12 +162,19 @@ There are **four** headless specs, all green (2026-07-27, +1 on 2026-07-29):
 | `emulation/hold-and-repeat.yaml` | one key held 600 ms then tapped three more times: the note sustains with the touch (584 ms measured), and four touches produce exactly one `OK 1/10` — no `OK 2/10`, no `WRONG` |
 | `emulation/all-levels-win.yaml` | a scripted "virtual button" that plays all **four** levels' secret codes back to back — the only test that has ever exercised levels 3 and 4 (added the day before this spec). Asserts `WIN` -> `Level 2` -> `WIN` -> `Level 3` -> `WIN` -> `Level 4` -> `WIN` -> `ALL LEVELS CLEAR` -> wraps to `Level 1`, zero `WRONG`s |
 
-There's also a **live, pressable** version for manual testing —
-`emulation/autoplayer.yaml`: a second Arduino (Uno) sharing the canvas, with a
-LEVEL SELECT button (cycles 1-4, LEDs show which) and a PLAY button that fires
-that level's code onto the lemons' own key nodes, on demand, as many times as
-you like. Multi-board specs only run in `--mode interactive` in this harness
-(no headless verify/document for them), so open it in the browser:
+There's also a **live, on-demand** version for manual testing —
+`emulation/autoplayer.yaml`: a second Arduino (Uno) sharing the canvas. Type a
+level number (1-4) into *that board's own Serial Monitor tab* to arm it (its
+4 LEDs show which), then `p`, and it fires that level's code onto the lemons'
+own key nodes — as many times as you like, matching whichever level piano is
+actually on. (An earlier pass tried physical PLAY/LEVEL SELECT buttons instead
+of serial commands; verified live with a headless-Playwright probe that this
+Velxio version binds every pushbutton's click handler to a single global
+simulator rather than one per board, so a button on the second board can't
+reliably drive its own pins — serial I/O doesn't have that limitation, hence
+typing instead of clicking. Details in `emulation/README.md`.) Multi-board
+specs only run in `--mode interactive` in this harness (no headless
+verify/document for them), so open it in the browser:
 
 ```bash
 $PIPE run --mode interactive --spec emulation/autoplayer.yaml --out emulation/runs --open

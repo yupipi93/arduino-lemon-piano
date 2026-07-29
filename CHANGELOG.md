@@ -47,35 +47,69 @@ assertion pass; validated instead by compiling each board's sketch standalone
 the `.vlx` generates (`routing: loose` — each key node is now a 3-way junction,
 which the strict lane router flags but the circuit is still fully wired).
 
-## 2026-07-29 (V5 autoplayer v2) — Two real bugs found by actually clicking it
+## 2026-07-29 (V5 autoplayer, v2-v4) — Three real bugs, found by actually
+## driving the browser, not by guessing
 
-First live test of `emulation/autoplayer.yaml` surfaced three symptoms: no sound
-on manual lemon presses, PLAY and LEVEL SELECT both doing nothing, and the
-board starting armed on level 2 instead of level 1. Root causes, both now fixed:
+First live test of `emulation/autoplayer.yaml` surfaced three symptoms: no
+sound on manual lemon presses, PLAY and LEVEL SELECT both doing nothing, and
+the board starting armed on level 2 instead of level 1. v2 shipped two
+plausible-sounding fixes (finger pins high-Z while idle instead of driven
+HIGH; real external pull-ups + a boot guard for PLAY/LEVEL SELECT instead of
+`INPUT_PULLUP`) — **both were reasoned from reading Velxio's source, neither
+was actually tested, and neither fixed it.** Re-tested live: still broken.
 
-1. **The 7 "finger" output pins were `OUTPUT` driven `HIGH` while idle**, only
-   pulsing `LOW` to simulate a press. Piano's own pull-up already holds each
-   key node HIGH; an *actively driven* HIGH output on the same node fights a
-   real lemon press (which pulls it to GND) — that contention was silencing
-   every manual touch. Fixed: idle = high-impedance `INPUT` (don't drive the
-   node at all, exactly like an open switch), `OUTPUT LOW` only while
-   "pressing".
-2. **PLAY / LEVEL SELECT used `INPUT_PULLUP`.** avr8js — the AVR simulator
-   this harness uses — does not simulate the ATmega's internal weak pull-up at
-   all; piano's own 7 keys only work because they have real pull-up
-   **resistor components** in the circuit. With no such resistor here, both
-   buttons read permanently LOW: one spurious edge right at boot (hence
-   starting armed on level 2) and total unresponsiveness after, since the
-   edge-detector's "was it already down" latch never got a chance to release.
-   Fixed with two external 10k pull-ups to 5V (mirroring every piano key) +
-   plain `INPUT`, plus a boot guard mirroring piano's own `autoCalibrate()`
-   fix (Velxio's SPICE solve reads every input LOW for a moment at boot,
-   which would otherwise look exactly like a spurious press).
+That's when this stopped being code-reading and started being an actual
+investigation: a headless-Playwright probe (harness's `.venv` already has
+Playwright + a downloaded Chromium) driving the real editor — import the
+`.vlx`, click Run, dispatch `button-press`/`button-release` custom events on
+the `wokwi-pushbutton` elements, read `wokwi-led.brightness` and each board's
+own Serial Monitor tab. Three real, confirmed-live root causes:
+
+1. **`isBoardComponent()` checks kind-prefixes, not the spec's ids.** It's a
+   hardcoded list (`arduino-uno`, `arduino-nano`, `esp32`, …) checked with
+   `startsWith` — the working multi-board UART *template* only works because
+   it leaves `id:` unset, which defaults to the kind string. This spec gave
+   its boards custom ids (`piano`, `player`) for readability, which silently
+   broke every pushbutton's own pin-trace **including piano's own 7 keys** —
+   not just the new ones. Fixed: board ids reverted to the default
+   `arduino-nano` / `arduino-uno`.
+2. **Interconnect.ts only bridges wires where *both* endpoints are literal
+   board components.** The finger wires landed on a passive (the pull-up
+   resistor's node), which is invisible to it — nothing ever propagated
+   between the boards, regardless of firmware, regardless of the resistor
+   fix from v2. Fixed: every key + the finger wires are now direct
+   board-pin-to-pin or board-pin-to-button wires; any pull-up resistor is a
+   side branch off the same board pin, never in the button's own path (a
+   resistor in that path also tunnels the legacy pin-tracer onto the 5V bus
+   and dead-ends at -1/GND — confirmed in the `[verify]` log: a multi-board
+   project never gets a real SPICE solve, `nodes:["0"]` vs. 35 real nodes for
+   the single-board project, so every button falls back to that legacy
+   tracer instead of the correct SPICE-resolved path).
+3. **Component click handlers are bound to ONE global simulator, not one per
+   board** (`DynamicComponent.tsx`: `useSimulatorStore(s => s.simulator)`).
+   A pushbutton wired to the second board's pin calls `setPinState` on the
+   FIRST board's CPU instead of its own — a real architectural limitation of
+   this Velxio version, not something fixable from spec/wiring at all. Serial
+   I/O doesn't have this problem (`serialWriteToBoard(boardId, text)` is
+   properly per-board), so PLAY/LEVEL SELECT became serial commands instead
+   of physical buttons: type `1`-`4` into the second board's own Serial
+   Monitor tab to arm a level, then `p` to play it.
+
+Also fixed along the way, and it does hold up: the finger pins must be a
+driven `OUTPUT` even while idle (idle = `HIGH`), never high-Z `INPUT` — this
+simulator doesn't model true floating inputs, so an idle input reads a
+spurious LOW, and once the finger wires are the direct board-to-board wires
+#2 required, that floating LOW gets bridged straight onto piano's key nodes
+and permanently "presses" them.
+
+**Verified live, this time**: typed `1` then `p` into the second board's
+Serial Monitor → piano's own log showed `OK 1/10` through `OK 10/10` → `WIN`,
+zero `WRONG`s.
 
 **Also fixed, in the shared harness** (`velxio-multi-board-emulator`, not this
 repo): `.vlx` generation assigned wire colors by *list position*, so a single
 electrical node split across multiple wire segments (any junction — which
-`autoplayer.yaml`'s key nodes now are, with 3 wires apiece) rendered in
+every key node in this spec now is, with 3 wires apiece) rendered in
 different colors per segment. Rewrote `_wire_color` into a net-aware pass
 (union-find over every wire's endpoints, classify GND/VCC/signal per net, one
 color per net) — verified against the regenerated `autoplayer.vlx`: 88 wires,

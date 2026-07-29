@@ -4,34 +4,44 @@ description: >
   harness — the CLI's verify assertions only ever watch one board per run).
   Two boards: `piano` is the real V5 game (identical circuit to
   lemon-piano.yaml), and `player` is a small companion Arduino Uno that acts as
-  a "virtual finger": press its LEVEL SELECT button to arm level 1-4 (an LED
-  shows which), then press PLAY and it fires that level's 10-note code onto the
-  SAME key nodes your own lemon clicks use — piano can't tell the difference
-  between a player-board pulse and a real touch. Your 7 lemons stay fully
-  clickable throughout for manual free play / deliberately wrong notes; the
-  autoplayer only ever pulls a key node low the way a press would.
+  a "virtual finger": type a level number (1-4) into PLAYER'S OWN serial
+  monitor tab to arm it (an LED shows which), then type `p` and it fires that
+  level's 10-note code onto the SAME key nodes your own lemon clicks use —
+  piano can't tell the difference between a player-board pulse and a real
+  touch. Your 7 lemons stay fully clickable throughout for manual free play /
+  deliberately wrong notes; the autoplayer only ever pulls a key node low the
+  way a press would.
   The autoplayer has no idea what level `piano` actually thinks it's on — it
   can only offer levels 1-4 on request. Watch piano's own serial log ("Level
-  N") or match the win/auto-advance you just heard, and press LEVEL SELECT to
-  the right count before hitting PLAY.
-  v2 (2026-07-29): fixed two bugs a first pass found live. (1) The 7 finger
-  pins used to be OUTPUTs driven HIGH while idle, which fought a real lemon
-  press on the same node and killed manual-touch sound entirely — they are
-  now high-Z (INPUT) while idle, only ever driving LOW to "press". (2) PLAY
-  and LEVEL SELECT used INPUT_PULLUP, but avr8js does not simulate the
-  ATmega's internal pull-up (only real resistor components, like every one of
-  piano's own keys) — both buttons read permanently LOW, causing one spurious
-  edge at boot (armed level 2 on startup) and total unresponsiveness after.
-  Fixed with real external 10k pull-ups + plain INPUT, plus a boot guard
-  (mirrors piano's own autoCalibrate() fix) so the SPICE solve's settling
-  window can't be misread as a press.
+  N") or match the win/auto-advance you just heard, and type the right level
+  number before typing `p`.
+  v4 (2026-07-29), after three rounds of testing this live: PLAY/LEVEL SELECT
+  are no longer pushbuttons at all. Traced (with Playwright driving the real
+  editor headlessly, not guesswork) to a hard limitation of this Velxio
+  version: `DynamicComponent.tsx` binds EVERY interactive part's click handler
+  to a single global `useSimulatorStore().simulator` field, not a per-board
+  one — so a pushbutton wired to the second board's pin ends up calling
+  `setPinState` on the FIRST board's CPU instead of its own. No spec-level
+  wiring fix exists for that (verified: direct-to-pin wiring, correct board
+  ids, everything else here IS spec-fixable — this one isn't). Serial I/O,
+  unlike component click handlers, IS properly per-board
+  (`serialWriteToBoard(boardId, text)` / each board's own Serial Monitor tab)
+  — so PLAY/LEVEL SELECT moved there instead. Two earlier, now-obsolete fixes
+  along the way, for the record: the 7 finger pins must be driven OUTPUT
+  (idle HIGH, LOW to "press"), never high-Z INPUT — this simulator doesn't
+  model true floating inputs, so an idle INPUT pin reads a spurious LOW and,
+  once wired board-to-board, that gets pushed straight onto piano's key nodes
+  by Interconnect.ts and permanently "presses" them. And board ids must
+  start with a recognised kind string (`arduino-nano`, `arduino-uno`, ...) —
+  `isBoardComponent()` checks kind-prefixes, not whatever id the spec assigns,
+  so custom ids like `piano`/`player` silently break every pushbutton's own
+  pin-trace, piano's 7 keys included.
 routing: loose   # each key node is now a 3-way junction (piano's own wire +
                  # button + player's finger wire); the strict lane router
                  # can't avoid every overlap there, and this circuit is a
                  # test aid, not the polished diagram — route anyway, report.
 boards:
-  - id: piano
-    kind: arduino-nano
+  - kind: arduino-nano
     sketch_file: ../firmware/src/main.cpp
     defines: [VELXIO_EMULATION]
     extra_files:
@@ -39,8 +49,7 @@ boards:
         file: ../firmware/include/notes.h
       - name: mario_sfx.h
         file: ../firmware/include/mario_sfx.h
-  - id: player
-    kind: arduino-uno
+  - kind: arduino-uno
     sketch: |
       // Lemon Piano V5 — interactive-emulation "autoplayer" companion board.
       // Not part of the game: a virtual finger that plays a chosen level's
@@ -50,25 +59,15 @@ boards:
       // exactly what a touch does — pulls one node low for a beat, then lets
       // go — so the piano firmware cannot tell a pulse from a real touch.
       //
-      // Two lessons learned the hard way testing v1 of this board:
-      //  1. A finger pin must be high-Z (INPUT) while idle, NOT an output
-      //     driven HIGH. Piano's own pull-up already holds the node HIGH; an
-      //     actively-driven HIGH output on the SAME node fights a real lemon
-      //     press (which pulls it to GND), and that contention was silencing
-      //     every manual key touch. Only drive LOW, only while "pressing" —
-      //     released = don't drive the node at all, exactly like a switch.
-      //  2. PLAY/LEVEL SELECT must NOT use INPUT_PULLUP. avr8js (the AVR sim
-      //     this harness uses) does not simulate the chip's internal weak
-      //     pull-up at all — piano's own 7 keys only work because they have
-      //     REAL pull-up resistor components in the circuit. Without one here
-      //     both buttons read permanently LOW: one spurious edge at boot
-      //     (hence starting on level 2) and dead forever after. Fixed with
-      //     external 10k pull-ups (see the wires below) + plain INPUT.
+      // Controlled over serial (type into THIS board's own Serial Monitor
+      // tab), not physical buttons — see the file header for why: component
+      // click handlers in this Velxio version are bound to a single global
+      // simulator, not per-board, so a pushbutton on the second board can't
+      // reliably poke its own CPU. Type '1'-'4' to arm a level (an LED shows
+      // which), 'p' to play it.
 
       const uint8_t FINGER_PINS[7] = {6, 7, 8, 9, 10, 11, 12};  // key1..key7
       const uint8_t LEVEL_LEDS[4]  = {2, 3, 4, 5};              // level 1..4
-      const uint8_t PLAY_BTN  = A0;   // external 10k pull-up to 5V, plain INPUT
-      const uint8_t LEVEL_BTN = A1;   // external 10k pull-up to 5V, plain INPUT
       const uint8_t CODE_LEN = 10;
 
       // Same four secret codes as firmware/src/main.cpp's sequence_1..4, as
@@ -81,7 +80,6 @@ boards:
       };
 
       uint8_t level = 0;   // 0..3 == level 1..4
-      bool playWas = false, levelWas = false;
 
       void showLevel() {
         for (uint8_t i = 0; i < 4; i++) {
@@ -91,12 +89,14 @@ boards:
         Serial.println(level + 1);
       }
 
-      // Idle = high-impedance INPUT: don't drive this node at all, so a real
-      // lemon click on the SAME node is never fought.
-      void releaseKey(uint8_t pin) { pinMode(pin, INPUT); }
-      // Pressing = actively pull the node to GND, same electrical effect as a
-      // touch closing the circuit.
-      void pressKeyPin(uint8_t pin) { pinMode(pin, OUTPUT); digitalWrite(pin, LOW); }
+      // Finger pins are a driven OUTPUT, never high-Z INPUT, even while idle
+      // (idle = HIGH). This simulator does not model true floating inputs:
+      // an idle INPUT pin reads a spurious LOW, and since these are DIRECT
+      // board-to-board wires (see the wires section), that floating LOW
+      // would get pushed straight onto piano's key nodes by Interconnect.ts
+      // and permanently "press" them.
+      void releaseKey(uint8_t pin) { digitalWrite(pin, HIGH); }
+      void pressKeyPin(uint8_t pin) { digitalWrite(pin, LOW); }
 
       void pressKey(uint8_t keyNumber) {   // 1..7
         uint8_t pin = FINGER_PINS[keyNumber - 1];
@@ -121,45 +121,32 @@ boards:
       }
 
       void setup() {
-        for (uint8_t i = 0; i < 7; i++) releaseKey(FINGER_PINS[i]);   // idle: high-Z
+        for (uint8_t i = 0; i < 7; i++) {
+          pinMode(FINGER_PINS[i], OUTPUT);
+          releaseKey(FINGER_PINS[i]);   // idle: driven HIGH, matches piano's pull-up
+        }
         for (uint8_t i = 0; i < 4; i++) {
           pinMode(LEVEL_LEDS[i], OUTPUT);
         }
-        pinMode(PLAY_BTN, INPUT);    // external pull-up does the pull-up job
-        pinMode(LEVEL_BTN, INPUT);   // (avr8js does not simulate INPUT_PULLUP)
         pinMode(13, OUTPUT);
         Serial.begin(9600);
-
-        // Boot guard: Velxio's first SPICE solve takes a moment to settle,
-        // and every input reads LOW until it does (same fix piano's own
-        // autoCalibrate() needed) — wait for both buttons to read idle-HIGH
-        // before trusting any edge, or the settle itself looks like a press.
-        while (digitalRead(PLAY_BTN) == LOW || digitalRead(LEVEL_BTN) == LOW) {
-          delay(10);
-        }
-
         showLevel();
-        Serial.println(F("LEVEL SELECT cycles 1-4 (see the LEDs); PLAY replays"));
-        Serial.println(F("that level's code onto the piano's lemons. Match this"));
-        Serial.println(F("to piano's OWN serial log (\"Level N\") before pressing PLAY."));
+        Serial.println(F("Type 1-4 in THIS box to arm a level (see the LEDs),"));
+        Serial.println(F("then 'p' to play it onto the piano's lemons. Match the"));
+        Serial.println(F("number to piano's OWN serial log (\"Level N\") first."));
       }
 
       void loop() {
-        bool playDown  = digitalRead(PLAY_BTN)  == LOW;
-        bool levelDown = digitalRead(LEVEL_BTN) == LOW;
-
-        if (levelDown && !levelWas) {
-          level = (level + 1) % 4;
-          showLevel();
+        if (Serial.available()) {
+          char c = Serial.read();
+          if (c >= '1' && c <= '4') {
+            level = c - '1';
+            showLevel();
+          } else if (c == 'p' || c == 'P') {
+            playLevel();
+          }
+          // anything else (newline, whitespace, ...) is silently ignored
         }
-        levelWas = levelDown;
-
-        if (playDown && !playWas) {
-          playLevel();
-        }
-        playWas = playDown;
-
-        delay(15);   // cheap debounce; buttons are pressed by a human, not a script
       }
 
 components:
@@ -203,45 +190,60 @@ components:
 
   # ── The autoplayer's own parts, placed well clear of the piano (y: 900+) ──
   - { id: lvlr1,  type: resistor,   x: 36,  y: 900, properties: { value: "220" } }
-  - { id: lvled1, type: led,        x: 60,  y: 980, properties: { color: "blue", label: "1" } }
+  - { id: lvled1, type: led,        x: 60,  y: 980, properties: { color: "blue", label: "LV1" } }
   - { id: lvlr2,  type: resistor,   x: 166, y: 900, properties: { value: "220" } }
-  - { id: lvled2, type: led,        x: 190, y: 980, properties: { color: "blue", label: "2" } }
+  - { id: lvled2, type: led,        x: 190, y: 980, properties: { color: "blue", label: "LV2" } }
   - { id: lvlr3,  type: resistor,   x: 296, y: 900, properties: { value: "220" } }
-  - { id: lvled3, type: led,        x: 320, y: 980, properties: { color: "blue", label: "3" } }
+  - { id: lvled3, type: led,        x: 320, y: 980, properties: { color: "blue", label: "LV3" } }
   - { id: lvlr4,  type: resistor,   x: 426, y: 900, properties: { value: "220" } }
-  - { id: lvled4, type: led,        x: 450, y: 980, properties: { color: "blue", label: "4" } }
-  - { id: playBtn,  type: pushbutton, x: 620, y: 940, properties: { color: "red",   label: "PLAY" } }
-  - { id: levelBtn, type: pushbutton, x: 760, y: 940, properties: { color: "white", label: "LVL" } }
-  # External pull-ups for PLAY/LEVEL SELECT — avr8js does not simulate the
-  # ATmega's internal INPUT_PULLUP, so without a real resistor here (same as
-  # every one of piano's own keys) both buttons would read permanently LOW.
-  - { id: playr,  type: resistor, x: 620, y: 860, properties: { value: "10000" } }
-  - { id: levelr, type: resistor, x: 760, y: 860, properties: { value: "10000" } }
+  - { id: lvled4, type: led,        x: 450, y: 980, properties: { color: "blue", label: "LV4" } }
 
 wires:
-  # Signal columns: piano pin -> resistor (key node) -> key leg.
-  - [piano:A0, rp1:2]
-  - [rp1:2, key1:1.l]
-  - [piano:A1, rp2:2]
-  - [rp2:2, key2:1.l]
-  - [piano:A2, rp3:2]
-  - [rp3:2, key3:1.l]
-  - [piano:A3, rp4:2]
-  - [rp4:2, key4:1.l]
-  - [piano:A4, rp5:2]
-  - [rp5:2, key5:1.l]
-  - [piano:A5, rp6:2]
-  - [rp6:2, key6:1.l]
-  - [piano:12, rp7:2]          # A6 has no digital pin; key 7 lives on D12
-  - [rp7:2, key7:1.l]
-  - [piano:5V, rp1:1]
+  # Every key wired DIRECTLY board-pin -> button leg (NOT through the
+  # pull-up resistor). Two things forced this, both found live and traced
+  # through Velxio's own source (not guessed):
+  #  1. Multi-board projects never get a real SPICE solve (`[verify]`
+  #     reports nodes:["0"], vs. 35 real nodes for the single-board project)
+  #     — so `spiceDrivenInputs` is false and every button falls back to the
+  #     legacy path: walk wires through passives to find a board pin
+  #     (`traceDetailed` in DynamicComponent.tsx). That walker returns the
+  #     FIRST board pin it reaches per wire — including power pins, which
+  #     `boardPinToNumber` resolves to -1 (not null!). Since the pull-ups'
+  #     "5V side" pins are bussed together (`rp1:1 -> rp2:1 -> ...`), a
+  #     button's trace tunnels through its own resistor onto that bus and
+  #     dead-ends at -1 (GND) before ever reaching the real board pin. Same
+  #     algorithm, same bug, on both v1 (INPUT_PULLUP, no resistor at all —
+  #     see the finger-wire note below for why THAT failed) and v2 (real
+  #     external pull-ups, which reintroduced the exact resistor-to-bus path
+  #     this note describes).
+  #  2. The pushbutton part itself (`BasicParts.ts`) already seeds its
+  #     resolved pin HIGH on attach and pulls it LOW on press/back HIGH on
+  #     release — a REAL pull-up resistor is not needed for this simulation
+  #     mode at all. It's kept here purely for wiring-diagram realism, wired
+  #     as a side branch off the SAME board pin (never touching the button),
+  #     so it can never end up on a button's own trace.
+  - [arduino-nano:A0, key1:1.l]
+  - [arduino-nano:A0, rp1:2]
+  - [arduino-nano:A1, key2:1.l]
+  - [arduino-nano:A1, rp2:2]
+  - [arduino-nano:A2, key3:1.l]
+  - [arduino-nano:A2, rp3:2]
+  - [arduino-nano:A3, key4:1.l]
+  - [arduino-nano:A3, rp4:2]
+  - [arduino-nano:A4, key5:1.l]
+  - [arduino-nano:A4, rp5:2]
+  - [arduino-nano:A5, key6:1.l]
+  - [arduino-nano:A5, rp6:2]
+  - [arduino-nano:12, key7:1.l]       # A6 has no digital pin; key 7 lives on D12
+  - [arduino-nano:12, rp7:2]
+  - [arduino-nano:5V, rp1:1]
   - [rp1:1, rp2:1]
   - [rp2:1, rp3:1]
   - [rp3:1, rp4:1]
   - [rp4:1, rp5:1]
   - [rp5:1, rp6:1]
   - [rp6:1, rp7:1]
-  - [piano:GND.1, key1:2.l]
+  - [arduino-nano:GND.1, key1:2.l]
   - [key1:2.r, key2:2.l]
   - [key2:2.r, key3:2.l]
   - [key3:2.r, key4:2.l]
@@ -249,25 +251,25 @@ wires:
   - [key5:2.r, key6:2.l]
   - [key6:2.r, key7:2.l]
   # Ten-LED bar.
-  - [piano:2,  rl1:1]
+  - [arduino-nano:2,  rl1:1]
   - [rl1:2,  led1:A]
-  - [piano:3,  rl2:1]
+  - [arduino-nano:3,  rl2:1]
   - [rl2:2,  led2:A]
-  - [piano:4,  rl3:1]
+  - [arduino-nano:4,  rl3:1]
   - [rl3:2,  led3:A]
-  - [piano:5,  rl4:1]
+  - [arduino-nano:5,  rl4:1]
   - [rl4:2,  led4:A]
-  - [piano:6,  rl5:1]
+  - [arduino-nano:6,  rl5:1]
   - [rl5:2,  led5:A]
-  - [piano:7,  rl6:1]
+  - [arduino-nano:7,  rl6:1]
   - [rl6:2,  led6:A]
-  - [piano:8,  rl7:1]
+  - [arduino-nano:8,  rl7:1]
   - [rl7:2,  led7:A]
-  - [piano:9,  rl8:1]
+  - [arduino-nano:9,  rl8:1]
   - [rl8:2,  led8:A]
-  - [piano:10, rl9:1]
+  - [arduino-nano:10, rl9:1]
   - [rl9:2,  led9:A]
-  - [piano:13, rl10:1]
+  - [arduino-nano:13, rl10:1]
   - [rl10:2, led10:A]
   - [led1:C, led2:C]
   - [led2:C, led3:C]
@@ -278,45 +280,40 @@ wires:
   - [led7:C, led8:C]
   - [led8:C, led9:C]
   - [led9:C, led10:C]
-  - [led10:C, piano:GND.2]
-  - [piano:11, buzzer1:1]
-  - [buzzer1:2, piano:GND.2]
+  - [led10:C, arduino-nano:GND.2]
+  - [arduino-nano:11, buzzer1:1]
+  - [buzzer1:2, arduino-nano:GND.2]
 
   # ── The autoplayer's own indicator LEDs ────────────────────────────────────
-  - [player:2, lvlr1:1]
+  - [arduino-uno:2, lvlr1:1]
   - [lvlr1:2, lvled1:A]
-  - [player:3, lvlr2:1]
+  - [arduino-uno:3, lvlr2:1]
   - [lvlr2:2, lvled2:A]
-  - [player:4, lvlr3:1]
+  - [arduino-uno:4, lvlr3:1]
   - [lvlr3:2, lvled3:A]
-  - [player:5, lvlr4:1]
+  - [arduino-uno:5, lvlr4:1]
   - [lvlr4:2, lvled4:A]
   - [lvled1:C, lvled2:C]
   - [lvled2:C, lvled3:C]
   - [lvled3:C, lvled4:C]
-  - [lvled4:C, player:GND.2]
+  - [lvled4:C, arduino-uno:GND.2]
 
-  # ── PLAY / LEVEL SELECT buttons, EXTERNAL 10k pull-ups to 5V (avr8js does
-  # not simulate INPUT_PULLUP — same reason every piano key has a real
-  # resistor rather than relying on the firmware's internal one) ────────────
-  - [player:A0, playr:2]
-  - [playr:2, playBtn:1.l]
-  - [player:5V, playr:1]
-  - [playBtn:2.l, player:GND.2]
-  - [player:A1, levelr:2]
-  - [levelr:2, levelBtn:1.l]
-  - [player:5V, levelr:1]
-  - [levelBtn:2.l, player:GND.2]
-
-  # ── The 7 "fingers": player's outputs join the SAME key nodes as the real
-  # lemon buttons above (one wire per key, landing on that key's pull-up node)
-  - [player:6,  rp1:2]    # finger 1 -> key1 node
-  - [player:7,  rp2:2]    # finger 2 -> key2 node
-  - [player:8,  rp3:2]    # finger 3 -> key3 node
-  - [player:9,  rp4:2]    # finger 4 -> key4 node
-  - [player:10, rp5:2]    # finger 5 -> key5 node
-  - [player:11, rp6:2]    # finger 6 -> key6 node
-  - [player:12, rp7:2]    # finger 7 -> key7 node
+  # ── The 7 "fingers": DIRECT board-pin-to-board-pin wires. This is the
+  # other half of the fix: Interconnect.ts (Velxio's cross-board bridge)
+  # only ever builds a route when BOTH wire endpoints resolve to a literal
+  # board component (`buildRouteForWire`: `boards.get(componentId)` on each
+  # end) — a wire landing on a passive component (the old `rp1:2` target)
+  # is invisible to it, so NOTHING propagated between the boards no matter
+  # what either sketch did. Wiring straight to piano's own pins is the same
+  # pattern the shipped multi-board template uses for UART
+  # (`[arduino-uno:1, esp32:16]`), just on 7 GPIOs instead of 1.
+  - [arduino-uno:6,  arduino-nano:A0]   # finger 1 -> key1's own board pin
+  - [arduino-uno:7,  arduino-nano:A1]   # finger 2 -> key2's own board pin
+  - [arduino-uno:8,  arduino-nano:A2]   # finger 3 -> key3's own board pin
+  - [arduino-uno:9,  arduino-nano:A3]   # finger 4 -> key4's own board pin
+  - [arduino-uno:10, arduino-nano:A4]   # finger 5 -> key5's own board pin
+  - [arduino-uno:11, arduino-nano:A5]   # finger 6 -> key6's own board pin
+  - [arduino-uno:12, arduino-nano:12]   # finger 7 -> key7's own board pin (D12)
 
   # ── Shared ground reference between the two boards ────────────────────────
-  - [player:GND.1, piano:GND.1]
+  - [arduino-uno:GND.1, arduino-nano:GND.1]
