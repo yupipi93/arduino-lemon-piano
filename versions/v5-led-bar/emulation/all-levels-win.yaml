@@ -1,0 +1,217 @@
+name: lemon-piano-v5-all-levels
+description: >
+  Regression test for the FOUR-level rework (2026-07-29): plays all four secret
+  codes back to back — level 1 (Overworld), 2 (Underworld), 3 (Underwater, new),
+  4 (Starman, new) — and asserts the game auto-advances through all of them and
+  wraps back to level 1 after "ALL LEVELS CLEAR". Same circuit as
+  lemon-piano.yaml; only the input script differs. Levels 3 and 4 were added the
+  day before this spec and until now had NEVER been exercised by any automated
+  test — this is that test. This is also the emulation's "virtual button": a
+  scripted stand-in for a player who always plays the correct note, used to
+  drive the game through every level for testing without a human clicking all
+  40 notes by hand.
+  Gaps between levels are sized from measured victory-sequence durations (fanfare
+  + phrase gap + that level's theme, computed from firmware/include/mario_sfx.h
+  and main.cpp's melody tables), plus a safety margin — see the comment above
+  `inputs:`.
+board: arduino-nano
+sketch_file: ../firmware/src/main.cpp
+defines: [VELXIO_EMULATION]
+extra_files:
+  - name: notes.h
+    file: ../firmware/include/notes.h
+  - name: mario_sfx.h
+    file: ../firmware/include/mario_sfx.h
+
+components:
+  # ── The 7 "lemons": one horizontal piano row. Labels "1".."7" double as the
+  # PC-keyboard mapping (frontend patch 0002). Each key's 10k pull-up sits in
+  # the resistor row above it; the board signal wire ends at the resistor, never
+  # at button level, so no cable crosses the buttons.
+  - { id: key1, type: pushbutton, x: 60,  y: 430, properties: { color: "yellow", label: "1" } }
+  - { id: key2, type: pushbutton, x: 190, y: 430, properties: { color: "yellow", label: "2" } }
+  - { id: key3, type: pushbutton, x: 320, y: 430, properties: { color: "yellow", label: "3" } }
+  - { id: key4, type: pushbutton, x: 450, y: 430, properties: { color: "yellow", label: "4" } }
+  - { id: key5, type: pushbutton, x: 580, y: 430, properties: { color: "yellow", label: "5" } }
+  - { id: key6, type: pushbutton, x: 710, y: 430, properties: { color: "yellow", label: "6" } }
+  - { id: key7, type: pushbutton, x: 840, y: 430, properties: { color: "yellow", label: "7" } }
+  # Pull-ups (10k to 5V) — REQUIRED: an active-low button with no pull-up floats
+  # at ~0V in the solver and reads permanently pressed. One per key column
+  # (pin 1 = left = 5V bus, pin 2 = right = key node).
+  - { id: rp1, type: resistor, x: 36,  y: 310, properties: { value: "10000" } }
+  - { id: rp2, type: resistor, x: 166, y: 310, properties: { value: "10000" } }
+  - { id: rp3, type: resistor, x: 296, y: 310, properties: { value: "10000" } }
+  - { id: rp4, type: resistor, x: 426, y: 310, properties: { value: "10000" } }
+  - { id: rp5, type: resistor, x: 556, y: 310, properties: { value: "10000" } }
+  - { id: rp6, type: resistor, x: 686, y: 310, properties: { value: "10000" } }
+  - { id: rp7, type: resistor, x: 816, y: 310, properties: { value: "10000" } }
+  # ── The ten-LED progress bar: a column on the far right, clear of the
+  # keyboard. Series resistor (D-pin -> anode) then LED, cathode to the GND
+  # chain. LED n lights after the n-th correct note.
+  - { id: rl1,  type: resistor, x: 1010, y: 55,  properties: { value: "220" } }
+  - { id: led1, type: led,      x: 1180, y: 40,  properties: { color: "green", label: "1" } }
+  - { id: rl2,  type: resistor, x: 1010, y: 125, properties: { value: "220" } }
+  - { id: led2, type: led,      x: 1180, y: 110, properties: { color: "green", label: "2" } }
+  - { id: rl3,  type: resistor, x: 1010, y: 195, properties: { value: "220" } }
+  - { id: led3, type: led,      x: 1180, y: 180, properties: { color: "green", label: "3" } }
+  - { id: rl4,  type: resistor, x: 1010, y: 265, properties: { value: "220" } }
+  - { id: led4, type: led,      x: 1180, y: 250, properties: { color: "green", label: "4" } }
+  - { id: rl5,  type: resistor, x: 1010, y: 335, properties: { value: "220" } }
+  - { id: led5, type: led,      x: 1180, y: 320, properties: { color: "green", label: "5" } }
+  - { id: rl6,  type: resistor, x: 1010, y: 405, properties: { value: "220" } }
+  - { id: led6, type: led,      x: 1180, y: 390, properties: { color: "green", label: "6" } }
+  - { id: rl7,  type: resistor, x: 1010, y: 475, properties: { value: "220" } }
+  - { id: led7, type: led,      x: 1180, y: 460, properties: { color: "green", label: "7" } }
+  - { id: rl8,  type: resistor, x: 1010, y: 545, properties: { value: "220" } }
+  - { id: led8, type: led,      x: 1180, y: 530, properties: { color: "green", label: "8" } }
+  - { id: rl9,  type: resistor, x: 1010, y: 615, properties: { value: "220" } }
+  - { id: led9, type: led,      x: 1180, y: 600, properties: { color: "green", label: "9" } }
+  - { id: rl10, type: resistor, x: 1010, y: 685, properties: { value: "220" } }
+  - { id: led10,type: led,      x: 1180, y: 670, properties: { color: "green", label: "10" } }
+  # Buzzer, far right and clear of the LED column.
+  - { id: buzzer1, type: buzzer, x: 1360, y: 40, properties: {} }
+
+wires:
+  # Signal columns: board pin -> resistor (key node) -> key leg.
+  - [board:A0, rp1:2]
+  - [rp1:2, key1:1.l]
+  - [board:A1, rp2:2]
+  - [rp2:2, key2:1.l]
+  - [board:A2, rp3:2]
+  - [rp3:2, key3:1.l]
+  - [board:A3, rp4:2]
+  - [rp4:2, key4:1.l]
+  - [board:A4, rp5:2]
+  - [rp5:2, key5:1.l]
+  - [board:A5, rp6:2]
+  - [rp6:2, key6:1.l]
+  - [board:12, rp7:2]          # A6 has no digital pin; key 7 lives on D12
+  - [rp7:2, key7:1.l]
+  # 5V bus: chain along the resistor tops, one drop to the board.
+  - [board:5V, rp1:1]
+  - [rp1:1, rp2:1]
+  - [rp2:1, rp3:1]
+  - [rp3:1, rp4:1]
+  - [rp4:1, rp5:1]
+  - [rp5:1, rp6:1]
+  - [rp6:1, rp7:1]
+  # GND bus: daisy-chain along the button bottom legs, one drop to the board.
+  - [board:GND.1, key1:2.l]
+  - [key1:2.r, key2:2.l]
+  - [key2:2.r, key3:2.l]
+  - [key3:2.r, key4:2.l]
+  - [key4:2.r, key5:2.l]
+  - [key5:2.r, key6:2.l]
+  - [key6:2.r, key7:2.l]
+  # Ten-LED bar: each D-pin -> series resistor -> LED anode.
+  - [board:2,  rl1:1]
+  - [rl1:2,  led1:A]
+  - [board:3,  rl2:1]
+  - [rl2:2,  led2:A]
+  - [board:4,  rl3:1]
+  - [rl3:2,  led3:A]
+  - [board:5,  rl4:1]
+  - [rl4:2,  led4:A]
+  - [board:6,  rl5:1]
+  - [rl5:2,  led5:A]
+  - [board:7,  rl6:1]
+  - [rl6:2,  led6:A]
+  - [board:8,  rl7:1]
+  - [rl7:2,  led7:A]
+  - [board:9,  rl8:1]
+  - [rl8:2,  led8:A]
+  - [board:10, rl9:1]
+  - [rl9:2,  led9:A]
+  - [board:13, rl10:1]
+  - [rl10:2, led10:A]
+  # LED cathodes daisy-chain down the column to GND.
+  - [led1:C, led2:C]
+  - [led2:C, led3:C]
+  - [led3:C, led4:C]
+  - [led4:C, led5:C]
+  - [led5:C, led6:C]
+  - [led6:C, led7:C]
+  - [led7:C, led8:C]
+  - [led8:C, led9:C]
+  - [led9:C, led10:C]
+  - [led10:C, board:GND.2]
+  # Buzzer — on D11 (PWM-duty polled); the emulation firmware clears OCR2A after
+  # each note (emuTone) so the note-off actually fires. On D8 it would beep forever.
+  - [board:11, buzzer1:1]
+  - [buzzer1:2, board:GND.2]
+
+# The "virtual button": four back-to-back timed key-press scripts, one per
+# level's secret code, each starting only after the PREVIOUS level's full
+# victory sequence (fanfare + phrase gap + that level's theme + phrase gap) has
+# had time to finish — a key pressed while the AVR is mid-delay() playing a
+# melody is a voltage pulse the firmware never polls for, so it would be lost.
+# Gaps below = computed playback time (from mario_sfx.h / main.cpp's melody
+# tables) + a safety margin; level 1's gap was cross-checked against a real run
+# (WIN at 7772 ms -> "Level 2" at 17724 ms = 9951 ms measured).
+#
+# Key -> pin: 1=A0(14) 2=A1(15) 3=A2(16) 4=A3(17) 5=A4(18) 6=A5(19) 7=D12(12).
+#   Level 1  6,5,6,7,2,5,2,1,3,4      -> 19,18,19,12,15,18,15,14,16,17
+#   Level 2  3,6,1,4,2,5,3,6,1,4      -> 16,19,14,17,15,18,16,19,14,17
+#   Level 3  2,4,6,1,5,3,7,4,2,6      -> 15,17,19,14,18,16,12,17,15,19
+#   Level 4  5,1,3,7,2,6,4,1,5,3      -> 18,14,16,12,15,19,17,14,18,16
+inputs:
+  # ── LEVEL 1 code, starting at 3.20s. NOT 2.0s: auto-calibration's boot guard
+  # blocks the main loop until the circuit solve is idle-high, which measures
+  # deterministically at 2.918s on this rig (checked against two independent
+  # runs, identical to the cycle) — any press scheduled before that is simply
+  # never polled and is lost. 3.20s clears it with margin. ────────────────────
+  - { at_s: 3.20, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 3.55, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 3.90, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 4.25, press_pin: 12, hold_s: 0.08 }
+  - { at_s: 4.60, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 4.95, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 5.30, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 5.65, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 6.00, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 6.35, press_pin: 17, hold_s: 0.08 }   # -> WIN, fanfare + Main Theme tail
+  # ── LEVEL 2 code, starting at 17.2s (measured level-1 gap 9.95s + margin) ───
+  - { at_s: 17.20, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 17.55, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 17.90, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 18.25, press_pin: 17, hold_s: 0.08 }
+  - { at_s: 18.60, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 18.95, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 19.30, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 19.65, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 20.00, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 20.35, press_pin: 17, hold_s: 0.08 }   # -> WIN, fanfare + Underworld tail
+  # ── LEVEL 3 code, starting at 34.2s (computed gap ~12.2s + margin) ──────────
+  - { at_s: 34.20, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 34.55, press_pin: 17, hold_s: 0.08 }
+  - { at_s: 34.90, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 35.25, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 35.60, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 35.95, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 36.30, press_pin: 12, hold_s: 0.08 }
+  - { at_s: 36.65, press_pin: 17, hold_s: 0.08 }
+  - { at_s: 37.00, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 37.35, press_pin: 19, hold_s: 0.08 }   # -> WIN, fanfare + Underwater excerpt
+  # ── LEVEL 4 code, starting at 45.2s (computed gap ~6.1s + margin) ───────────
+  - { at_s: 45.20, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 45.55, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 45.90, press_pin: 16, hold_s: 0.08 }
+  - { at_s: 46.25, press_pin: 12, hold_s: 0.08 }
+  - { at_s: 46.60, press_pin: 15, hold_s: 0.08 }
+  - { at_s: 46.95, press_pin: 19, hold_s: 0.08 }
+  - { at_s: 47.30, press_pin: 17, hold_s: 0.08 }
+  - { at_s: 47.65, press_pin: 14, hold_s: 0.08 }
+  - { at_s: 48.00, press_pin: 18, hold_s: 0.08 }
+  - { at_s: 48.35, press_pin: 16, hold_s: 0.08 }   # -> WIN, fanfare + Starman excerpt,
+                                                   # then "ALL LEVELS CLEAR" + ending
+
+assertions:
+  - { type: serial_contains, pattern: "Lemon Piano V5", within_s: 3 }
+  - { type: serial_contains, pattern: "Level 1",        within_s: 4 }
+  - { type: serial_absent,   pattern: "WRONG",           within_s: 62 }
+  - { type: gpio_toggles, pin: 2,  min_edges: 4,   within_s: 52 }   # LED 1 lit each round
+  - { type: serial_contains, pattern: "Level 2",         within_s: 22 }
+  - { type: serial_contains, pattern: "Level 3",         within_s: 42 }
+  - { type: serial_contains, pattern: "Level 4",         within_s: 52 }
+  - { type: gpio_toggles, pin: 11, min_edges: 400,  within_s: 62 }  # buzzer sang all 4 wins
+  - { type: serial_contains, pattern: "ALL LEVELS CLEAR", within_s: 62 }

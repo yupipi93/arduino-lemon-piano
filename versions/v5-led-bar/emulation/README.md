@@ -114,4 +114,7 @@ On an unpatched Velxio the game still works, just with laggy sound.
 |---|---|
 | `lemon-piano.yaml` | Circuit spec (source of truth): components, wiring, secret-code input script, assertions |
 | `lemon-piano.vlx` | Generated project — import this into Velxio and play |
+| `free-play.yaml` | Regression: five non-first-note keys sound but never start the sequence |
+| `hold-and-repeat.yaml` | Regression: a held key sustains + counts once; a repeat is ignored, not `WRONG` |
+| `all-levels-win.yaml` | The "virtual button" — plays all **four** levels' secret codes back to back and asserts the auto-advance chain through `ALL LEVELS CLEAR` and the wrap to level 1. A scripted stand-in for a player who always presses the right lemon; useful for testing any level (including 3/4, added 2026-07-29) without clicking 40 notes by hand. See the timing note in its own header comment: each level's inputs start only once the previous level's full victory sequence has had time to finish, or the presses land while the AVR is mid-`delay()` and are silently lost. |
 | `runs/` | Evidence bundles from verify/document runs (gitignored) |

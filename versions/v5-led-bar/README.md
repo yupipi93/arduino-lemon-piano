@@ -153,17 +153,19 @@ $PIPE run --mode verify --spec emulation/lemon-piano.yaml --out emulation/runs
 Clickable lemons (or press `1`–`7` on your keyboard), audible buzzer, the ten-LED
 bar. Because ten LEDs use every free browser pin there is **no game-select switch
 and no restart button**: it starts at game 1 and auto-advances on each win.
-There are **two** headless specs, both green (2026-07-27):
+There are **four** headless specs, all green (2026-07-27, +1 on 2026-07-29):
 
 | Spec | What it proves |
 |---|---|
 | `emulation/lemon-piano.yaml` | free play → first note → a miss (`WRONG`) → the full code (with the first note pressed twice, to show the repeat filter doesn't eat real guesses) → `WIN` → auto-advance to `Game 2`, plus the victory light show |
 | `emulation/free-play.yaml` | five keys that are *not* the code's first note: the buzzer sings, but `WRONG` and `OK` never appear and LED 1 never lights |
 | `emulation/hold-and-repeat.yaml` | one key held 600 ms then tapped three more times: the note sustains with the touch (584 ms measured), and four touches produce exactly one `OK 1/10` — no `OK 2/10`, no `WRONG` |
+| `emulation/all-levels-win.yaml` | a scripted "virtual button" that plays all **four** levels' secret codes back to back — the only test that has ever exercised levels 3 and 4 (added the day before this spec). Asserts `WIN` -> `Level 2` -> `WIN` -> `Level 3` -> `WIN` -> `Level 4` -> `WIN` -> `ALL LEVELS CLEAR` -> wraps to `Level 1`, zero `WRONG`s |
 
 ```bash
 $PIPE run --mode verify --spec emulation/free-play.yaml --out emulation/runs
 $PIPE run --mode verify --spec emulation/hold-and-repeat.yaml --out emulation/runs
+$PIPE run --mode verify --spec emulation/all-levels-win.yaml --out emulation/runs
 ```
 
 > **A code can never repeat a note back-to-back** now that same-key repeats are

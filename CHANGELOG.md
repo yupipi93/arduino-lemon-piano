@@ -2,6 +2,31 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-29 (V5 emulation) — A "virtual button" that plays every level for you
+
+Levels 3 and 4 (added earlier today) had never been exercised by any automated
+test — only level 1's code was ever injected. Added
+[`emulation/all-levels-win.yaml`](versions/v5-led-bar/emulation/all-levels-win.yaml):
+a scripted stand-in for a player who always presses the right lemon, driving the
+game through all four secret codes back to back and asserting the auto-advance
+chain all the way to `ALL LEVELS CLEAR` and the wrap back to level 1. Same
+circuit as `lemon-piano.yaml`, only the input script + assertions differ — no
+firmware change, no new pin (V5 has none spare).
+
+Same circuit reused — same trap as any Velxio timed-input spec: a key pressed
+while the AVR is blocked inside a melody's `delay()` is a voltage pulse the
+firmware never polls for, so it is simply lost, not queued. First attempt
+scheduled level 1's first press at t=2.0s; auto-calibration's boot guard
+doesn't clear until **2.918s** (measured identically across two independent
+runs — the AVR simulation is cycle-deterministic, not wall-clock), so the
+opening presses vanished and the whole run silently played out against a game
+stuck on level 1. Fix: start each level's input batch only after the previous
+level's full victory sequence (fanfare + phrase gap + that level's theme +
+phrase gap) has had time to finish — durations computed from
+`firmware/include/mario_sfx.h`'s `{freq, ms}` tables, cross-checked against one
+real measured run (WIN → `Level 2` = 9951 ms). Second attempt: clean pass, zero
+`WRONG`s, all four `Level N` markers and `ALL LEVELS CLEAR` in one 62 s run.
+
 ## 2026-07-29 (V5 audio timing) — Fixed the sound race; silences are now policy
 
 Reported after playing it: the win fanfare stepped on the tenth note. Root cause —
