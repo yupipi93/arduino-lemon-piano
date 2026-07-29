@@ -23,10 +23,11 @@ all of them active — `versions/v0-buzzer` … `versions/v5-led-bar`.
   passive buzzer on D8, firmware that plays a scale forever (plus a
   `-DUSE_BUZZ` env for the bit-banged path). Reach for it when the sound is
   suspect — it removes the keyboard, the sensing and the game in one step.
-- **The newest board is V5** (`versions/v5-led-bar/`): ten-green-LED progress
-  bar, no relays, games that auto-advance on a win. V4 (relay water pump), V4.5
-  (same game, no pump, MARGIN buttons) and the 2019 rigs V1–V3 are equally
-  active, not history.
+- **The newest board is V5.5** (`versions/v5.5-power-filter/`): V5 plus a
+  filtered 5 V supply (TVS + Schottky + CLC pi) so mains transients stop
+  playing phantom notes. Game hardware and firmware are V5's. V5 (LED bar),
+  V4 (relay water pump), V4.5 (no pump, MARGIN buttons) and the 2019 rigs
+  V1–V3 are equally active, not history.
 - Each version is self-contained: `firmware/` (PlatformIO, builds in place),
   `emulation/` (Velxio spec + `.vlx`, or a README saying why there is none),
   `images/` (wirewright-rendered wiring), `README.md` + `HARDWARE.md`.

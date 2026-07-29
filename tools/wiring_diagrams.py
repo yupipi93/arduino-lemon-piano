@@ -479,6 +479,101 @@ def build_v5():
     return s, "v5-led-bar", "wiring-v5.png"
 
 
+# ── V5.5 ─────────────────────────────────────────────────────────────────────
+def build_v5_5():
+    """V5 + a power-entry filter. USB-powering V5 straight from a PC or a wall
+    wart lets every light-switch transient in the house ride the 5 V rail into
+    the keyboard — whose touch margin is 3-4 ADC counts (~15-20 mV). The board
+    itself is byte-for-byte V5; the new hardware is the supply chain in the
+    top-left corner: TVS clamp → series Schottky → 470 µF ‖ 100 nF → 100 µH →
+    470 µF ‖ 100 nF → the +5 V rail."""
+    s = _board("Lemon Piano V5.5 — V5 + filtered 5 V supply",
+               "Same board as V5 (7 pulled-up keys, ten-LED bar, SENS ± buttons, "
+               "buzzer on D13) — but the 5 V comes in through a transient clamp and "
+               "an LC pi filter, because the touch margin is 3-4 ADC counts and a "
+               "light switch anywhere in the house used to play the piano.",
+               "ATmega328P · Nano only (A6 = key 7, A7 = a button)",
+               h=1960, gnd_y=GND_2019)
+    keyboard_2019(s, fruit="lemon")
+
+    # ── the power-entry filter, left to right across the top band ────────────
+    s.add(lib.power_jack("J1", 130, 110, title="5 V IN",
+                         sub="USB charger pigtail — not the PC"))
+    s.add(lib.diode("DTVS", 560, 250, orient="V", flip=True, label="P6KE6.8A",
+                    sub="TVS clamp"))
+    s.add(lib.diode("DS", 700, 140, orient="H", label="1N5817",
+                    sub="reverse + USB backfeed"))
+    s.add(lib.capacitor("CF1", 850, 250, orient="V", polarized=True, label="470 µF"))
+    s.add(lib.capacitor("CF2", 950, 250, orient="V", label="100 nF"))
+    s.add(lib.inductor("LF1", 1090, 140, orient="H", label="100 µH",
+                       sub="≥ 1 A · low DCR"))
+    s.add(lib.capacitor("CF3", 1210, 250, orient="V", polarized=True, label="470 µF"))
+    s.add(lib.capacitor("CF4", 1310, 250, orient="V", label="100 nF"))
+
+    s.connect("vin", C["ctrl"], P("J1", "vout"), P("DTVS", "cathode"), P("DS", "anode"))
+    s.connect("vraw", C["ctrl"], P("DS", "cathode"), P("CF1", "a"), P("CF2", "a"), P("LF1", "a"))
+    s.connect("vfilt", C["v5"], P("LF1", "b"), P("CF3", "a"), P("CF4", "a"), R("5V"))
+    s.connect("pgnd", C["gnd"], P("J1", "gnd"), P("DTVS", "anode"), P("CF1", "b"),
+              P("CF2", "b"), P("CF3", "b"), P("CF4", "b"), R("GND"))
+
+    # ── everything below is V5, unchanged ────────────────────────────────────
+    pins = ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11"]
+    x0, dx, ybar = 1700, 100, 950
+    for i, pin in enumerate(pins):
+        cx = x0 + i * dx
+        cid = f"L{i}"
+        s.add(lib.led(cid, cx, ybar, (45, 185, 75), str(i + 1), pin, anode="N", cathode="S"))
+        s.add(lib.resistor(f"{cid}R", cx, ybar + 90, orient="V"))
+        s.connect(f"a{i}", C["led"], P("U1", pin), P(cid, "anode"))
+        s.connect(f"c{i}", C["gnd"], P(cid, "cathode"), P(f"{cid}R", "a"))
+        s.connect(f"g{i}", C["gnd"], P(f"{cid}R", "b"), R("GND"))
+
+    _buzzer(s, 1560, 420, pin="D13")
+
+    _button_to_gnd(s, "SUP", 2350, 420, "D12", "SENS +", "more sensitive",
+                   C["margin"], (60, 170, 90))
+
+    s.add(lib.push_button("SDN", 2850, 420, "SENS −", "less sensitive", cap=(200, 60, 60)))
+    s.add(lib.resistor("SDNPU", 2750, 250, orient="V", label="10k"))
+    s.connect("sdnsig", C["margin"], P("U1", "A7"), P("SDN", "pin"), P("SDNPU", "b"))
+    s.connect("sdnpu", C["v5"], P("SDNPU", "a"), R("5V"))
+    s.connect("sdngnd", C["gnd"], P("SDN", "v5"), R("GND"))
+
+    entries = [
+        (C["ctrl"], "Power-entry filter (NEW)",
+         ["P6KE6.8A TVS across the input · 1N5817 in series",
+          "470 µF ‖ 100 nF → 100 µH → 470 µF ‖ 100 nF (fc ≈ 700 Hz)"]),
+        (C["key"], "Lemon keys (7)", ["A0..A6 · 220 Ω pull-up to +5 V each",
+                                      "idle ≈ 1022 · a touch drags the pin DOWN"]),
+        (C["v5"], "+5 V / GND rails", ["the rail is the FILTERED node — everything",
+                                       "hangs off it exactly as in V5"]),
+        (C["led"], "Bar of 10 green LEDs",
+         ["ONE ASCENDING RUN: LED n on pin n+1 (D2..D11) · 220 Ω each"]),
+        (C["margin"], "Sensitivity buttons",
+         ["SENS + (D12, to GND) · SENS − (A7, to GND + 10 kΩ pull-up)"]),
+        (C["buzz"], "Buzzer", ["D13 · key notes, victory themes and UI chirps"]),
+    ]
+    notes = [("Why: the V5 touch margin is 3-4 ADC counts ≈ 15-20 mV (220 Ω pull-up vs "
+              "~1 MΩ of body). Any conducted transient bigger than that IS a key press: "
+              "a light switch, a PC's shared supply, a neighbour's fridge.", C["muted"]),
+             ("The chain: the TVS eats the big spikes (clamps ~10 V) · the Schottky adds "
+              "reverse protection and keeps a programming USB cable from back-feeding the "
+              "filter · the CLC pi (fc ≈ 700 Hz, 2nd order) kills conducted switching noise "
+              "before it reaches AVcc — which is also the ADC reference.", C["muted"]),
+             ("Cost: the Schottky + choke drop ~0.3 V, so the rail sits at ≈ 4.7 V. The ADC "
+              "is ratiometric (thresholds scale with AVcc), so calibration does not care.",
+              C["muted"]),
+             ("Feed the filter from a USB wall charger or a bench supply — NOT from the PC "
+              "that has twenty other loads on its 5 V. Loop the input lead 3-4 turns through "
+              "a clip-on ferrite for the common-mode path the filter cannot touch.", C["muted"]),
+             ("Still ghosting? The radiated path remains: 10 nF from each key pin to GND "
+              "(with 220 Ω that is a 2 µs pole — invisible to a 70 ms note) is the "
+              "documented next step in HARDWARE.md.", C["muted"])]
+    s.decorations.append(deco.legend(entries=entries, notes=notes,
+                                     **_legend_box(GND_2019, h=560)))
+    return s, "v5.5-power-filter", "wiring-v5.5.png"
+
+
 # version key -> builder (add a row per hardware revision)
 TARGETS = {
     "v0": build_v0,
@@ -489,6 +584,7 @@ TARGETS = {
     "v4": lambda: build_v4(False),
     "v4.5": lambda: build_v4(True),
     "v5": build_v5,
+    "v5.5": build_v5_5,
 }
 
 

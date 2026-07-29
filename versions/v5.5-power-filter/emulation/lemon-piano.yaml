@@ -1,0 +1,196 @@
+name: lemon-piano
+description: >
+  Interactive Velxio emulation of the Lemon Piano V5. The 7 lemons are
+  clickable pushbuttons (keys 1-7 on A0-A5 + D12 — the VELXIO_EMULATION input
+  shim in firmware/src/main.cpp, see emulation/README.md). A row of TEN green
+  LEDs (D2,D3,D4,D5,D6,D7,D8,D9,D10,D13) is the progress bar: each correct note
+  lights the next LED, a wrong note blanks them all. Buzzer on D11 plays through
+  the browser's speakers. There is no game-select switch or restart button (no
+  pins left beside 10 LEDs): the browser starts at game 1 (Mario Main Theme) and
+  each win AUTO-ADVANCES to the other theme. Verify mode plays level 1's secret
+  code by injecting timed key presses and asserts WIN + the advance to Level 2.
+  Since 2026-07-29 there are FOUR levels, each with its own theme, and clearing a
+  level plays the flagpole fanfare before it.
+board: arduino-nano
+sketch_file: ../firmware/src/main.cpp
+defines: [VELXIO_EMULATION]
+extra_files:
+  - name: notes.h
+    file: ../firmware/include/notes.h
+  - name: mario_sfx.h
+    file: ../firmware/include/mario_sfx.h
+
+components:
+  # ── The 7 "lemons": one horizontal piano row. Labels "1".."7" double as the
+  # PC-keyboard mapping (frontend patch 0002). Each key's 10k pull-up sits in
+  # the resistor row above it; the board signal wire ends at the resistor, never
+  # at button level, so no cable crosses the buttons.
+  - { id: key1, type: pushbutton, x: 60,  y: 430, properties: { color: "yellow", label: "1" } }
+  - { id: key2, type: pushbutton, x: 190, y: 430, properties: { color: "yellow", label: "2" } }
+  - { id: key3, type: pushbutton, x: 320, y: 430, properties: { color: "yellow", label: "3" } }
+  - { id: key4, type: pushbutton, x: 450, y: 430, properties: { color: "yellow", label: "4" } }
+  - { id: key5, type: pushbutton, x: 580, y: 430, properties: { color: "yellow", label: "5" } }
+  - { id: key6, type: pushbutton, x: 710, y: 430, properties: { color: "yellow", label: "6" } }
+  - { id: key7, type: pushbutton, x: 840, y: 430, properties: { color: "yellow", label: "7" } }
+  # Pull-ups (10k to 5V) — REQUIRED: an active-low button with no pull-up floats
+  # at ~0V in the solver and reads permanently pressed. One per key column
+  # (pin 1 = left = 5V bus, pin 2 = right = key node).
+  - { id: rp1, type: resistor, x: 36,  y: 310, properties: { value: "10000" } }
+  - { id: rp2, type: resistor, x: 166, y: 310, properties: { value: "10000" } }
+  - { id: rp3, type: resistor, x: 296, y: 310, properties: { value: "10000" } }
+  - { id: rp4, type: resistor, x: 426, y: 310, properties: { value: "10000" } }
+  - { id: rp5, type: resistor, x: 556, y: 310, properties: { value: "10000" } }
+  - { id: rp6, type: resistor, x: 686, y: 310, properties: { value: "10000" } }
+  - { id: rp7, type: resistor, x: 816, y: 310, properties: { value: "10000" } }
+  # ── The ten-LED progress bar: a column on the far right, clear of the
+  # keyboard. Series resistor (D-pin -> anode) then LED, cathode to the GND
+  # chain. LED n lights after the n-th correct note.
+  - { id: rl1,  type: resistor, x: 1010, y: 55,  properties: { value: "220" } }
+  - { id: led1, type: led,      x: 1180, y: 40,  properties: { color: "green", label: "1" } }
+  - { id: rl2,  type: resistor, x: 1010, y: 125, properties: { value: "220" } }
+  - { id: led2, type: led,      x: 1180, y: 110, properties: { color: "green", label: "2" } }
+  - { id: rl3,  type: resistor, x: 1010, y: 195, properties: { value: "220" } }
+  - { id: led3, type: led,      x: 1180, y: 180, properties: { color: "green", label: "3" } }
+  - { id: rl4,  type: resistor, x: 1010, y: 265, properties: { value: "220" } }
+  - { id: led4, type: led,      x: 1180, y: 250, properties: { color: "yellow", label: "4" } }
+  - { id: rl5,  type: resistor, x: 1010, y: 335, properties: { value: "220" } }
+  - { id: led5, type: led,      x: 1180, y: 320, properties: { color: "yellow", label: "5" } }
+  - { id: rl6,  type: resistor, x: 1010, y: 405, properties: { value: "220" } }
+  - { id: led6, type: led,      x: 1180, y: 390, properties: { color: "yellow", label: "6" } }
+  - { id: rl7,  type: resistor, x: 1010, y: 475, properties: { value: "220" } }
+  - { id: led7, type: led,      x: 1180, y: 460, properties: { color: "orange", label: "7" } }
+  - { id: rl8,  type: resistor, x: 1010, y: 545, properties: { value: "220" } }
+  - { id: led8, type: led,      x: 1180, y: 530, properties: { color: "orange", label: "8" } }
+  - { id: rl9,  type: resistor, x: 1010, y: 615, properties: { value: "220" } }
+  - { id: led9, type: led,      x: 1180, y: 600, properties: { color: "red", label: "9" } }
+  - { id: rl10, type: resistor, x: 1010, y: 685, properties: { value: "220" } }
+  - { id: led10,type: led,      x: 1180, y: 670, properties: { color: "red", label: "10" } }
+  # Buzzer, far right and clear of the LED column.
+  - { id: buzzer1, type: buzzer, x: 1360, y: 40, properties: {} }
+
+wires:
+  # Signal columns: board pin -> resistor (key node) -> key leg.
+  - [board:A0, rp1:2]
+  - [rp1:2, key1:1.l]
+  - [board:A1, rp2:2]
+  - [rp2:2, key2:1.l]
+  - [board:A2, rp3:2]
+  - [rp3:2, key3:1.l]
+  - [board:A3, rp4:2]
+  - [rp4:2, key4:1.l]
+  - [board:A4, rp5:2]
+  - [rp5:2, key5:1.l]
+  - [board:A5, rp6:2]
+  - [rp6:2, key6:1.l]
+  - [board:12, rp7:2]          # A6 has no digital pin; key 7 lives on D12
+  - [rp7:2, key7:1.l]
+  # 5V bus: chain along the resistor tops, one drop to the board.
+  - [board:5V, rp1:1]
+  - [rp1:1, rp2:1]
+  - [rp2:1, rp3:1]
+  - [rp3:1, rp4:1]
+  - [rp4:1, rp5:1]
+  - [rp5:1, rp6:1]
+  - [rp6:1, rp7:1]
+  # GND bus: daisy-chain along the button bottom legs, one drop to the board.
+  - [board:GND.1, key1:2.l]
+  - [key1:2.r, key2:2.l]
+  - [key2:2.r, key3:2.l]
+  - [key3:2.r, key4:2.l]
+  - [key4:2.r, key5:2.l]
+  - [key5:2.r, key6:2.l]
+  - [key6:2.r, key7:2.l]
+  # Ten-LED bar: each D-pin -> series resistor -> LED anode.
+  - [board:2,  rl1:1]
+  - [rl1:2,  led1:A]
+  - [board:3,  rl2:1]
+  - [rl2:2,  led2:A]
+  - [board:4,  rl3:1]
+  - [rl3:2,  led3:A]
+  - [board:5,  rl4:1]
+  - [rl4:2,  led4:A]
+  - [board:6,  rl5:1]
+  - [rl5:2,  led5:A]
+  - [board:7,  rl6:1]
+  - [rl6:2,  led6:A]
+  - [board:8,  rl7:1]
+  - [rl7:2,  led7:A]
+  - [board:9,  rl8:1]
+  - [rl8:2,  led8:A]
+  - [board:10, rl9:1]
+  - [rl9:2,  led9:A]
+  - [board:13, rl10:1]
+  - [rl10:2, led10:A]
+  # LED cathodes daisy-chain down the column to GND.
+  - [led1:C, led2:C]
+  - [led2:C, led3:C]
+  - [led3:C, led4:C]
+  - [led4:C, led5:C]
+  - [led5:C, led6:C]
+  - [led6:C, led7:C]
+  - [led7:C, led8:C]
+  - [led8:C, led9:C]
+  - [led9:C, led10:C]
+  - [led10:C, board:GND.2]
+  # Buzzer — on D11 (PWM-duty polled); the emulation firmware clears OCR2A after
+  # each note (emuTone) so the note-off actually fires. On D8 it would beep forever.
+  - [board:11, buzzer1:1]
+  - [buzzer1:2, board:GND.2]
+
+# Headless gameplay, in three acts — this doubles as the regression test for the
+# 2026-07-27 "piano first, puzzle second" rules.
+#
+# Since 2026-07-29 `setup()` ends with `playLevelIntro()` — level 1's theme
+# opening (12 notes, ~1.8 s) plus its own hush/tail silence — so every input
+# below is shifted +2.0 s later than before that feature landed. A key press
+# during that blocking call is simply lost (not queued), same trap as any
+# timed-input spec against a melody's delay().
+#
+#   ACT 1 (4.0-5.0 s)  FREE PLAY: three keys that are NOT the first note of the
+#                      code. Each must simply sound; no WRONG, no penalty tone.
+#   ACT 2 (5.4-5.8 s)  START THEN MISS: key 6 is the code's first note (LED 1
+#                      lights, step 1), then key 1 is wrong -> now it DOES cost
+#                      a WRONG, and the low tone must come AFTER key 1's note.
+#   ACT 3 (6.6+ s)     The full code to WIN and auto-advance — with the first
+#                      note pressed TWICE, to prove the repeat filter ignores the
+#                      double without losing the real guess (2026-07-27 rule).
+#
+# Level 1 code 6,5,6,7,2,5,2,1,3,4 -> key pins A5,A4,A5,D12,A1,A4,A1,A0,A2,A3 =
+# 19,18,19,12,15,18,15,14,16,17. Active-low pulses.
+inputs:
+  # ── ACT 1: free play (keys 1, 3, 7 — none of them the code's first note) ──
+  - { at_s: 5.05, press_pin: 14, hold_s: 0.08 }   # key 1
+  - { at_s: 5.45, press_pin: 16, hold_s: 0.08 }   # key 3
+  - { at_s: 5.85, press_pin: 12, hold_s: 0.08 }   # key 7
+  # ── ACT 2: hit the first note, then miss ─────────────────────────────────
+  - { at_s: 6.45, press_pin: 19, hold_s: 0.08 }   # key 6 -> OK 1/10, LED 1 on
+  - { at_s: 6.85, press_pin: 14, hold_s: 0.08 }   # key 1 -> WRONG (note, gap, low tone)
+  # ── ACT 3: the whole code, clean ─────────────────────────────────────────
+  - { at_s: 7.65, press_pin: 19, hold_s: 0.08 }   # key 6
+  - { at_s: 7.83, press_pin: 19, hold_s: 0.08 }   # key 6 AGAIN -> ignored, and
+                                                  # must not derail the sequence
+  - { at_s: 8.00, press_pin: 18, hold_s: 0.08 }   # key 5
+  - { at_s: 8.35, press_pin: 19, hold_s: 0.08 }   # key 6
+  - { at_s: 8.70, press_pin: 12, hold_s: 0.08 }   # key 7
+  - { at_s: 9.05, press_pin: 15, hold_s: 0.08 }   # key 2
+  - { at_s: 9.40, press_pin: 18, hold_s: 0.08 }   # key 5
+  - { at_s: 9.75, press_pin: 15, hold_s: 0.08 }   # key 2
+  - { at_s: 10.10, press_pin: 14, hold_s: 0.08 }   # key 1
+  - { at_s: 10.45, press_pin: 16, hold_s: 0.08 }   # key 3
+  - { at_s: 10.80, press_pin: 17, hold_s: 0.08 }   # key 4 -> WIN
+
+assertions:
+  - { type: serial_contains, pattern: "Lemon Piano V5", within_s: 4.05 }
+  - { type: serial_contains, pattern: "Level 1",        within_s: 4.05 }
+  # (Free play is asserted in its own spec, free-play.yaml — `serial_absent` is
+  # run-wide, and this run legitimately contains a WRONG in act 2.)
+  - { type: gpio_toggles, pin: 2,  min_edges: 1,   within_s: 13.05 }  # LED 1 lit on first correct
+  # ACT 2: once the sequence has started, a miss IS punished.
+  - { type: serial_contains, pattern: "WRONG",          within_s: 8.05 }
+  - { type: gpio_toggles, pin: 11, min_edges: 100, within_s: 19.05 }  # buzzer sang (keys + victory theme)
+  - { type: serial_contains, pattern: "WIN",            within_s: 14.05 }
+  # The flagpole fanfare and the level theme both run the LED bar as a light show.
+  # Victory light show: the bar flashes per note — LED 10 (D13) only ever
+  # lights during the win, so >=40 edges proves the beat-synced blinking.
+  - { type: gpio_toggles, pin: 13, min_edges: 2,   within_s: 25.05 }
+  - { type: serial_contains, pattern: "Level 2",        within_s: 25.05 }  # advanced after the fanfare + theme

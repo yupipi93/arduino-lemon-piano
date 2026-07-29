@@ -12,8 +12,8 @@ ten-LED progress bar.
 wiring diagram and docs, and each is expected to build. There is no archive.
 
 <div align="center">
-<img src="versions/v5-led-bar/images/wiring-v5.png" alt="V5 wiring diagram — ten-LED progress bar" width="92%"/>
-<br/><em>The newest board (V5): 7 lemon keys, a ten-LED progress bar, game select on A7.</em>
+<img src="versions/v5.5-power-filter/images/wiring-v5.5.png" alt="V5.5 wiring diagram — ten-LED progress bar behind a filtered 5 V supply" width="92%"/>
+<br/><em>The newest board (V5.5): 7 lemon keys, a ten-LED progress bar — and a filtered 5 V supply, because a light switch used to play the piano.</em>
 </div>
 
 ## The versions
@@ -27,7 +27,8 @@ wiring diagram and docs, and each is expected to build. There is no archive.
 | 3 | [**V3** — game prototype](versions/v3-game-prototype/) | + red/green feedback LEDs, game-select button, one relay channel — the game is born | — |
 | 4 | [**V4** — water pump](versions/v4-water-pump/) | clip flips to **+5 V** (sensing inverted), Nano, 2nd relay channel + **water pump**, RESTART button | ✅ verify green |
 | 5 | [**V4.5** — margin buttons](versions/v4.5-margin-buttons/) | **− relay pair + water pump** · + MARGIN +/− buttons (D10/D11) to tune touch sensitivity live | ✅ verify green |
-| 6 | [**V5** — LED bar](versions/v5-led-bar/) ⭐ newest | *rebuilt 2026-07-28*: keyboard back to **220 Ω pull-ups + GND clip** · + **ten green LEDs** · + 2 live-sensitivity buttons · − game-select, − restart | ✅ verify green |
+| 6 | [**V5** — LED bar](versions/v5-led-bar/) | *rebuilt 2026-07-28*: keyboard back to **220 Ω pull-ups + GND clip** · + **ten green LEDs** · + 2 live-sensitivity buttons · − game-select, − restart | ✅ verify green |
+| 7 | [**V5.5** — power filter](versions/v5.5-power-filter/) ⭐ newest | + **filtered 5 V input** (TVS + Schottky + CLC pi, fc ≈ 700 Hz): the 3-4-count touch margin no longer hears the house wiring | V5's |
 
 Details, pin maps and per-board build commands: [versions/README.md](versions/README.md).
 The methodology (what counts as a new version, and the checklist for adding one):
@@ -167,6 +168,9 @@ cd versions/v0-buzzer/firmware && pio run -t upload && pio device monitor
   touch calibration + two MARGIN buttons.
 - **V5** (2026-07-14) — relays/pump/red LED out, ten-LED progress bar in,
   auto-advancing games.
+- **V5.5** (2026-07-29) — power-entry filter on the 5 V input; board and game
+  untouched. Designed after mains transients (a light switch!) played phantom
+  notes through the 15-20 mV touch margin.
 
 Version numbers follow the **boards**, not the calendar: V4.5 is V4 minus the pump
 plus two buttons, so it sits before V5 even though it was wired later. Full story in

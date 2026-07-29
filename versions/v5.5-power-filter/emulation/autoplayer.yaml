@@ -1,0 +1,357 @@
+name: lemon-piano-v5-autoplayer
+description: >
+  Interactive-only (multi-board specs run in `--mode interactive` in this
+  harness — the CLI's verify assertions only ever watch one board per run).
+  Two boards: `piano` is the real V5 game (identical circuit to
+  lemon-piano.yaml), and `player` is a small companion Arduino Uno that acts as
+  a "virtual finger": type a level number (1-4) into PLAYER'S OWN serial
+  monitor tab to arm it (an LED shows which), then type `p` and it fires that
+  level's 10-note code onto the SAME key nodes your own lemon clicks use —
+  piano can't tell the difference between a player-board pulse and a real
+  touch. Your 7 lemons stay fully clickable throughout for manual free play /
+  deliberately wrong notes; the autoplayer only ever pulls a key node low the
+  way a press would.
+  The autoplayer has no idea what level `piano` actually thinks it's on — it
+  can only offer levels 1-4 on request. Watch piano's own serial log ("Level
+  N") or match the win/auto-advance you just heard, and type the right level
+  number before typing `p`.
+  v5 (2026-07-29), after five rounds of testing this live (Playwright driving
+  the real editor headlessly throughout — every fix below was confirmed
+  working, not just plausible): PLAY/LEVEL SELECT are serial commands, not
+  pushbuttons — traced to a hard limitation of this Velxio version:
+  `DynamicComponent.tsx` binds EVERY interactive part's click handler to a
+  single global `useSimulatorStore().simulator` field, not a per-board one,
+  so a pushbutton wired to the second board's pin calls `setPinState` on the
+  FIRST board's CPU instead of its own. No spec-level wiring fix exists for
+  that. Serial I/O doesn't have the problem
+  (`serialWriteToBoard(boardId, text)` / each board's own Serial Monitor tab
+  is properly per-board), hence typing instead of clicking.
+  The 7 "finger" wires go through a series resistor, not a bare direct wire
+  — the last bug found: a finger pin driven straight to piano's pin was a
+  hard short (in the digital fast-path both AVR boards use) that always won
+  against a real lemon click on the same node, so manual play went dead the
+  moment the finger wiring was fixed to actually reach piano. Toggling the
+  finger pin to high-Z `INPUT` while idle (so it wouldn't fight a real click)
+  broke the OTHER direction instead — this simulator doesn't re-evaluate a
+  pin's cross-board connection when its mode changes at runtime, so nothing
+  ever reached piano again, autoplay included, even with a 500 ms hold. A
+  220Ω resistor in series lets both coexist: piano's own pull-up, a real
+  button's near-zero contact resistance, and the finger's driven HIGH/LOW all
+  settle into an ordinary voltage divider, and a real press's near-zero
+  resistance wins over the finger's 220Ω whenever both could matter.
+  Two more fixes, still true, from earlier rounds: board ids must start with
+  a recognised kind string (`arduino-nano`, `arduino-uno`, ...) —
+  `isBoardComponent()` checks kind-prefixes, not whatever id the spec
+  assigns, so custom ids like `piano`/`player` silently broke every
+  pushbutton's own pin-trace, piano's 7 keys included. And
+  `Interconnect.ts` (the cross-board digital bridge) only routes a wire when
+  BOTH endpoints are literal board components — a wire landing on a passive
+  is invisible to it, so the finger wires had to reach piano's own pins
+  (through the resistor, not stopping at it) for anything to propagate at all.
+routing: loose   # each key node is now a 3-way junction (piano's own wire +
+                 # button + player's finger wire); the strict lane router
+                 # can't avoid every overlap there, and this circuit is a
+                 # test aid, not the polished diagram — route anyway, report.
+boards:
+  - kind: arduino-nano
+    sketch_file: ../firmware/src/main.cpp
+    defines: [VELXIO_EMULATION]
+    extra_files:
+      - name: notes.h
+        file: ../firmware/include/notes.h
+      - name: mario_sfx.h
+        file: ../firmware/include/mario_sfx.h
+  - kind: arduino-uno
+    sketch: |
+      // Lemon Piano V5 — interactive-emulation "autoplayer" companion board.
+      // Not part of the game: a virtual finger that plays a chosen level's
+      // secret code onto the piano board's key nodes on request, so a human
+      // tester doesn't have to click all ten correct lemons by hand to reach
+      // a win. Piano's own pull-ups hold each node idle-high; this board does
+      // exactly what a touch does — pulls one node low for a beat, then lets
+      // go — so the piano firmware cannot tell a pulse from a real touch.
+      //
+      // Controlled over serial (type into THIS board's own Serial Monitor
+      // tab), not physical buttons — see the file header for why: component
+      // click handlers in this Velxio version are bound to a single global
+      // simulator, not per-board, so a pushbutton on the second board can't
+      // reliably poke its own CPU. Type '1'-'4' to arm a level (an LED shows
+      // which), 'p' to play it.
+
+      const uint8_t FINGER_PINS[7] = {6, 7, 8, 9, 10, 11, 12};  // key1..key7
+      const uint8_t LEVEL_LEDS[4]  = {2, 3, 4, 5};              // level 1..4
+      const uint8_t CODE_LEN = 10;
+
+      // Same four secret codes as firmware/src/main.cpp's sequence_1..4, as
+      // key numbers 1-7 (see that file's SECRET SEQUENCES comment).
+      const uint8_t codes[4][CODE_LEN] = {
+        {6, 5, 6, 7, 2, 5, 2, 1, 3, 4},   // level 1 - Overworld
+        {3, 6, 1, 4, 2, 5, 3, 6, 1, 4},   // level 2 - Underworld
+        {2, 4, 6, 1, 5, 3, 7, 4, 2, 6},   // level 3 - Starman (moved from level 4)
+        {5, 1, 3, 7, 2, 6, 4, 1, 5, 3},   // level 4 - Castle (was Underwater, moved from level 3)
+      };
+
+      uint8_t level = 0;   // 0..3 == level 1..4
+
+      void showLevel() {
+        for (uint8_t i = 0; i < 4; i++) {
+          digitalWrite(LEVEL_LEDS[i], i == level ? HIGH : LOW);
+        }
+        Serial.print(F("Autoplayer armed for level "));
+        Serial.println(level + 1);
+      }
+
+      // Permanent OUTPUT, set once in setup() and never toggled again —
+      // toggling INPUT<->OUTPUT at runtime breaks cross-board propagation
+      // entirely (confirmed live, even with a 500 ms hold). Idle HIGH, LOW
+      // to "press"; the series resistor on the wire itself (see wires
+      // section) is what lets a real lemon click still win when it matters.
+      void releaseKey(uint8_t pin) { digitalWrite(pin, HIGH); }
+      void pressKeyPin(uint8_t pin) { digitalWrite(pin, LOW); }
+
+      void pressKey(uint8_t keyNumber) {   // 1..7
+        uint8_t pin = FINGER_PINS[keyNumber - 1];
+        pressKeyPin(pin);
+        delay(160);   // long enough for the SPICE-resolved voltage divider
+                      // (resistor vs. piano's pull-up) to settle before the
+                      // release — 90 ms measured flaky (roughly 1-in-3
+                      // misfires across repeated live runs), 250 ms measured
+                      // reliable (9/9). 160/200 (2026-07-29, speed request) is
+                      // a middle value chosen to sit comfortably clear of the
+                      // known-flaky 90 ms while noticeably faster than
+                      // 250/300 — NOT re-verified live at 9/9 rigor the way
+                      // 250 ms was; re-measure and pull back toward 250/300
+                      // if this ever misfires in practice.
+        releaseKey(pin);
+        delay(200);                // gap so the piano's edge logic sees a
+                                    // clean release before the next digit,
+                                    // and two same-key digits (never
+                                    // back-to-back in a real code) still land
+                                    // as distinct presses
+      }
+
+      void playLevel() {
+        digitalWrite(13, HIGH);     // onboard LED: "auto-playing" indicator
+        Serial.print(F("Auto-playing level ")); Serial.println(level + 1);
+        for (uint8_t i = 0; i < CODE_LEN; i++) {
+          pressKey(codes[level][i]);
+        }
+        digitalWrite(13, LOW);
+        Serial.println(F("Auto-play done."));
+      }
+
+      void setup() {
+        for (uint8_t i = 0; i < 7; i++) {
+          pinMode(FINGER_PINS[i], OUTPUT);   // set ONCE, never toggled again
+          releaseKey(FINGER_PINS[i]);        // idle: driven HIGH
+        }
+        for (uint8_t i = 0; i < 4; i++) {
+          pinMode(LEVEL_LEDS[i], OUTPUT);
+        }
+        pinMode(13, OUTPUT);
+        Serial.begin(9600);
+        showLevel();
+        Serial.println(F("Type 1-4 in THIS box to arm a level (see the LEDs),"));
+        Serial.println(F("then 'p' to play it onto the piano's lemons. Match the"));
+        Serial.println(F("number to piano's OWN serial log (\"Level N\") first."));
+      }
+
+      void loop() {
+        if (Serial.available()) {
+          char c = Serial.read();
+          if (c >= '1' && c <= '4') {
+            level = c - '1';
+            showLevel();
+          } else if (c == 'p' || c == 'P') {
+            playLevel();
+          }
+          // anything else (newline, whitespace, ...) is silently ignored
+        }
+      }
+
+components:
+  # ── The 7 "lemons" (same layout as lemon-piano.yaml) ──────────────────────
+  - { id: key1, type: pushbutton, x: 60,  y: 430, properties: { color: "yellow", label: "1" } }
+  - { id: key2, type: pushbutton, x: 190, y: 430, properties: { color: "yellow", label: "2" } }
+  - { id: key3, type: pushbutton, x: 320, y: 430, properties: { color: "yellow", label: "3" } }
+  - { id: key4, type: pushbutton, x: 450, y: 430, properties: { color: "yellow", label: "4" } }
+  - { id: key5, type: pushbutton, x: 580, y: 430, properties: { color: "yellow", label: "5" } }
+  - { id: key6, type: pushbutton, x: 710, y: 430, properties: { color: "yellow", label: "6" } }
+  - { id: key7, type: pushbutton, x: 840, y: 430, properties: { color: "yellow", label: "7" } }
+  - { id: rp1, type: resistor, x: 36,  y: 310, properties: { value: "10000" } }
+  - { id: rp2, type: resistor, x: 166, y: 310, properties: { value: "10000" } }
+  - { id: rp3, type: resistor, x: 296, y: 310, properties: { value: "10000" } }
+  - { id: rp4, type: resistor, x: 426, y: 310, properties: { value: "10000" } }
+  - { id: rp5, type: resistor, x: 556, y: 310, properties: { value: "10000" } }
+  - { id: rp6, type: resistor, x: 686, y: 310, properties: { value: "10000" } }
+  - { id: rp7, type: resistor, x: 816, y: 310, properties: { value: "10000" } }
+  # ── The ten-LED progress bar ───────────────────────────────────────────────
+  - { id: rl1,  type: resistor, x: 1010, y: 55,  properties: { value: "220" } }
+  - { id: led1, type: led,      x: 1180, y: 40,  properties: { color: "green", label: "1" } }
+  - { id: rl2,  type: resistor, x: 1010, y: 125, properties: { value: "220" } }
+  - { id: led2, type: led,      x: 1180, y: 110, properties: { color: "green", label: "2" } }
+  - { id: rl3,  type: resistor, x: 1010, y: 195, properties: { value: "220" } }
+  - { id: led3, type: led,      x: 1180, y: 180, properties: { color: "green", label: "3" } }
+  - { id: rl4,  type: resistor, x: 1010, y: 265, properties: { value: "220" } }
+  - { id: led4, type: led,      x: 1180, y: 250, properties: { color: "yellow", label: "4" } }
+  - { id: rl5,  type: resistor, x: 1010, y: 335, properties: { value: "220" } }
+  - { id: led5, type: led,      x: 1180, y: 320, properties: { color: "yellow", label: "5" } }
+  - { id: rl6,  type: resistor, x: 1010, y: 405, properties: { value: "220" } }
+  - { id: led6, type: led,      x: 1180, y: 390, properties: { color: "yellow", label: "6" } }
+  - { id: rl7,  type: resistor, x: 1010, y: 475, properties: { value: "220" } }
+  - { id: led7, type: led,      x: 1180, y: 460, properties: { color: "orange", label: "7" } }
+  - { id: rl8,  type: resistor, x: 1010, y: 545, properties: { value: "220" } }
+  - { id: led8, type: led,      x: 1180, y: 530, properties: { color: "orange", label: "8" } }
+  - { id: rl9,  type: resistor, x: 1010, y: 615, properties: { value: "220" } }
+  - { id: led9, type: led,      x: 1180, y: 600, properties: { color: "red", label: "9" } }
+  - { id: rl10, type: resistor, x: 1010, y: 685, properties: { value: "220" } }
+  - { id: led10,type: led,      x: 1180, y: 670, properties: { color: "red", label: "10" } }
+  - { id: buzzer1, type: buzzer, x: 1360, y: 40, properties: {} }
+
+  # ── The autoplayer's own parts, placed well clear of the piano (y: 900+) ──
+  - { id: lvlr1,  type: resistor,   x: 36,  y: 900, properties: { value: "220" } }
+  - { id: lvled1, type: led,        x: 60,  y: 980, properties: { color: "blue", label: "LV1" } }
+  - { id: lvlr2,  type: resistor,   x: 166, y: 900, properties: { value: "220" } }
+  - { id: lvled2, type: led,        x: 190, y: 980, properties: { color: "blue", label: "LV2" } }
+  - { id: lvlr3,  type: resistor,   x: 296, y: 900, properties: { value: "220" } }
+  - { id: lvled3, type: led,        x: 320, y: 980, properties: { color: "blue", label: "LV3" } }
+  - { id: lvlr4,  type: resistor,   x: 426, y: 900, properties: { value: "220" } }
+  - { id: lvled4, type: led,        x: 450, y: 980, properties: { color: "blue", label: "LV4" } }
+  # Series resistors on each "finger" wire — see the wires section for why.
+  - { id: fr1, type: resistor, x: 1300, y: 900, properties: { value: "220" } }
+  - { id: fr2, type: resistor, x: 1300, y: 940, properties: { value: "220" } }
+  - { id: fr3, type: resistor, x: 1300, y: 980, properties: { value: "220" } }
+  - { id: fr4, type: resistor, x: 1300, y: 1020, properties: { value: "220" } }
+  - { id: fr5, type: resistor, x: 1300, y: 1060, properties: { value: "220" } }
+  - { id: fr6, type: resistor, x: 1300, y: 1100, properties: { value: "220" } }
+  - { id: fr7, type: resistor, x: 1300, y: 1140, properties: { value: "220" } }
+
+wires:
+  # Every key wired DIRECTLY board-pin -> button leg (NOT through the
+  # pull-up resistor). Two things forced this, both found live and traced
+  # through Velxio's own source (not guessed):
+  #  1. Multi-board projects never get a real SPICE solve (`[verify]`
+  #     reports nodes:["0"], vs. 35 real nodes for the single-board project)
+  #     — so `spiceDrivenInputs` is false and every button falls back to the
+  #     legacy path: walk wires through passives to find a board pin
+  #     (`traceDetailed` in DynamicComponent.tsx). That walker returns the
+  #     FIRST board pin it reaches per wire — including power pins, which
+  #     `boardPinToNumber` resolves to -1 (not null!). Since the pull-ups'
+  #     "5V side" pins are bussed together (`rp1:1 -> rp2:1 -> ...`), a
+  #     button's trace tunnels through its own resistor onto that bus and
+  #     dead-ends at -1 (GND) before ever reaching the real board pin. Same
+  #     algorithm, same bug, on both v1 (INPUT_PULLUP, no resistor at all —
+  #     see the finger-wire note below for why THAT failed) and v2 (real
+  #     external pull-ups, which reintroduced the exact resistor-to-bus path
+  #     this note describes).
+  #  2. The pushbutton part itself (`BasicParts.ts`) already seeds its
+  #     resolved pin HIGH on attach and pulls it LOW on press/back HIGH on
+  #     release — a REAL pull-up resistor is not needed for this simulation
+  #     mode at all. It's kept here purely for wiring-diagram realism, wired
+  #     as a side branch off the SAME board pin (never touching the button),
+  #     so it can never end up on a button's own trace.
+  - [arduino-nano:A0, key1:1.l]
+  - [arduino-nano:A0, rp1:2]
+  - [arduino-nano:A1, key2:1.l]
+  - [arduino-nano:A1, rp2:2]
+  - [arduino-nano:A2, key3:1.l]
+  - [arduino-nano:A2, rp3:2]
+  - [arduino-nano:A3, key4:1.l]
+  - [arduino-nano:A3, rp4:2]
+  - [arduino-nano:A4, key5:1.l]
+  - [arduino-nano:A4, rp5:2]
+  - [arduino-nano:A5, key6:1.l]
+  - [arduino-nano:A5, rp6:2]
+  - [arduino-nano:12, key7:1.l]       # A6 has no digital pin; key 7 lives on D12
+  - [arduino-nano:12, rp7:2]
+  - [arduino-nano:5V, rp1:1]
+  - [rp1:1, rp2:1]
+  - [rp2:1, rp3:1]
+  - [rp3:1, rp4:1]
+  - [rp4:1, rp5:1]
+  - [rp5:1, rp6:1]
+  - [rp6:1, rp7:1]
+  - [arduino-nano:GND.1, key1:2.l]
+  - [key1:2.r, key2:2.l]
+  - [key2:2.r, key3:2.l]
+  - [key3:2.r, key4:2.l]
+  - [key4:2.r, key5:2.l]
+  - [key5:2.r, key6:2.l]
+  - [key6:2.r, key7:2.l]
+  # Ten-LED bar.
+  - [arduino-nano:2,  rl1:1]
+  - [rl1:2,  led1:A]
+  - [arduino-nano:3,  rl2:1]
+  - [rl2:2,  led2:A]
+  - [arduino-nano:4,  rl3:1]
+  - [rl3:2,  led3:A]
+  - [arduino-nano:5,  rl4:1]
+  - [rl4:2,  led4:A]
+  - [arduino-nano:6,  rl5:1]
+  - [rl5:2,  led5:A]
+  - [arduino-nano:7,  rl6:1]
+  - [rl6:2,  led6:A]
+  - [arduino-nano:8,  rl7:1]
+  - [rl7:2,  led7:A]
+  - [arduino-nano:9,  rl8:1]
+  - [rl8:2,  led8:A]
+  - [arduino-nano:10, rl9:1]
+  - [rl9:2,  led9:A]
+  - [arduino-nano:13, rl10:1]
+  - [rl10:2, led10:A]
+  - [led1:C, led2:C]
+  - [led2:C, led3:C]
+  - [led3:C, led4:C]
+  - [led4:C, led5:C]
+  - [led5:C, led6:C]
+  - [led6:C, led7:C]
+  - [led7:C, led8:C]
+  - [led8:C, led9:C]
+  - [led9:C, led10:C]
+  - [led10:C, arduino-nano:GND.2]
+  - [arduino-nano:11, buzzer1:1]
+  - [buzzer1:2, arduino-nano:GND.2]
+
+  # ── The autoplayer's own indicator LEDs ────────────────────────────────────
+  - [arduino-uno:2, lvlr1:1]
+  - [lvlr1:2, lvled1:A]
+  - [arduino-uno:3, lvlr2:1]
+  - [lvlr2:2, lvled2:A]
+  - [arduino-uno:4, lvlr3:1]
+  - [lvlr3:2, lvled3:A]
+  - [arduino-uno:5, lvlr4:1]
+  - [lvlr4:2, lvled4:A]
+  - [lvled1:C, lvled2:C]
+  - [lvled2:C, lvled3:C]
+  - [lvled3:C, lvled4:C]
+  - [lvled4:C, arduino-uno:GND.2]
+
+  # ── The 7 "fingers": through a 220Ω series resistor (fr1-fr7), NOT a bare
+  # direct wire. A bare direct wire reliably drove auto-play, but a driven-
+  # HIGH idle output on the exact same node as a real lemon button is a hard
+  # short — it always won, so manual clicks went silent the moment the finger
+  # wiring was fixed to actually reach piano (an earlier round). The
+  # resistor turns that hard short into an ordinary voltage divider: a real
+  # button's near-zero contact resistance still wins over 220Ω when someone
+  # clicks a lemon, and the finger's own driven LOW still wins over piano's
+  # own pull-up resistor when auto-playing. Verified live, in one continuous
+  # session: autoplay wins level 1, piano auto-advances to level 2, and a
+  # manual click on level 2's first note registers a fresh `OK 1/10` right
+  # after — both paths working, back to back, no interference.
+  - [arduino-uno:6,  fr1:1]
+  - [fr1:2,  arduino-nano:A0]   # finger 1 -> key1's own board pin
+  - [arduino-uno:7,  fr2:1]
+  - [fr2:2,  arduino-nano:A1]   # finger 2 -> key2's own board pin
+  - [arduino-uno:8,  fr3:1]
+  - [fr3:2,  arduino-nano:A2]   # finger 3 -> key3's own board pin
+  - [arduino-uno:9,  fr4:1]
+  - [fr4:2,  arduino-nano:A3]   # finger 4 -> key4's own board pin
+  - [arduino-uno:10, fr5:1]
+  - [fr5:2,  arduino-nano:A4]   # finger 5 -> key5's own board pin
+  - [arduino-uno:11, fr6:1]
+  - [fr6:2,  arduino-nano:A5]   # finger 6 -> key6's own board pin
+  - [arduino-uno:12, fr7:1]
+  - [fr7:2,  arduino-nano:12]   # finger 7 -> key7's own board pin (D12)
+
+  # ── Shared ground reference between the two boards ────────────────────────
+  - [arduino-uno:GND.1, arduino-nano:GND.1]

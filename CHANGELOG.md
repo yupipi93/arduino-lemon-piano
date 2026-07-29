@@ -2,6 +2,30 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-29 (V5.5) — New version: filtered 5 V supply
+
+New hardware revision `versions/v5.5-power-filter/` — the V5 board behind a
+**power-entry filter**, because USB-powering V5 raw let any mains transient
+(a light switch, a loaded PC supply) play phantom notes through the
+15-20 mV touch margin.
+
+- **Filter chain:** P6KE6.8A TVS across the input → 1N5817 Schottky in series
+  (reverse protection + mini-USB backfeed isolation) → 470 µF ‖ 100 nF →
+  100 µH power choke → 470 µF ‖ 100 nF → the +5 V rail (fc ≈ 730 Hz,
+  2nd order). Rail lands at ≈ 4.7 V; the ADC is ratiometric so calibration
+  doesn't care. Full design + bench validation recipe in the version's
+  HARDWARE.md.
+- **Board and firmware are V5's** (only the serial banner says `V5.5`);
+  emulation is V5's, unchanged — supply hardware is invisible to the browser
+  AVR (emulation/README.md says so).
+- **Diagram:** `build_v5_5()` in tools/wiring_diagrams.py, rendered on
+  wirewright — which gained a power-entry component family (`capacitor`,
+  `inductor`, `diode` with `flip`, `power_jack`) for it.
+- **Verified:** diagram DRC-clean (58 nets, 0 hard violations); firmware builds
+  in all three envs (`nanoatmega328`, `nanoatmega328new`, `emulation`,
+  PlatformIO in docker, 2026-07-29). Filter itself not yet measured on the
+  real board — validation recipe documented.
+
 ## 2026-07-29 (V5 LEDs) — Progressive 10-LED fill for calibration and the win
 ## theme, VU-meter colours in the emulator
 

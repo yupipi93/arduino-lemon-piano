@@ -16,9 +16,10 @@ The rule and the recipe for adding one: [../docs/VERSIONING.md](../docs/VERSIONI
 | 4 | [v4-water-pump](v4-water-pump/) | **Nano** | clip flips to **+5 V** (sensing inverted) · + 2nd relay channel + water pump · + RESTART D7 · SPDT game select | ✅ 4 envs | ✅ verify green | [wiring-v4](v4-water-pump/images/wiring-v4.png) |
 | 5 | [v4.5-margin-buttons](v4.5-margin-buttons/) | Nano | **− relay pair + water pump** (D5/D6 free) · + MARGIN + (D10) / MARGIN − (D11) buttons | ✅ 4 envs | ✅ verify green | [wiring-v4.5](v4.5-margin-buttons/images/wiring-v4.5.png) |
 | 6 | [v5-led-bar](v5-led-bar/) | Nano only (A6+A7) | keyboard back to **220 Ω pull-ups + GND clip** · − red LED, − MARGIN buttons, − game-select, − restart · + **ten green LEDs** · + 2 sensitivity buttons (D7/A7) | ✅ 4 envs | ✅ 3 specs green | [wiring-v5](v5-led-bar/images/wiring-v5.png) |
+| 7 | [v5.5-power-filter](v5.5-power-filter/) | Nano only (A6+A7) | + **power-entry filter** on the 5 V input (TVS + Schottky + CLC pi, fc ≈ 700 Hz) — board otherwise identical to V5 | ✅ 3 envs | V5's ([why](v5.5-power-filter/emulation/README.md)) | [wiring-v5.5](v5.5-power-filter/images/wiring-v5.5.png) |
 
 
-**Newest board: [V5](v5-led-bar/).** Change the hardware and the next directory is
+**Newest board: [V5.5](v5.5-power-filter/).** Change the hardware and the next directory is
 `v6-<what-changed>/`.
 
 ## Three things worth knowing
