@@ -108,6 +108,93 @@ isolated upstream patch that makes pacing cycle-accurate (measured 1.00× after,
 `velxio-multi-board-emulator/patches/0001-avr-cycle-accurate-frame-pacing.patch`.
 On an unpatched Velxio the game still works, just with laggy sound.
 
+## Multi-board autoplayer (interactive, live)
+
+`autoplayer.yaml` / `autoplayer.vlx` puts a **second Arduino** on the same
+canvas as the real V5 board, purely as a testing aid: type a level number
+into it and it plays that level's code onto the real lemons on demand,
+while the lemons themselves stay fully clickable the whole time. This is
+the only way to drive the game live without clicking all 40 notes by hand
+across the four levels (`all-levels-win.yaml` does the same thing but as a
+fixed headless script — see the Files table below).
+
+### Architecture
+
+```
+┌─────────────────────────┐         ┌──────────────────────────────┐
+│  arduino-nano  ("piano") │         │   arduino-uno  ("player")     │
+│  = firmware/src/main.cpp │         │  = inline sketch in this spec │
+│  (VELXIO_EMULATION)      │         │  (autoplayer-only, not the    │
+│                          │         │   real game)                  │
+│  A0-A5, D12  7 keys ─────┼──220Ω───┼── D6-D12  7 "finger" outputs  │
+│  D2-D10,D13  10 LEDs     │  (fr1-  │  D2-D5    4 level-armed LEDs  │
+│  D11         buzzer      │   fr7)  │  Serial   level select + play │
+└─────────────────────────┘         └──────────────────────────────┘
+```
+
+- **piano** is the unmodified V5 game — identical circuit to
+  `lemon-piano.yaml`, same firmware, same secret codes.
+- **player** is a small standalone sketch (inline in `autoplayer.yaml`,
+  nowhere near `firmware/`) whose only job is to pulse piano's own key pins
+  LOW in the right sequence, exactly like a finger would.
+- The two boards share a **GND reference** (`arduino-uno:GND.1` ↔
+  `arduino-nano:GND.1`) and nothing else — no shared power rail needed since
+  both run off the simulator's own 5 V.
+
+### Using it
+
+```bash
+cd versions/v5-led-bar
+PIPE=../../../velxio-multi-board-emulator/harness/.venv/bin/velxio-pipeline
+$PIPE run --mode interactive --spec emulation/autoplayer.yaml --out emulation/runs --open
+```
+
+Click Run. On the **`arduino-uno` Serial Monitor tab** (not the `arduino-nano`
+one — each board has its own tab), type a digit **1-4** + Enter to arm that
+level (its 4 blue LEDs show which), then **`p`** + Enter to play it onto the
+lemons. Watch the `arduino-nano` tab for the real game's own log (`Level N`,
+`OK X/10`, `WIN`). The player board has no idea what level piano is actually
+on — match the number yourself. Your own lemon clicks work at the same time,
+in the same session, with no need to stop or reset anything.
+
+### Why a plain "wire it up" attempt doesn't work here
+
+Five real, Velxio-version-specific behaviors had to be worked around, each
+one confirmed by actually driving the browser (headless Playwright: import
+the `.vlx`, click Run, dispatch button events, read each board's own Serial
+Monitor, `window.__spiceDebug()` for node voltages) rather than assumed from
+reading source:
+
+1. **Board ids must start with a recognised kind string**
+   (`arduino-nano`, `arduino-uno`, …) — `isBoardComponent()` checks
+   kind-prefixes, not whatever id a spec assigns. Custom ids (this file used
+   to say `piano`/`player`) silently break pin resolution for every
+   pushbutton on **every** board, piano's 7 keys included.
+2. **Cross-board wires must land directly on a board pin**, never on a
+   passive in between — Velxio's cross-board bridge (`Interconnect.ts`)
+   only routes a wire when both ends are literal board components.
+3. **Pushbuttons on the second (non-primary) board don't work at all** —
+   click handlers are bound to one global "active board" simulator, not one
+   per board. There's no spec-level fix, which is why level-select/play are
+   **typed serial commands**, not physical buttons — serial I/O is
+   genuinely per-board here.
+4. **A finger pin wired bare (no resistor) to piano's key pin is a hard
+   short** that always beats a real lemon click — both are on the same
+   node, and the digital fast-path both AVR boards use has no room for a
+   press to win against a driven output. Fixed with a 220Ω resistor per
+   finger wire (`fr1`-`fr7`), turning it into an ordinary voltage divider.
+5. **A cross-board pin's `pinMode` can't be toggled at runtime and still
+   propagate** — it has to be set to `OUTPUT` once in `setup()` and stay
+   there; toggling to `INPUT` and back (tried, to avoid #4 a different way)
+   silently stopped the connection from working in either direction.
+
+Full write-up, with the two dead-end attempts that came before the working
+one: `CHANGELOG.md`, entries "V5 autoplayer v2-v4" and "v5". The general
+version of all five (useful on any future multi-board project, not just
+this one) is documented in
+`velxio-multi-board-emulator/AGENTS.md` under "Multi-board interactive
+circuits (will bite you)".
+
 ## Files
 
 | File | What |
@@ -116,6 +203,6 @@ On an unpatched Velxio the game still works, just with laggy sound.
 | `lemon-piano.vlx` | Generated project — import this into Velxio and play |
 | `free-play.yaml` | Regression: five non-first-note keys sound but never start the sequence |
 | `hold-and-repeat.yaml` | Regression: a held key sustains + counts once; a repeat is ignored, not `WRONG` |
-| `all-levels-win.yaml` | The scripted "virtual button" — plays all **four** levels' secret codes back to back and asserts the auto-advance chain through `ALL LEVELS CLEAR` and the wrap to level 1, headlessly (`--mode verify`). Useful for testing any level (including 3/4, added 2026-07-29) without clicking 40 notes by hand — but it's a fixed script, not something you press live. See the timing note in its own header comment: each level's inputs start only once the previous level's full victory sequence has had time to finish, or the presses land while the AVR is mid-`delay()` and are silently lost. |
-| `autoplayer.yaml` / `autoplayer.vlx` | The **interactive** version of the same idea: a second Arduino Uno (`arduino-uno`, the harness's default id) sharing the canvas with the real V5 board (`arduino-nano`), wired onto the same key nodes as the real lemons through a 220Ω series resistor each. **Type a level number (1-4) into the second board's OWN Serial Monitor tab**, then `p`, and it fires that level's code onto the piano's lemons — piano can't tell a player-board pulse from a touch. The lemons stay clickable throughout for manual free play, at the same time, in the same session. Verified live end-to-end with a headless-Playwright probe (multi-board specs have no headless `verify`/`document` in this harness — confirmed by trying both — so this is the only spec here validated by literally driving the browser instead), in one continuous run: autoplay wins level 1 → piano auto-advances to level 2 → a manual click on level 2's first note registers a fresh `OK 1/10` right after, no interference either direction, 9/9 repeated live runs. Four real, Velxio-version-specific bugs found and fixed along the way (kept as comments in the file): (1) board ids must start with a recognised kind string (`arduino-nano`, `arduino-uno`, …) — `isBoardComponent()` checks kind-prefixes, not whatever id the spec assigns, so custom ids silently broke every pushbutton's pin resolution, piano's 7 keys included; (2) `Interconnect.ts` (the cross-board digital bridge) only routes a wire when BOTH endpoints are literal board components, so the finger wires have to reach piano's own pins, not stop at a passive; (3) **pushbuttons on the non-primary board don't work at all** — `DynamicComponent.tsx` binds every click handler to a single global simulator reference, not one per board, so a button wired to the second board's pin pokes the FIRST board's CPU instead (no spec-level fix exists — this is why PLAY/LEVEL SELECT are serial commands, not physical buttons: serial I/O is genuinely per-board); (4) a finger pin driven straight (bare wire) to piano's pin is a hard short that always wins over a real click in the digital fast-path both AVR boards use — routed through a 220Ω resistor instead, turning it into an ordinary voltage divider a real button's near-zero contact resistance can still win. Needed a 250 ms press hold too — 90 ms measured flaky (~1-in-3 misfires) once routed through the resistor's SPICE-resolved path, 250 ms measured reliable. |
+| `all-levels-win.yaml` | The scripted "virtual button" — plays all **four** levels' secret codes back to back and asserts the auto-advance chain through `ALL LEVELS CLEAR` and the wrap to level 1, headlessly (`--mode verify`). Useful for testing any level (including 3/4) without clicking 40 notes by hand — but it's a fixed script, not something you press live. |
+| `autoplayer.yaml` / `autoplayer.vlx` | The **interactive**, live-pressable version — see "Multi-board autoplayer" above. |
 | `runs/` | Evidence bundles from verify/document runs (gitignored) |
