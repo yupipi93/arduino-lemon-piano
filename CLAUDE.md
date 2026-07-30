@@ -122,4 +122,10 @@ python3 tools/wiring_diagrams.py v4.5       # one
   tags (sourced / transcribed / reconstruction). Keep it in step with any
   version's `firmware/include/mario_sfx.h`, and cite a source for new sounds
 - `tools/wiring_diagrams.py` — every version's diagram contract
+- `pcb/` — the fabricable V5.5 PCB (KiCad 9), generated and verified with
+  the sibling `../eda-pcb-designer` toolkit (cloud API for
+  place/route/DRC/render/fab, its Docker image for the generative steps).
+  Regenerate with `./pcb/tools/cloud_pipeline.sh vX.Y.Z`; ground truth in
+  `pcb/docs/NETLIST.md`, choices in `pcb/docs/DECISIONS.md`. Same
+  sibling-repo protocol as wirewright.
 - `TODO.md` — backlog · `CHANGELOG.md` — append-only history

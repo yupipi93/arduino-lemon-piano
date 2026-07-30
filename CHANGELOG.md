@@ -2,6 +2,29 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-30 (pcb/) — Fabricable V5.5 PCB, release v0.1.0
+
+New top-level `pcb/` folder: a 2-layer 100 × 30 mm KiCad-9 board that
+replaces the V5.5 breadboard — same circuit, same firmware pinout, nothing
+invented (netlist extracted from V5/V5.5 HARDWARE.md + the DRC-validated
+`build_v5_5()` wirewright contract; ground truth in `pcb/docs/NETLIST.md`).
+
+- Socketed Nano (2×15 rows, mini-USB at the west edge, USB 5 V isolated
+  behind the 1N5817), labelled lemon-key header (`G 7…1`) on the north
+  edge, ten-LED bar + SENS± buttons south, D13 buzzer, and the V5.5
+  power-entry filter feeding a `5V IN` screw terminal.
+- Designed end-to-end with the **pcb-designer** toolkit (sibling repo
+  `../eda-pcb-designer`, same consumption pattern as wirewright): cloud
+  API for /place /route /drc /render /fab, Docker image for the
+  generative/idempotent builders. Release gates all green: DRC 0 errors /
+  0 warnings / 0 unconnected, ERC 0/0, anti-mirror + hole + geometry
+  verifiers PASS. Iteration history v0.0.1→v0.1.0 archived under
+  `pcb/validation/` + `pcb/renders/`.
+- Fab package (gerbers, drill, BOM, positions):
+  `pcb/releases/v0.1.0/lemon-piano-v0.1.0-fab.zip`.
+- The physical filter bench validation (switch-flipping session with the
+  V5 sampler) remains pending — unchanged from the V5.5 entry below.
+
 ## 2026-07-29 (V5.5) — New version: filtered 5 V supply
 
 New hardware revision `versions/v5.5-power-filter/` — the V5 board behind a
