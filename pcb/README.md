@@ -39,6 +39,10 @@ reference, both layers.
 | Status (v0.3.0) | DRC **0/0/0** · ERC 0/0 · verify_placement / verify_holes / geometry_gate ALL PASS |
 | Release | [`releases/v0.3.0/lemon-piano-v0.3.0-fab.zip`](releases/v0.3.0/) — gerbers, drill, BOM, positions |
 
+**Implementing a change?** Paste [docs/AGENT_PROMPT.md](docs/AGENT_PROMPT.md)
+into a fresh agent session together with the change request — it encodes
+the full workflow, gates and pitfalls learned across v0.0.1→v0.3.0.
+
 Netlist ground truth: [docs/NETLIST.md](docs/NETLIST.md) ·
 decisions: [docs/DECISIONS.md](docs/DECISIONS.md) ·
 state + iteration log: [docs/DESIGN_STATE.md](docs/DESIGN_STATE.md) ·

@@ -127,5 +127,7 @@ python3 tools/wiring_diagrams.py v4.5       # one
   place/route/DRC/render/fab, its Docker image for the generative steps).
   Regenerate with `./pcb/tools/cloud_pipeline.sh vX.Y.Z`; ground truth in
   `pcb/docs/NETLIST.md`, choices in `pcb/docs/DECISIONS.md`. Same
-  sibling-repo protocol as wirewright.
+  sibling-repo protocol as wirewright. **New PCB version requested? Start
+  the agent from `pcb/docs/AGENT_PROMPT.md`** (the distilled mission brief
+  with all gates and pitfalls).
 - `TODO.md` — backlog · `CHANGELOG.md` — append-only history
