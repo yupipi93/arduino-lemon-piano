@@ -71,17 +71,38 @@ if len(v) > 12:
 sys.exit(0 if sev.get("error", 0) == 0 and len(u) == 0 else 1)
 EOF
 
-echo "== [$VER] cloud /render both =="
-curl -sf -F "pcb=@$PCB" "$API/render?side=both" -o "/tmp/renders-$VER.zip"
-python3 - "/tmp/renders-$VER.zip" "$PROJ/renders" "$VER" <<'EOF'
+echo "== [$VER] cloud /render suite (normal + dim + realistic + overlay) =="
+# naming: <ver>-<style>-<side>.png in renders/; the overlay composite also
+# lands in renders/ (<ver>-overlay-*), while overlays/ keeps only the
+# module photos + modules.yaml (the client-side assets).
+for STYLE in normal dim realistic; do
+  API_STYLE=$STYLE; [ "$STYLE" = "normal" ] && API_STYLE=bare
+  curl -sf -F "pcb=@$PCB" "$API/render?side=both&style=$API_STYLE" \
+    -o "/tmp/renders-$VER-$STYLE.zip"
+  python3 - "/tmp/renders-$VER-$STYLE.zip" "$PROJ/renders" "$VER" "$STYLE" <<'EOF'
 import sys, zipfile, shutil, os
-zf, outdir, ver = sys.argv[1], sys.argv[2], sys.argv[3]
+zf, outdir, ver, style = sys.argv[1:5]
 with zipfile.ZipFile(zf) as z:
     for n in z.namelist():
         side = "top" if "top" in n else "bottom"
-        with z.open(n) as src, open(os.path.join(outdir, f"{ver}-{side}.png"), "wb") as dst:
+        with z.open(n) as src, open(os.path.join(outdir, f"{ver}-{style}-{side}.png"), "wb") as dst:
             shutil.copyfileobj(src, dst)
-        print("  saved", os.path.join(outdir, f"{ver}-{side}.png"))
+        print("  saved", f"{ver}-{style}-{side}.png")
+EOF
+done
+curl -sf -F "pcb=@$PCB" -F "modules=@$PROJ/overlays/modules.yaml" \
+  -F "images=@$PROJ/overlays/component-images/arduino-nano.png" \
+  "$API/render?side=both&style=overlay&calibration=green_bbox" \
+  -o "/tmp/renders-$VER-overlay.zip"
+python3 - "/tmp/renders-$VER-overlay.zip" "$PROJ/renders" "$VER" "overlay" <<'EOF'
+import sys, zipfile, shutil, os
+zf, outdir, ver, style = sys.argv[1:5]
+with zipfile.ZipFile(zf) as z:
+    for n in z.namelist():
+        side = "top" if "top" in n else "bottom"
+        with z.open(n) as src, open(os.path.join(outdir, f"{ver}-{style}-{side}.png"), "wb") as dst:
+            shutil.copyfileobj(src, dst)
+        print("  saved", f"{ver}-{style}-{side}.png")
 EOF
 
 if [ "$DRC_OK" != "1" ]; then

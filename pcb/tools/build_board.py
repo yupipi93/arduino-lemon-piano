@@ -151,10 +151,21 @@ EXPECTED_PADS = [
     ("H1", "1", 95.0, 115.0), ("H2", "1", 185.0, 115.0),
 ]
 
-# hide silk references on the dense small parts (silk stays readable);
-# the F.Fab layer keeps every ref for the fab/assembly docs.
-HIDE_REF = ({f"D{i}" for i in range(3, 13)} | {f"R{i}" for i in range(1, 19)}
-            | {"C2", "C4", "H1", "H2"})
+# hide silk references only where physics leaves no room: the LEDs sit at
+# 4.6 mm pitch (courtyard gap 0.14 mm) so their refs go on B.SilkS as
+# board text instead. Everything else shows its ref (v0.2.1, user ask #5).
+HIDE_REF = {f"D{i}" for i in range(3, 13)}
+
+# bottom-side / hole refs: (x, y, rot) for the Reference field
+REF_POS = {
+    **{f"R{i}": (111.62 + 2.54 * (i - 1), 116.4, 90) for i in range(1, 8)},
+    "R18": (129.4, 116.4, 90),
+    **{f"R{i + 7}": (147.6 - 4.6 * (i - 1), 100.85, 0) for i in range(1, 11)},
+    "C2": (159.5, 109.4, 0),
+    "C4": (170.0, 119.4, 0),
+    "H1": (95.0, 111.4, 0),
+    "H2": (185.0, 111.4, 0),
+}
 
 
 def build(cfg: dict) -> str:
@@ -203,8 +214,12 @@ def build(cfg: dict) -> str:
         if ref in HIDE_REF:
             ref_field.SetVisible(False)
         else:
-            ref_field.SetTextSize(pcbnew.VECTOR2I(MM(0.8), MM(0.8)))
-            ref_field.SetTextThickness(MM(0.13))
+            ref_field.SetTextSize(pcbnew.VECTOR2I(MM(0.65), MM(0.8)))
+            ref_field.SetTextThickness(MM(0.12))
+            if ref in REF_POS:
+                tx, ty, trot = REF_POS[ref]
+                ref_field.SetPosition(V(tx, ty))
+                ref_field.SetTextAngleDegrees(trot)
         fp.Value().SetVisible(False)
 
         # net assignment
@@ -226,8 +241,8 @@ def build(cfg: dict) -> str:
 
     # reposition the visible refs into free silk pockets (v0.0.4: positions
     # tuned until /drc reports zero silk_overlap)
-    for ref, (tx, ty, trot) in {"U1": (121.8, 120.7, 0),
-                                "U2": (121.8, 109.3, 0),
+    for ref, (tx, ty, trot) in {"U1": (102.0, 122.62, 90),
+                                "U2": (102.0, 107.38, 90),
                                 "BUZ1": (150.3, 111.5, 0),
                                 "J1": (167.0, 111.5, 0),
                                 "J2": (108.6, 127.0, 0),
@@ -290,12 +305,13 @@ def build(cfg: dict) -> str:
 
     # ── silk texts (regenerated every run from config) ───────────────────
     def text(s: str, x: float, y: float, layer=pcbnew.F_SilkS,
-             h: float = 0.8, rot: float = 0.0, thick: float = 0.13):
+             h: float = 0.8, rot: float = 0.0, thick: float = 0.13,
+             w: float | None = None):
         t = pcbnew.PCB_TEXT(board)
         t.SetText(s)
         t.SetPosition(V(x, y))
         t.SetLayer(layer)
-        t.SetTextSize(pcbnew.VECTOR2I(MM(h), MM(h)))
+        t.SetTextSize(pcbnew.VECTOR2I(MM(w if w else h), MM(h)))
         t.SetTextThickness(MM(thick))
         t.SetTextAngleDegrees(rot)
         if layer in (pcbnew.B_SilkS, pcbnew.B_Cu, pcbnew.B_Mask):
@@ -303,7 +319,23 @@ def build(cfg: dict) -> str:
         board.Add(t)
 
     text("LEMON PIANO V5.5", 140.0, 128.9, h=0.8)
-    text(version, 130.5, 120.55, h=0.8)
+    text(f"pcb {version}", 121.8, 114.8, h=0.8)
+
+    # ── pin legends, MT1 style (h 0.8 / w 0.65, rotated 90) ─────────────
+    # south row (U1): D13 3V3 AREF A0..A7 5V RST GND VIN, legend above pins
+    for i, lab in enumerate(["D13", "3V3", "AREF", "A0", "A1", "A2", "A3",
+                             "A4", "A5", "A6", "A7", "5V", "RST", "GND",
+                             "VIN"]):
+        text(lab, 104.0 + 2.54 * i, 119.4, h=0.8, w=0.65, rot=90, thick=0.12)
+    # north row (U2, pin1 east): TX1 RX0 RST GND D2..D12, legend below pins
+    for i, lab in enumerate(["TX1", "RX0", "RST", "GND", "D2", "D3", "D4",
+                             "D5", "D6", "D7", "D8", "D9", "D10", "D11",
+                             "D12"]):
+        text(lab, 139.56 - 2.54 * i, 110.25, h=0.8, w=0.65, rot=90, thick=0.12)
+    # LED refs (top parts, dense 4.6 mm pitch strip → label on the back)
+    for k in range(10):
+        text(f"D{k + 3}", 145.3 - 4.6 * k, 105.85, layer=pcbnew.B_SilkS,
+             h=0.8, w=0.65, thick=0.12)
     # keys header labels: KEY1..KEY7 then GND clip (west→east)
     for i, lab in enumerate(["1", "2", "3", "4", "5", "6", "7", "G"]):
         text(lab, 111.62 + 2.54 * i, 129.25, h=0.8)
@@ -315,8 +347,8 @@ def build(cfg: dict) -> str:
     text("SENS-", 163.15, 121.3, h=0.8)
     text("1", 148.6, 101.65, h=0.8)          # bar ascends east→west (ADR-015)
     text("10", 100.95, 103.0, h=0.8, rot=90)
-    text("Lemon Piano V5.5", 127.0, 116.5, layer=pcbnew.B_SilkS, h=1.0)
-    text(version, 127.0, 113.5, layer=pcbnew.B_SilkS, h=1.0)
+    text("Lemon Piano V5.5", 127.0, 111.9, layer=pcbnew.B_SilkS, h=1.0)
+    text(f"pcb {version}", 127.0, 113.5, layer=pcbnew.B_SilkS, h=1.0)
 
     # ── save + text post-passes ──────────────────────────────────────────
     out_dir = PROJ / "kicad"

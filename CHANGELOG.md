@@ -2,6 +2,19 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-30 (pcb/) — v0.2.1: silk label pass + render naming
+
+- Version silk now reads `pcb v0.2.1` (front corridor + back), MT1-style
+  **pin legends on both socket rows** (D13 3V3 AREF A0..A7 5V RST GND VIN /
+  D12..D2 GND RST RX0 TX1) and **every component labelled** on its own
+  layer (bottom passives on B.SilkS; LED refs on the back — 4.6 mm pitch
+  leaves no front room). DRC still 0/0/0, all gates green, fab zip at
+  `pcb/releases/v0.2.1/`.
+- Render suite renamed and trimmed: `renders/<ver>-{normal,dim,realistic,
+  overlay}-{top,bottom}.png` (realistic-dim dropped); the overlay
+  composite now lives in `renders/`, while `overlays/` keeps only the
+  module photos + `modules.yaml`. v0.2.0 artefacts renamed to match.
+
 ## 2026-07-30 (pcb/) — v0.2.0: Nano-orientation erratum fixed + full render suite
 
 The photo-overlay work caught a real v0.1.0 bug (exactly what that

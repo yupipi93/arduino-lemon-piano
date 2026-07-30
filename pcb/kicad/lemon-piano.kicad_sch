@@ -7,7 +7,7 @@
 	(title_block
 		(title "Lemon Piano V5.5 Board")
 		(date "2026-07-30")
-		(rev "v0.2.0")
+		(rev "v0.2.1")
 		(company "Lemon Piano")
 		(comment 1 "V5 game board + V5.5 power-entry filter (TVS + Schottky + CLC pi)")
 		(comment 2 "Netlist ground truth: pcb/docs/NETLIST.md")

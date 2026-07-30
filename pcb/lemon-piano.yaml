@@ -17,7 +17,7 @@
 project:
   name: lemon-piano
   full_name: "Lemon Piano V5.5 Board"
-  version: v0.2.0
+  version: v0.2.1
   vendor: "Lemon Piano"
   kicad_project_dir: pcb/kicad
   kicad_pcb_file: lemon-piano.kicad_pcb

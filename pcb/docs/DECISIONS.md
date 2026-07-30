@@ -214,3 +214,19 @@ deterministic and clearance-checked with exact geometry:
 4. tiny-segment cleanup only removes segments fully inside a same-net
    via barrel — the blanket ≤0.1 mm text pass once deleted a
    load-bearing 0.05 mm jog and split /+5V.
+
+## ADR-019 — v0.2.1: silk/label pass + render suite naming (user request)
+
+1. Version silk prefixed with the word `pcb` (`pcb v0.2.1`), front and
+   back.
+2. MT1-style per-pin legends (h0.8/w0.65, rotated) on both socket rows;
+   U1/U2 refs moved west of their rows; version text to the corridor
+   centre; B-side title moved up to clear the new pull-up refs.
+3. Every component shows its reference on its own layer. Sole exception:
+   the LED refs (D3..D12) print on B.SilkS as board text — at 4.6 mm
+   pitch the front has a 0.14 mm courtyard gap, physically no room.
+4. Render suite archived per version as
+   `renders/<ver>-{normal,dim,realistic,overlay}-{top,bottom}.png`;
+   `realistic-dim` dropped from the board's suite (the API keeps the
+   style); `overlays/` holds only the client-side assets
+   (component-images/ + modules.yaml).

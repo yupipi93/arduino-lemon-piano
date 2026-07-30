@@ -9,16 +9,19 @@ margin.
 
 | | |
 |---|---|
-| Realistic (3D bodies) | ![realistic top](renders/v0.2.0-realistic-top.png) |
-| Photo overlay (real Nano photo, dimensioned) | ![overlay top](overlays/v0.2.0-realistic-top.png) |
-| Bare copper/silk | ![top](renders/v0.2.0-top.png) |
-| DIM plot (front) | ![dim top](renders/v0.2.0-dim-top.png) |
-| Bottom (realistic) | ![realistic bottom](renders/v0.2.0-realistic-bottom.png) |
+| Realistic (3D bodies) | ![realistic top](renders/v0.2.1-realistic-top.png) |
+| Photo overlay (real Nano photo, dimensioned) | ![overlay top](renders/v0.2.1-overlay-top.png) |
+| Normal (bare copper/silk) | ![normal top](renders/v0.2.1-normal-top.png) |
+| DIM plot (front) | ![dim top](renders/v0.2.1-dim-top.png) |
+| Bottom (realistic) | ![realistic bottom](renders/v0.2.1-realistic-bottom.png) |
 
-Every style is produced by the hosted pcb-designer API
-(`/render?style=bare|dim|realistic|realistic-dim|overlay`); the overlay
-composites the real Arduino Nano photo (Wikimedia Commons, CC BY 2.0)
-that the client uploads together with `overlays/modules.yaml`.
+Per version the pipeline archives four styles per side under `renders/`
+(`<ver>-{normal,dim,realistic,overlay}-{top,bottom}.png`), all produced
+by the hosted pcb-designer API; the overlay composites the real Arduino
+Nano photo (Wikimedia Commons, CC BY 2.0) that the pipeline uploads from
+`overlays/component-images/` + `overlays/modules.yaml`. Every socket pin
+carries its function on silk (MT1-style legends) and every component its
+reference, both layers.
 
 ## At a glance
 
@@ -33,8 +36,8 @@ that the client uploads together with `overlays/modules.yaml`.
 | Power | `5V IN` screw terminal → P6KE6.8A TVS → 1N5817 → 470 µF‖100 nF → 100 µH → 470 µF‖100 nF → +5 V rail (≈4.7 V, fc ≈ 730 Hz) |
 | GND | full B.Cu zone, solid connect on every GND pad, auto island-healing |
 | Mounting | 2 × M2 (Ø2.5 drill / Ø5.0 pad+vias) at (95,115) & (185,115) — mirror-symmetric about x=140 |
-| Status (v0.2.0) | DRC **0/0/0** · ERC 0/0 · verify_placement / verify_holes / geometry_gate ALL PASS |
-| Release | [`releases/v0.2.0/lemon-piano-v0.2.0-fab.zip`](releases/v0.2.0/) — gerbers, drill, BOM, positions |
+| Status (v0.2.1) | DRC **0/0/0** · ERC 0/0 · verify_placement / verify_holes / geometry_gate ALL PASS |
+| Release | [`releases/v0.2.1/lemon-piano-v0.2.1-fab.zip`](releases/v0.2.1/) — gerbers, drill, BOM, positions |
 
 Netlist ground truth: [docs/NETLIST.md](docs/NETLIST.md) ·
 decisions: [docs/DECISIONS.md](docs/DECISIONS.md) ·
@@ -53,10 +56,10 @@ post-pass:
 
 ```bash
 # one full iteration: build → /place → /route → post → /drc → /render → gates
-./pcb/tools/cloud_pipeline.sh v0.2.0
+./pcb/tools/cloud_pipeline.sh v0.2.1
 
 # release (adds cloud /fab, writes releases/<ver>/):
-./pcb/tools/cloud_pipeline.sh v0.2.0 --fab
+./pcb/tools/cloud_pipeline.sh v0.2.1 --fab
 
 # render variants (any style, hosted API):
 URL=https://pcb-designer.scv.multitecua.com
