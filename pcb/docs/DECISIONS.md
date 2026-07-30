@@ -144,3 +144,73 @@ expect it), and (b) rewrite every UUID with a deterministic uuid5
 sequence, mapping old→new so sheet-instance `(path "/…")` references
 stay consistent. Each object keeps a unique UUID; none are reused.
 Verified: 3 consecutive builds → identical SHA256 for both files.
+
+## ADR-015 — v0.1.0 ERRATUM: Nano socket rows were 180°-rotated (fixed v0.2.0)
+
+v0.1.0's pin map assumed TX1/VIN at the mini-USB end. The REAL Arduino
+Nano — verified on the official 2008 V2.2 board photo (Wikimedia
+`File:ArduinoNanoTop.jpg`) and independently on a clone
+(`File:Arduino Nano.jpg`) — has **D12/D13 flanking the USB and TX1/VIN
+at the ICSP end**. Consequence of the erratum: v0.1.0 was electrically
+correct ONLY with the Nano inserted USB-east, where the buzzer physically
+blocks the plug — i.e. unusable for flashing. Discovered while preparing
+the photo-overlay render: exactly the failure class the overlay gate
+exists for (MT1 POST-MORTEM-001 all over again).
+
+v0.2.0 fix, keeping the mechanical design (USB corridor WEST):
+- socket net maps swapped to the real orientation (U1 south row =
+  D13,3V3,AREF,A0..A7,5V,RST,GND,VIN west→east; U2 north row pin1 east =
+  TX1,RX0,RST,GND,D2..D12);
+- analogs now sit on the SOUTH row → keys header moved to the SOUTH edge
+  (J2.1..7 = KEY1..7 straight drops under A0..A6, J2.8 = GND clip);
+- digitals on the NORTH row → LED bar moved to the NORTH edge. The
+  D2..D11 pins DESCEND west→east, so a non-crossing fan needs LED1 at
+  the EAST end: the bar ascends east→west (labels `10` west, `1` east);
+- pull-ups follow their pins (B.Cu, y=119.4, KEY pad south);
+- chirality triad and all verify tables re-derived; all gates re-run
+  green (DRC 0/0/0, ERC 0/0, verify_placement/holes/geometry PASS).
+
+## ADR-016 — Overlay rotation follows the engine's MT1-calibrated convention
+
+`render_overlay` composes the pasted photo's rotation as
+`PIL_rot = −pcb_rotation + image_rotation` (module_overlay.py). MT1's
+anchors are 180°/bottom-side so the sign was never exercised at 90° —
+our first overlay attempt (image_rotation=180, derived from the
+pcbnew-verified +90 convention) landed the Nano photo USB-EAST. Caught
+immediately by the overlay itself; fixed by calibrating the data to the
+engine (image_rotation_deg: 0 for the native USB-at-bottom crop), the
+same per-module calibration approach MT1 used. Engine left untouched:
+changing the sign would silently break MT1's tuned overlay data.
+
+## ADR-017 — Render suite via the upgraded cloud service (v0.3.0)
+
+The board now ships five render styles per side, all produced by the
+hosted API (`/render?style=`): `bare` (copper/silk raytrace), `dim`
+(MT1-style 2D DIM plots), `realistic` and `realistic-dim` (raytrace with
+the kicad-packages3d component bodies now installed in the service
+image), and `overlay` (transparent-bg raytrace + the real Nano photo
+composited server-side from client-uploaded assets;
+calibration=green_bbox because the board has 2 anchor holes < the 4 the
+hole-affine needs). Nano photo: Wikimedia Commons `File:Arduino
+Nano.jpg`, CC BY 2.0, tight-cropped; provenance + measured scale
+documented in overlays/modules.yaml.
+
+## ADR-018 — post_route robustness upgrades (v0.2.0 pipeline work)
+
+Four self-healing behaviours added while stabilising v0.2.0, all
+deterministic and clearance-checked with exact geometry:
+1. `pad.GetLayer()` returns F_Cu even for pads on flipped B.Cu
+   footprints — every layer test now uses `IsOnLayer()` (a 0.1777 mm
+   clearance violation slipped through the widener because of this);
+2. zone-island healing is now judged by CONNECTIVITY (ratsnest count),
+   not fill-outline count, and gained two bridge mechanisms beyond the
+   B.Cu pinch stitch: an F.Cu track from a THT GND pad inside the island,
+   or a new GND via + F.Cu track (straight/L) to the nearest main-fill
+   GND pad/via;
+3. split non-GND nets are repaired generically (union-find over the
+   net's copper; bridge the closest pad pair across fragments) —
+   freerouting reproducibly dropped two 2.54 mm links of the +5V
+   pull-up daisy-chain;
+4. tiny-segment cleanup only removes segments fully inside a same-net
+   via barrel — the blanket ≤0.1 mm text pass once deleted a
+   load-bearing 0.05 mm jog and split /+5V.

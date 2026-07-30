@@ -1,7 +1,13 @@
 # DESIGN_STATE.md — Lemon Piano V5.5 Board
 
-**Current version: v0.1.0 — released to fab package, all gates green.**
-(2026-07-30)
+**Current version: v0.2.0 — Nano-orientation erratum fixed, released to
+fab package, all gates green, full render suite (bare/dim/realistic/
+realistic-dim/overlay).** (2026-07-30)
+
+> v0.1.0 ERRATUM (ADR-015): the Nano socket rows were 180°-rotated
+> (TX1/VIN assumed at the USB end; the real board has D12/D13 there).
+> v0.2.0 corrects the maps and swaps the keys header (now SOUTH) and
+> LED bar (now NORTH, ascending east→west). Do not fabricate v0.1.0.
 
 ## Block status
 
@@ -15,14 +21,14 @@
 | GND | ✅ B.Cu zone, solid connect on all GND pads, island-healing guard |
 | Mounting (H1/H2, M2) | ✅ (95,115) / (185,115), symmetric about x=140 |
 | Schematic | ✅ mirrors PCB (45 symbols incl. 3 PWR_FLAGs), ERC 0/0 |
-| Fab package | ✅ `pcb/releases/v0.1.0/lemon-piano-v0.1.0-fab.zip` (14 files) |
+| Fab package | ✅ `pcb/releases/v0.2.0/lemon-piano-v0.2.0-fab.zip` (14 files) |
 
-## Verification snapshot (v0.1.0)
+## Verification snapshot (v0.2.0)
 
 | Gate | Result |
 |---|---|
-| Cloud `/drc` | **0 errors, 0 warnings, 0 unconnected** (`validation/drc-v0.1.0.json`) |
-| ERC | 0 errors, 0 warnings (`validation/erc-v0.1.0.txt`) |
+| Cloud `/drc` | **0 errors, 0 warnings, 0 unconnected** (`validation/drc-v0.2.0.json`) |
+| ERC | 0 errors, 0 warnings (`validation/erc-v0.2.0.txt`) |
 | `verify_placement` (C1 chirality, C2 flip, C3 pad↔net↔function, C4 net intent) | ALL PASS |
 | `verify_holes` (geometric: pos/Ø/pattern) | PASS (vision N/A: 2 holes < 3, ADR-012) |
 | `geometry_gate` (outline, symmetry, service edges, USB corridor, copper per net, courtyards) | ALL PASS |
@@ -39,7 +45,8 @@
 | v0.0.4 | silk labels/refs repositioned, SW refs hidden | 0 / 25 / 0 | all remaining warnings = text height < 0.8 |
 | v0.0.5 | all silk text ≥ 0.8 mm | 0 / 4 / 0 | title/BUZ1 silk clashes + 1 dangling freerouting spur |
 | v0.0.6 | title split, BUZ1 ref inside circle, dangling-spur cleaner | **0 / 0 / 0** | fully clean; all gates pass |
-| v0.1.0 | release: schematic+ERC, gates wired into pipeline, island-healing guard, /fab | **0 / 0 / 0** | RELEASED |
+| v0.1.0 | release: schematic+ERC, gates wired into pipeline, island-healing guard, /fab | **0 / 0 / 0** | released, later found ERRATUM ADR-015 — do not fabricate |
+| v0.2.0 | REAL Nano orientation (ADR-015): keys header south, LED bar north (E→W); post_route self-healing upgrades (ADR-018) | **0 / 0 / 0** | **RELEASED** + full render suite via API v0.3.0 |
 
 (One v0.1.0 route attempt produced a GND-zone island — caught by the new
 DRC gate, fixed by the automatic island healing, re-run clean. Kept in
@@ -49,9 +56,9 @@ DRC gate, fixed by the automatic island healing, re-run clean. Kept in
 
 ```bash
 # full iteration (build → /place → /route → post → /drc → /render → gates):
-./pcb/tools/cloud_pipeline.sh v0.1.0
+./pcb/tools/cloud_pipeline.sh v0.2.0
 # release (adds /fab):
-./pcb/tools/cloud_pipeline.sh v0.1.0 --fab
+./pcb/tools/cloud_pipeline.sh v0.2.0 --fab
 ```
 
 ## Open items

@@ -50,45 +50,47 @@ def build() -> None:
                   2: "Netlist ground truth: pcb/docs/NETLIST.md"})
 
     # ── Nano sockets (2×15) ─────────────────────────────────────────────
+    # v0.2.0 (ADR-015): U1 = south row (D13..VIN, pin1 west),
+    # U2 = north row (TX1..D12, pin1 east) — the REAL Nano orientation.
     sch.components.add(lib_id="Connector_Generic:Conn_01x15",
                        reference="U1", value="Nano_socket_A",
                        position=g(60, 100), footprint=SOCKET_FP)
     auto_label(sch, "U1", {
-        "1": None,                     # TX1
-        "2": None,                     # RX0
-        "3": None,                     # RST
-        "4": ("GND", "left"),
-        "5": ("LED1", "left"),         # D2
-        "6": ("LED2", "left"),
-        "7": ("LED3", "left"),
-        "8": ("LED4", "left"),
-        "9": ("LED5", "left"),
-        "10": ("LED6", "left"),
-        "11": ("LED7", "left"),
-        "12": ("LED8", "left"),
-        "13": ("LED9", "left"),
-        "14": ("LED10", "left"),       # D11
-        "15": ("SENS_PLUS", "left"),   # D12
+        "1": ("BUZZER", "left"),       # D13
+        "2": None,                     # 3V3
+        "3": None,                     # AREF
+        "4": ("KEY1", "left"),         # A0
+        "5": ("KEY2", "left"),
+        "6": ("KEY3", "left"),
+        "7": ("KEY4", "left"),
+        "8": ("KEY5", "left"),
+        "9": ("KEY6", "left"),
+        "10": ("KEY7", "left"),        # A6
+        "11": ("SENS_MINUS", "left"),  # A7
+        "12": ("+5V", "left"),         # 5V pin — rail feeds here
+        "13": None,                    # RST
+        "14": ("GND", "left"),
+        "15": None,                    # VIN (unused by design)
     })
     sch.components.add(lib_id="Connector_Generic:Conn_01x15",
                        reference="U2", value="Nano_socket_B",
                        position=g(90, 100), footprint=SOCKET_FP)
     auto_label(sch, "U2", {
-        "1": ("BUZZER", "right"),      # D13
-        "2": None,                     # 3V3
-        "3": None,                     # AREF
-        "4": ("KEY1", "right"),        # A0
-        "5": ("KEY2", "right"),
-        "6": ("KEY3", "right"),
-        "7": ("KEY4", "right"),
-        "8": ("KEY5", "right"),
-        "9": ("KEY6", "right"),
-        "10": ("KEY7", "right"),       # A6
-        "11": ("SENS_MINUS", "right"), # A7
-        "12": ("+5V", "right"),        # 5V pin — rail feeds here
-        "13": None,                    # RST
-        "14": ("GND", "right"),
-        "15": None,                    # VIN (unused by design)
+        "1": None,                     # TX1
+        "2": None,                     # RX0
+        "3": None,                     # RST
+        "4": ("GND", "right"),
+        "5": ("LED1", "right"),        # D2
+        "6": ("LED2", "right"),
+        "7": ("LED3", "right"),
+        "8": ("LED4", "right"),
+        "9": ("LED5", "right"),
+        "10": ("LED6", "right"),
+        "11": ("LED7", "right"),
+        "12": ("LED8", "right"),
+        "13": ("LED9", "right"),
+        "14": ("LED10", "right"),      # D11
+        "15": ("SENS_PLUS", "right"),  # D12
     })
 
     # ── service-edge connectors ─────────────────────────────────────────
@@ -104,10 +106,9 @@ def build() -> None:
                        position=g(120, 100),
                        footprint="Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical")
     auto_label(sch, "J2", {
-        "1": ("GND", "right"),
-        "2": ("KEY7", "right"), "3": ("KEY6", "right"), "4": ("KEY5", "right"),
-        "5": ("KEY4", "right"), "6": ("KEY3", "right"), "7": ("KEY2", "right"),
-        "8": ("KEY1", "right"),
+        "1": ("KEY1", "right"), "2": ("KEY2", "right"), "3": ("KEY3", "right"),
+        "4": ("KEY4", "right"), "5": ("KEY5", "right"), "6": ("KEY6", "right"),
+        "7": ("KEY7", "right"), "8": ("GND", "right"),
     })
 
     # ── power-entry filter ──────────────────────────────────────────────

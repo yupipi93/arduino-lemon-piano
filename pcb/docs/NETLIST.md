@@ -50,35 +50,42 @@ so it cannot back-feed the filter — `HARDWARE.md` powering rule 2).
 | SW2 | SENS − push button (A7, to GND, R18 pull-up) | idem | idem |
 | H1, H2 | M2 mounting hole | `MountingHole:MountingHole_2.5mm_Pad_Via` | board spec (2 anchors) |
 
-## Nano socket pin map (physical, USB end = WEST)
+## Nano socket pin map (physical, USB end = WEST) — v0.2.0, ADR-015
 
-`U1` = SOUTH row, pin 1 at west; `U2` = NORTH row, pin 1 at east.
-`U2.k` = Nano pin (15+k). Rows 15.24 mm apart, 2.54 mm pitch.
+**Erratum fixed in v0.2.0**: v0.1.0 assumed TX1/VIN at the USB end (a
+misread pinout diagram). The REAL Nano — verified on the official 2008
+Arduino Nano V2.2 photo (Wikimedia `File:ArduinoNanoTop.jpg`) and on
+clone boards (`File:Arduino Nano.jpg`) — has **D12/D13 flanking the
+mini-USB and TX1/VIN at the ICSP end**. With the USB facing WEST:
 
 ```
    x=104                                                    x=139.56
-U2: VIN GND RST 5V A7 A6 A5 A4 A3 A2 A1 A0 AREF 3V3 D13   (y=107.38, pin15→pin1)
+U2: D12 D11 D10 D9 D8 D7 D6 D5 D4 D3 D2 GND RST RX0 TX1   (y=107.38, pin15→pin1)
         [ mini-USB faces x=90 west edge ]
-U1: TX1 RX0 RST GND D2 D3 D4 D5 D6 D7 D8 D9 D10 D11 D12   (y=122.62, pin1→pin15)
+U1: D13 3V3 AREF A0 A1 A2 A3 A4 A5 A6 A7 5V RST GND VIN   (y=122.62, pin1→pin15)
 ```
+
+`U1` = SOUTH row, pin 1 (D13) west; `U2` = NORTH row, pin 1 (TX1) east.
+Analogs land on the SOUTH row → keys header on the SOUTH edge; digitals
+on the NORTH row → LED bar on the NORTH edge (both flipped vs v0.1.0).
 
 ## Nets (KiCad net number → name → pads)
 
 | # | Net | Pads |
 |---|---|---|
-| 1 | /+5V | U2.12 (5V), L1.2, C3.1(+), C4.1, R1.1…R7.1, R18.1 |
-| 2 | /GND | U1.4, U2.14, J1.2, J2.1, D1.2(A), C1.2(−), C2.2, C3.2(−), C4.2, R8.1…R17.1, BUZ1.2, SW1.2(×2), SW2.2(×2), H1.1, H2.1 |
+| 1 | /+5V | U1.12 (5V), L1.2, C3.1(+), C4.1, R1.2…R7.2, R18.2 |
+| 2 | /GND | U1.14, U2.4, J1.2, J2.8, D1.2(A), C1.2(−), C2.2, C3.2(−), C4.2, R8.1…R17.1, BUZ1.2, SW1.2(×2), SW2.2(×2), H1.1, H2.1 |
 | 3 | /VIN | J1.1(+), D1.1(K), D2.2(A) |
 | 4 | /VRAW | D2.1(K), C1.1(+), C2.1, L1.1 |
-| 5–11 | /KEY1…/KEY7 | U2.4…U2.10 (A0…A6), R1.2…R7.2, J2.8…J2.2 (KEY1=J2.8 … KEY7=J2.2) |
-| 12 | /SENS_MINUS | U2.11 (A7), R18.2, SW2.1(×2) |
-| 13 | /SENS_PLUS | U1.15 (D12), SW1.1(×2) |
-| 14 | /BUZZER | U2.1 (D13), BUZ1.1(+) |
-| 15–24 | /LED1…/LED10 | U1.5…U1.14 (D2…D11) → D3.2…D12.2 (anodes) |
+| 5–11 | /KEY1…/KEY7 | U1.4…U1.10 (A0…A6), R1.1…R7.1, J2.1…J2.7 (KEY1=J2.1 … KEY7=J2.7) |
+| 12 | /SENS_MINUS | U1.11 (A7), R18.1, SW2.1(×2) |
+| 13 | /SENS_PLUS | U2.15 (D12), SW1.1(×2) |
+| 14 | /BUZZER | U1.1 (D13), BUZ1.1(+) |
+| 15–24 | /LED1…/LED10 | U2.5…U2.14 (D2…D11) → D3.2…D12.2 (anodes) |
 | 25–34 | /LED1_K…/LED10_K | D3.1…D12.1 (cathodes) → R8.2…R17.2 |
 
-Unconnected (by design): U1.1 (TX1), U1.2 (RX0), U1.3 (RST), U2.2 (3V3),
-U2.3 (AREF), U2.13 (RST), U2.15 (Nano VIN — the filtered rail feeds the 5V
+Unconnected (by design): U2.1 (TX1), U2.2 (RX0), U2.3 (RST), U1.2 (3V3),
+U1.3 (AREF), U1.13 (RST), U1.15 (Nano VIN — the filtered rail feeds the 5V
 pin directly, exactly like the breadboard rail; VIN would insert the Nano's
 own regulator and drop the 4.7 V rail further).
 

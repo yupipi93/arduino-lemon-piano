@@ -7,7 +7,7 @@
 	(title_block
 		(title "Lemon Piano V5.5 Board")
 		(date "2026-07-30")
-		(rev "v0.1.0")
+		(rev "v0.2.0")
 		(company "Lemon Piano")
 		(comment 1 "V5 game board + V5.5 power-entry filter (TVS + Schottky + CLC pi)")
 		(comment 2 "Netlist ground truth: pcb/docs/NETLIST.md")
@@ -4922,7 +4922,7 @@
 	)
 	(wire
 		(pts
-			(xy 54.61 90.17) (xy 53.34 90.17)
+			(xy 54.61 82.55) (xy 53.34 82.55)
 		)
 		(stroke
 			(width 0)
@@ -4932,7 +4932,7 @@
 	)
 	(wire
 		(pts
-			(xy 54.61 92.71) (xy 53.34 92.71)
+			(xy 54.61 90.17) (xy 53.34 90.17)
 		)
 		(stroke
 			(width 0)
@@ -4942,7 +4942,7 @@
 	)
 	(wire
 		(pts
-			(xy 54.61 95.25) (xy 53.34 95.25)
+			(xy 54.61 92.71) (xy 53.34 92.71)
 		)
 		(stroke
 			(width 0)
@@ -4952,7 +4952,7 @@
 	)
 	(wire
 		(pts
-			(xy 54.61 97.79) (xy 53.34 97.79)
+			(xy 54.61 95.25) (xy 53.34 95.25)
 		)
 		(stroke
 			(width 0)
@@ -4962,7 +4962,7 @@
 	)
 	(wire
 		(pts
-			(xy 54.61 100.33) (xy 53.34 100.33)
+			(xy 54.61 97.79) (xy 53.34 97.79)
 		)
 		(stroke
 			(width 0)
@@ -4972,7 +4972,7 @@
 	)
 	(wire
 		(pts
-			(xy 54.61 102.87) (xy 53.34 102.87)
+			(xy 54.61 100.33) (xy 53.34 100.33)
 		)
 		(stroke
 			(width 0)
@@ -4982,7 +4982,7 @@
 	)
 	(wire
 		(pts
-			(xy 54.61 105.41) (xy 53.34 105.41)
+			(xy 54.61 102.87) (xy 53.34 102.87)
 		)
 		(stroke
 			(width 0)
@@ -4992,7 +4992,7 @@
 	)
 	(wire
 		(pts
-			(xy 54.61 107.95) (xy 53.34 107.95)
+			(xy 54.61 105.41) (xy 53.34 105.41)
 		)
 		(stroke
 			(width 0)
@@ -5002,7 +5002,7 @@
 	)
 	(wire
 		(pts
-			(xy 54.61 110.49) (xy 53.34 110.49)
+			(xy 54.61 107.95) (xy 53.34 107.95)
 		)
 		(stroke
 			(width 0)
@@ -5012,7 +5012,7 @@
 	)
 	(wire
 		(pts
-			(xy 54.61 113.03) (xy 53.34 113.03)
+			(xy 54.61 110.49) (xy 53.34 110.49)
 		)
 		(stroke
 			(width 0)
@@ -5032,7 +5032,7 @@
 	)
 	(wire
 		(pts
-			(xy 54.61 118.11) (xy 53.34 118.11)
+			(xy 85.09 90.17) (xy 86.36 90.17)
 		)
 		(stroke
 			(width 0)
@@ -5042,7 +5042,7 @@
 	)
 	(wire
 		(pts
-			(xy 85.09 82.55) (xy 86.36 82.55)
+			(xy 85.09 92.71) (xy 86.36 92.71)
 		)
 		(stroke
 			(width 0)
@@ -5052,7 +5052,7 @@
 	)
 	(wire
 		(pts
-			(xy 85.09 90.17) (xy 86.36 90.17)
+			(xy 85.09 95.25) (xy 86.36 95.25)
 		)
 		(stroke
 			(width 0)
@@ -5062,7 +5062,7 @@
 	)
 	(wire
 		(pts
-			(xy 85.09 92.71) (xy 86.36 92.71)
+			(xy 85.09 97.79) (xy 86.36 97.79)
 		)
 		(stroke
 			(width 0)
@@ -5072,7 +5072,7 @@
 	)
 	(wire
 		(pts
-			(xy 85.09 95.25) (xy 86.36 95.25)
+			(xy 85.09 100.33) (xy 86.36 100.33)
 		)
 		(stroke
 			(width 0)
@@ -5082,7 +5082,7 @@
 	)
 	(wire
 		(pts
-			(xy 85.09 97.79) (xy 86.36 97.79)
+			(xy 85.09 102.87) (xy 86.36 102.87)
 		)
 		(stroke
 			(width 0)
@@ -5092,7 +5092,7 @@
 	)
 	(wire
 		(pts
-			(xy 85.09 100.33) (xy 86.36 100.33)
+			(xy 85.09 105.41) (xy 86.36 105.41)
 		)
 		(stroke
 			(width 0)
@@ -5102,7 +5102,7 @@
 	)
 	(wire
 		(pts
-			(xy 85.09 102.87) (xy 86.36 102.87)
+			(xy 85.09 107.95) (xy 86.36 107.95)
 		)
 		(stroke
 			(width 0)
@@ -5112,7 +5112,7 @@
 	)
 	(wire
 		(pts
-			(xy 85.09 105.41) (xy 86.36 105.41)
+			(xy 85.09 110.49) (xy 86.36 110.49)
 		)
 		(stroke
 			(width 0)
@@ -5122,7 +5122,7 @@
 	)
 	(wire
 		(pts
-			(xy 85.09 107.95) (xy 86.36 107.95)
+			(xy 85.09 113.03) (xy 86.36 113.03)
 		)
 		(stroke
 			(width 0)
@@ -5132,7 +5132,7 @@
 	)
 	(wire
 		(pts
-			(xy 85.09 110.49) (xy 86.36 110.49)
+			(xy 85.09 115.57) (xy 86.36 115.57)
 		)
 		(stroke
 			(width 0)
@@ -5142,7 +5142,7 @@
 	)
 	(wire
 		(pts
-			(xy 85.09 115.57) (xy 86.36 115.57)
+			(xy 85.09 118.11) (xy 86.36 118.11)
 		)
 		(stroke
 			(width 0)
@@ -6040,8 +6040,8 @@
 		)
 		(uuid "a7572851-a401-55d8-920c-aa4c9a32a0ed")
 	)
-	(label "GND"
-		(at 53.34 90.17 0)
+	(label "BUZZER"
+		(at 53.34 82.55 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6050,8 +6050,8 @@
 		)
 		(uuid "1aa23114-01ba-5c2b-b2a9-f0a30968817e")
 	)
-	(label "LED1"
-		(at 53.34 92.71 0)
+	(label "KEY1"
+		(at 53.34 90.17 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6060,8 +6060,8 @@
 		)
 		(uuid "8b2dca04-3bc1-51b1-8787-0be278727ad8")
 	)
-	(label "LED2"
-		(at 53.34 95.25 0)
+	(label "KEY2"
+		(at 53.34 92.71 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6070,8 +6070,8 @@
 		)
 		(uuid "49aa4e92-9760-59c6-8993-62b9ea2b75f5")
 	)
-	(label "LED3"
-		(at 53.34 97.79 0)
+	(label "KEY3"
+		(at 53.34 95.25 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6080,8 +6080,8 @@
 		)
 		(uuid "1c0578bc-89ac-563c-b590-b4efc3eac5d5")
 	)
-	(label "LED4"
-		(at 53.34 100.33 0)
+	(label "KEY4"
+		(at 53.34 97.79 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6090,8 +6090,8 @@
 		)
 		(uuid "6ac60bed-3f8c-500a-aaa5-d51b9f04c667")
 	)
-	(label "LED5"
-		(at 53.34 102.87 0)
+	(label "KEY5"
+		(at 53.34 100.33 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6100,8 +6100,8 @@
 		)
 		(uuid "bceee74f-1e73-56dd-907b-06a388b825a2")
 	)
-	(label "LED6"
-		(at 53.34 105.41 0)
+	(label "KEY6"
+		(at 53.34 102.87 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6110,8 +6110,8 @@
 		)
 		(uuid "0af93735-b216-5f1a-8f3f-d23750c85f69")
 	)
-	(label "LED7"
-		(at 53.34 107.95 0)
+	(label "KEY7"
+		(at 53.34 105.41 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6120,8 +6120,8 @@
 		)
 		(uuid "57bba1e6-b3e4-5e8a-9259-fa20b87326e2")
 	)
-	(label "LED8"
-		(at 53.34 110.49 0)
+	(label "SENS_MINUS"
+		(at 53.34 107.95 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6130,8 +6130,8 @@
 		)
 		(uuid "1f62c354-ebe5-53bc-bc69-b23a7bd40f12")
 	)
-	(label "LED9"
-		(at 53.34 113.03 0)
+	(label "+5V"
+		(at 53.34 110.49 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6140,7 +6140,7 @@
 		)
 		(uuid "977921b9-bb2a-5c1a-97f0-cdf2624ce968")
 	)
-	(label "LED10"
+	(label "GND"
 		(at 53.34 115.57 0)
 		(effects
 			(font
@@ -6150,8 +6150,8 @@
 		)
 		(uuid "21a6e303-fcbc-5376-b23d-85420606acd1")
 	)
-	(label "SENS_PLUS"
-		(at 53.34 118.11 0)
+	(label "GND"
+		(at 86.36 90.17 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6160,8 +6160,8 @@
 		)
 		(uuid "60e1720d-d10a-54a6-af78-0fc275b48469")
 	)
-	(label "BUZZER"
-		(at 86.36 82.55 0)
+	(label "LED1"
+		(at 86.36 92.71 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6170,8 +6170,8 @@
 		)
 		(uuid "3cb57278-d310-5b1f-b68a-87feecdabc21")
 	)
-	(label "KEY1"
-		(at 86.36 90.17 0)
+	(label "LED2"
+		(at 86.36 95.25 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6180,8 +6180,8 @@
 		)
 		(uuid "b28df340-5796-5aff-9472-ab9e7c9926ff")
 	)
-	(label "KEY2"
-		(at 86.36 92.71 0)
+	(label "LED3"
+		(at 86.36 97.79 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6190,8 +6190,8 @@
 		)
 		(uuid "3c3a18e2-4a19-5f74-bf87-39e48bda4d95")
 	)
-	(label "KEY3"
-		(at 86.36 95.25 0)
+	(label "LED4"
+		(at 86.36 100.33 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6200,8 +6200,8 @@
 		)
 		(uuid "787ade40-20ee-5f53-aca9-a60fed06ed24")
 	)
-	(label "KEY4"
-		(at 86.36 97.79 0)
+	(label "LED5"
+		(at 86.36 102.87 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6210,8 +6210,8 @@
 		)
 		(uuid "420e1c94-ce62-565b-a2e0-903fdfd485e1")
 	)
-	(label "KEY5"
-		(at 86.36 100.33 0)
+	(label "LED6"
+		(at 86.36 105.41 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6220,8 +6220,8 @@
 		)
 		(uuid "e08f01a9-9b10-54a0-b7c6-13b8cded45a8")
 	)
-	(label "KEY6"
-		(at 86.36 102.87 0)
+	(label "LED7"
+		(at 86.36 107.95 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6230,8 +6230,8 @@
 		)
 		(uuid "60df9fdf-2094-54ab-954f-b7fa1bae28a7")
 	)
-	(label "KEY7"
-		(at 86.36 105.41 0)
+	(label "LED8"
+		(at 86.36 110.49 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6240,8 +6240,8 @@
 		)
 		(uuid "257e7268-539a-52c5-9cc4-8cd6b86bdbf7")
 	)
-	(label "SENS_MINUS"
-		(at 86.36 107.95 0)
+	(label "LED9"
+		(at 86.36 113.03 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6250,8 +6250,8 @@
 		)
 		(uuid "7c994bf1-cec0-5693-8352-4b4336e8e46a")
 	)
-	(label "+5V"
-		(at 86.36 110.49 0)
+	(label "LED10"
+		(at 86.36 115.57 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6260,8 +6260,8 @@
 		)
 		(uuid "cf8fa548-c74e-57a7-a217-a551d456be43")
 	)
-	(label "GND"
-		(at 86.36 115.57 0)
+	(label "SENS_PLUS"
+		(at 86.36 118.11 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6290,7 +6290,7 @@
 		)
 		(uuid "6aeaf4c0-0585-563d-b78a-958a6c952de9")
 	)
-	(label "GND"
+	(label "KEY1"
 		(at 115.57 92.71 0)
 		(effects
 			(font
@@ -6300,7 +6300,7 @@
 		)
 		(uuid "37dbc7f7-3294-5114-8a9e-151d4aa77866")
 	)
-	(label "KEY7"
+	(label "KEY2"
 		(at 115.57 95.25 0)
 		(effects
 			(font
@@ -6310,7 +6310,7 @@
 		)
 		(uuid "8e8645b7-b23d-5436-8e12-b852e53e3110")
 	)
-	(label "KEY6"
+	(label "KEY3"
 		(at 115.57 97.79 0)
 		(effects
 			(font
@@ -6320,7 +6320,7 @@
 		)
 		(uuid "e06ff250-2e77-5bcb-803b-53ae4beaafbe")
 	)
-	(label "KEY5"
+	(label "KEY4"
 		(at 115.57 100.33 0)
 		(effects
 			(font
@@ -6330,7 +6330,7 @@
 		)
 		(uuid "d5c9ec83-8b6e-5ccf-8fb4-0fdaa2daaffa")
 	)
-	(label "KEY4"
+	(label "KEY5"
 		(at 115.57 102.87 0)
 		(effects
 			(font
@@ -6340,7 +6340,7 @@
 		)
 		(uuid "2b258ebb-66e3-5ad4-b3f7-df73309058c3")
 	)
-	(label "KEY3"
+	(label "KEY6"
 		(at 115.57 105.41 0)
 		(effects
 			(font
@@ -6350,7 +6350,7 @@
 		)
 		(uuid "757d0df5-3ff5-5fe2-87b0-4841d5d8829d")
 	)
-	(label "KEY2"
+	(label "KEY7"
 		(at 115.57 107.95 0)
 		(effects
 			(font
@@ -6360,7 +6360,7 @@
 		)
 		(uuid "3e2ea1fe-f9a3-54f1-88d1-1df17118af34")
 	)
-	(label "KEY1"
+	(label "GND"
 		(at 115.57 110.49 0)
 		(effects
 			(font
@@ -7161,31 +7161,31 @@
 		(uuid "d0739e0b-bb9c-5c54-89ef-07c1546ec85d")
 	)
 	(no_connect
-		(at 54.61 82.55)
+		(at 54.61 85.09)
 		(uuid "855979db-409d-597c-836e-649bfd537cbc")
 	)
 	(no_connect
-		(at 54.61 85.09)
+		(at 54.61 87.63)
 		(uuid "009bc405-91cf-5518-978e-2e56143261ee")
 	)
 	(no_connect
-		(at 54.61 87.63)
+		(at 54.61 113.03)
 		(uuid "4cf2d493-016c-56f1-bea2-f7fb9001bf37")
 	)
 	(no_connect
-		(at 85.09 85.09)
+		(at 54.61 118.11)
 		(uuid "9f2ac0f1-24fd-55e9-a45b-b9db1a675142")
 	)
 	(no_connect
-		(at 85.09 87.63)
+		(at 85.09 82.55)
 		(uuid "badab4bc-fbdb-5dbc-9b25-c64954c589ea")
 	)
 	(no_connect
-		(at 85.09 113.03)
+		(at 85.09 85.09)
 		(uuid "72e68977-759e-50d0-a3dc-a29bde0a4ad9")
 	)
 	(no_connect
-		(at 85.09 118.11)
+		(at 85.09 87.63)
 		(uuid "0bf38b7f-73f6-5618-b42e-d262d2474433")
 	)
 	(sheet_instances

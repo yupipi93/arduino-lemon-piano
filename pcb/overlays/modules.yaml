@@ -1,0 +1,38 @@
+# Per-module overlay config for the Lemon Piano V5.5 board.
+# Consumed by the pcb-designer /render?style=overlay endpoint (the client
+# uploads this file + the images in component-images/), or locally by
+# python3 -m pcb_designer.render_overlay.cli.
+#
+# Conventions: see the schema notes in the MT1 worked example
+# (eda-pcb-designer/projects/mt1/overlays/modules.yaml).
+#
+# Image provenance: component-images/arduino-nano.png is a tight crop of
+# Wikimedia Commons "File:Arduino Nano.jpg" (CC BY 2.0), a perpendicular
+# top-down photo of a Nano-compatible board. Measured scale in the crop:
+# 60.6 px/mm (board 1078 px wide = 17.78 mm; length checks at 43.2 mm).
+# The crop includes the mini-USB (~4.1 mm proud of the USB edge) and the
+# clipped ICSP header at the far end.
+
+modules:
+  NANO:
+    refs: [U1, U2]
+    anchor_ref: U1
+    positioning: bbox_center
+    image: arduino-nano.png
+    # Native crop (1078x2960 portrait): mini-USB at the BOTTOM, TX1/VIN
+    # (ICSP) end at the top. The engine composes PIL rotation as
+    # (-pcb_rotation + image_rotation) — the MT1-calibrated convention —
+    # so with the anchor U1 at rot=90 the image gets PIL -90 (clockwise):
+    # native bottom (USB) lands WEST, native left column (TX1..D12)
+    # becomes the north row D12(w)..TX1(e), native right column becomes
+    # the south row D13(w)..VIN(e) — exactly the v0.2.0 socket rows.
+    # (First attempt used 180 assuming a +pcb_rot convention: the photo
+    # landed USB-east — caught by this very overlay, ADR-016.)
+    real_size_mm: [17.78, 48.82]    # native [w,h]; 48.82 = 17.78 x 2.7458
+    image_rotation_deg: 0
+    # bbox_center of U1(pin1 west,south row)+U2(pin1 east,north row) is the
+    # exact pin-field centre. The photo's content centre sits 1.25 mm
+    # toward the USB end (the connector overhang) -> module-local -Y.
+    body_offset_mm: [0.0, -1.25]
+    visible_layer: F.Cu
+    category: module

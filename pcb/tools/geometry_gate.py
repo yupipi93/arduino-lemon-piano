@@ -74,10 +74,10 @@ def main() -> int:
     pl = CFG["placements"]
     check(pl["U1"][0] < pl["U2"][0] + 36 and pl["U1"][0] == 104.0,
           "Nano socket rows start at x=104 (USB end faces west edge)")
-    check(pl["J2"][1] <= 104.0, "keys header on the NORTH service edge")
+    check(pl["J2"][1] >= 125.0, "keys header on the SOUTH service edge")
     check(pl["J1"][1] <= 106.0, "power terminal on the NORTH service edge")
-    check(all(pl[f"D{i}"][1] >= 126.0 for i in range(3, 13)),
-          "LED bar on the SOUTH service edge")
+    check(all(pl[f"D{i}"][1] <= 102.5 for i in range(3, 13)),
+          "LED bar on the NORTH service edge")
     check(pl["SW1"][1] >= 122.0 and pl["SW2"][1] >= 122.0,
           "SENS buttons on the SOUTH service edge")
     # USB corridor: no F.Cu part with body in x<103, 105.5<y<124.5 except H1

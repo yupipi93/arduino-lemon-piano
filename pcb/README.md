@@ -9,8 +9,16 @@ margin.
 
 | | |
 |---|---|
-| Top | ![top](renders/v0.1.0-top.png) |
-| Bottom | ![bottom](renders/v0.1.0-bottom.png) |
+| Realistic (3D bodies) | ![realistic top](renders/v0.2.0-realistic-top.png) |
+| Photo overlay (real Nano photo, dimensioned) | ![overlay top](overlays/v0.2.0-realistic-top.png) |
+| Bare copper/silk | ![top](renders/v0.2.0-top.png) |
+| DIM plot (front) | ![dim top](renders/v0.2.0-dim-top.png) |
+| Bottom (realistic) | ![realistic bottom](renders/v0.2.0-realistic-bottom.png) |
+
+Every style is produced by the hosted pcb-designer API
+(`/render?style=bare|dim|realistic|realistic-dim|overlay`); the overlay
+composites the real Arduino Nano photo (Wikimedia Commons, CC BY 2.0)
+that the client uploads together with `overlays/modules.yaml`.
 
 ## At a glance
 
@@ -18,15 +26,15 @@ margin.
 |---|---|
 | Outline | 100 × 30 mm, 2-layer FR4, MT1 coordinate frame (x 90–190, y 100–130) |
 | MCU | Arduino Nano (ATmega328P), **socketed** — 2×15-pin 2.54 mm rows, mini-USB faces the WEST edge (flash access; USB 5 V stays behind the 1N5817) |
-| Keys | 7 lemon lines (A0–A6, 220 Ω pull-ups on B.Cu) + GND clip → labelled 1×8 header, NORTH edge (`G 7 6 5 4 3 2 1`) |
-| Display | 10 × 3 mm green LEDs (D2–D11), one ascending run on the SOUTH edge, 220 Ω each on B.Cu |
+| Keys | 7 lemon lines (A0–A6, 220 Ω pull-ups on B.Cu) + GND clip → labelled 1×8 header, SOUTH edge (`1 2 3 4 5 6 7 G`) |
+| Display | 10 × 3 mm green LEDs (D2–D11), NORTH edge, ascending east→west (ADR-015), 220 Ω each on B.Cu |
 | Controls | SENS+ (D12) / SENS− (A7 + 10 k pull-up) buttons, SOUTH-east |
 | Sound | passive buzzer on D13 |
 | Power | `5V IN` screw terminal → P6KE6.8A TVS → 1N5817 → 470 µF‖100 nF → 100 µH → 470 µF‖100 nF → +5 V rail (≈4.7 V, fc ≈ 730 Hz) |
 | GND | full B.Cu zone, solid connect on every GND pad, auto island-healing |
 | Mounting | 2 × M2 (Ø2.5 drill / Ø5.0 pad+vias) at (95,115) & (185,115) — mirror-symmetric about x=140 |
-| Status (v0.1.0) | DRC **0/0/0** · ERC 0/0 · verify_placement / verify_holes / geometry_gate ALL PASS |
-| Release | [`releases/v0.1.0/lemon-piano-v0.1.0-fab.zip`](releases/v0.1.0/) — gerbers, drill, BOM, positions |
+| Status (v0.2.0) | DRC **0/0/0** · ERC 0/0 · verify_placement / verify_holes / geometry_gate ALL PASS |
+| Release | [`releases/v0.2.0/lemon-piano-v0.2.0-fab.zip`](releases/v0.2.0/) — gerbers, drill, BOM, positions |
 
 Netlist ground truth: [docs/NETLIST.md](docs/NETLIST.md) ·
 decisions: [docs/DECISIONS.md](docs/DECISIONS.md) ·
@@ -45,10 +53,17 @@ post-pass:
 
 ```bash
 # one full iteration: build → /place → /route → post → /drc → /render → gates
-./pcb/tools/cloud_pipeline.sh v0.1.0
+./pcb/tools/cloud_pipeline.sh v0.2.0
 
 # release (adds cloud /fab, writes releases/<ver>/):
-./pcb/tools/cloud_pipeline.sh v0.1.0 --fab
+./pcb/tools/cloud_pipeline.sh v0.2.0 --fab
+
+# render variants (any style, hosted API):
+URL=https://pcb-designer.scv.multitecua.com
+curl -F pcb=@pcb/kicad/lemon-piano.kicad_pcb "$URL/render?side=both&style=realistic" -o r.zip
+curl -F pcb=@pcb/kicad/lemon-piano.kicad_pcb -F modules=@pcb/overlays/modules.yaml \
+     -F images=@pcb/overlays/component-images/arduino-nano.png \
+     "$URL/render?side=top&style=overlay&calibration=green_bbox" -o overlay.png
 
 # individual gates:
 python3 pcb/tools/verify_placement.py   # anti-mirror/pin-swap

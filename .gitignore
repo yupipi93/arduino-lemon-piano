@@ -28,3 +28,4 @@ __pycache__/
 # Velxio emulation — per-run evidence bundles (reports, logs, screenshots)
 # (**/ so every versions/*/emulation/runs/ is ignored)
 **/emulation/runs/
+pcb/kicad/*.bak6

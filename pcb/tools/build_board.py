@@ -85,23 +85,27 @@ for _i in range(8, 18):                    # LED series
 FOOTPRINTS["R18"] = ("Resistor_SMD",
                      "R_0805_2012Metric_Pad1.20x1.40mm_HandSolder", "10k")
 
-# pad → net, by pad number (geometric parts R1..R18 handled separately)
+# pad → net, by pad number (geometric parts R1..R18 handled separately).
+# v0.2.0 ERRATUM FIX (ADR-015): the real Nano has D12/D13 at the mini-USB
+# end and TX1/VIN at the ICSP end (verified on the official 2008 V2.2 board
+# photo + clones). With the USB facing WEST: south row west→east =
+# D13,3V3,AREF,A0..A7,5V,RST,GND,VIN and north row west→east =
+# D12..D2,GND,RST,RX0,TX1 (U2 pin 1 is the EAST end).
 PAD_NETS: dict[tuple[str, str], str] = {
-    ("U1", "4"): "GND",
-    ("U1", "5"): "LED1", ("U1", "6"): "LED2", ("U1", "7"): "LED3",
-    ("U1", "8"): "LED4", ("U1", "9"): "LED5", ("U1", "10"): "LED6",
-    ("U1", "11"): "LED7", ("U1", "12"): "LED8", ("U1", "13"): "LED9",
-    ("U1", "14"): "LED10", ("U1", "15"): "SENS_PLUS",
-    ("U2", "1"): "BUZZER",
-    ("U2", "4"): "KEY1", ("U2", "5"): "KEY2", ("U2", "6"): "KEY3",
-    ("U2", "7"): "KEY4", ("U2", "8"): "KEY5", ("U2", "9"): "KEY6",
-    ("U2", "10"): "KEY7", ("U2", "11"): "SENS_MINUS",
-    ("U2", "12"): "+5V", ("U2", "14"): "GND",
+    ("U2", "4"): "GND",
+    ("U2", "5"): "LED1", ("U2", "6"): "LED2", ("U2", "7"): "LED3",
+    ("U2", "8"): "LED4", ("U2", "9"): "LED5", ("U2", "10"): "LED6",
+    ("U2", "11"): "LED7", ("U2", "12"): "LED8", ("U2", "13"): "LED9",
+    ("U2", "14"): "LED10", ("U2", "15"): "SENS_PLUS",
+    ("U1", "1"): "BUZZER",
+    ("U1", "4"): "KEY1", ("U1", "5"): "KEY2", ("U1", "6"): "KEY3",
+    ("U1", "7"): "KEY4", ("U1", "8"): "KEY5", ("U1", "9"): "KEY6",
+    ("U1", "10"): "KEY7", ("U1", "11"): "SENS_MINUS",
+    ("U1", "12"): "+5V", ("U1", "14"): "GND",
     ("J1", "1"): "VIN", ("J1", "2"): "GND",
-    ("J2", "1"): "GND",
-    ("J2", "2"): "KEY7", ("J2", "3"): "KEY6", ("J2", "4"): "KEY5",
-    ("J2", "5"): "KEY4", ("J2", "6"): "KEY3", ("J2", "7"): "KEY2",
-    ("J2", "8"): "KEY1",
+    ("J2", "1"): "KEY1", ("J2", "2"): "KEY2", ("J2", "3"): "KEY3",
+    ("J2", "4"): "KEY4", ("J2", "5"): "KEY5", ("J2", "6"): "KEY6",
+    ("J2", "7"): "KEY7", ("J2", "8"): "GND",
     ("D1", "1"): "VIN", ("D1", "2"): "GND",
     ("D2", "1"): "VRAW", ("D2", "2"): "VIN",
     ("C1", "1"): "VRAW", ("C1", "2"): "GND",
@@ -120,9 +124,9 @@ for _i in range(10):                       # LED pads: 1=cathode, 2=anode
 
 # vertical 0805s: (north-pad net, south-pad net) — north = smaller y
 GEOMETRIC_NETS: dict[str, tuple[str, str]] = {}
-for _i in range(1, 8):                     # pull-up: pin side north, +5V south
-    GEOMETRIC_NETS[f"R{_i}"] = (f"KEY{_i}", "+5V")
-GEOMETRIC_NETS["R18"] = ("SENS_MINUS", "+5V")
+for _i in range(1, 8):                     # pull-up: +5V north, pin side south
+    GEOMETRIC_NETS[f"R{_i}"] = ("+5V", f"KEY{_i}")
+GEOMETRIC_NETS["R18"] = ("+5V", "SENS_MINUS")
 for _i in range(8, 18):                    # LED series: cathode north, GND south
     GEOMETRIC_NETS[f"R{_i}"] = (f"LED{_i - 7}_K", "GND")
 
@@ -134,7 +138,7 @@ for _i in range(8, 18):                    # LED series: cathode north, GND sout
 EXPECTED_PADS = [
     ("U1", "1", 104.0, 122.62), ("U1", "15", 139.56, 122.62),
     ("U2", "1", 139.56, 107.38), ("U2", "15", 104.0, 107.38),
-    ("J2", "1", 114.16, 103.0), ("J2", "8", 131.94, 103.0),
+    ("J2", "1", 111.62, 127.0), ("J2", "8", 129.4, 127.0),
     ("J1", "1", 170.0, 105.9), ("J1", "2", 175.08, 105.9),
     ("D1", "1", 159.3, 103.8), ("D1", "2", 164.38, 103.8),
     ("D2", "1", 150.0, 103.8), ("D2", "2", 155.08, 103.8),
@@ -142,8 +146,8 @@ EXPECTED_PADS = [
     ("L1", "1", 170.0, 116.0), ("L1", "2", 175.0, 116.0),
     ("C3", "1", 171.3, 125.4), ("C3", "2", 174.8, 125.4),
     ("BUZ1", "1", 146.5, 114.2), ("BUZ1", "2", 154.1, 114.2),
-    ("D3", "1", 103.5, 128.3), ("D3", "2", 103.5, 125.76),
-    ("D12", "1", 144.9, 128.3), ("D12", "2", 144.9, 125.76),
+    ("D3", "1", 145.3, 101.65), ("D3", "2", 145.3, 104.19),
+    ("D12", "1", 103.9, 101.65), ("D12", "2", 103.9, 104.19),
     ("H1", "1", 95.0, 115.0), ("H2", "1", 185.0, 115.0),
 ]
 
@@ -226,7 +230,7 @@ def build(cfg: dict) -> str:
                                 "U2": (121.8, 109.3, 0),
                                 "BUZ1": (150.3, 111.5, 0),
                                 "J1": (167.0, 111.5, 0),
-                                "J2": (109.0, 103.0, 0),
+                                "J2": (108.6, 127.0, 0),
                                 "D1": (161.84, 107.0, 0),
                                 "D2": (152.54, 107.0, 0),
                                 "C1": (161.16, 111.2, 0),
@@ -261,8 +265,8 @@ def build(cfg: dict) -> str:
         fp = board.FindFootprintByReference(f"R{i}")
         for pad in fp.Pads():
             if pad.GetNetname() == f"/KEY{i}":
-                if abs(pad.GetPosition().y / 1e6 - 109.6) > 0.05:
-                    raise SystemExit(f"R{i} KEY pad not at y=109.6")
+                if abs(pad.GetPosition().y / 1e6 - 120.4) > 0.05:
+                    raise SystemExit(f"R{i} KEY pad not at y=120.4")
 
     # ── board outline ────────────────────────────────────────────────────
     rect = pcbnew.PCB_SHAPE(board)
@@ -298,21 +302,21 @@ def build(cfg: dict) -> str:
             t.SetMirrored(True)
         board.Add(t)
 
-    text("LEMON PIANO V5.5", 140.0, 101.15, h=0.8)
+    text("LEMON PIANO V5.5", 140.0, 128.9, h=0.8)
     text(version, 130.5, 120.55, h=0.8)
-    # keys header labels: pin1=GND then KEY7..KEY1 (west→east)
-    for i, lab in enumerate(["G", "7", "6", "5", "4", "3", "2", "1"]):
-        text(lab, 114.16 + 2.54 * i, 100.95, h=0.8)
-    text("KEYS", 109.0, 100.95, h=0.8)
+    # keys header labels: KEY1..KEY7 then GND clip (west→east)
+    for i, lab in enumerate(["1", "2", "3", "4", "5", "6", "7", "G"]):
+        text(lab, 111.62 + 2.54 * i, 129.25, h=0.8)
+    text("KEYS", 107.6, 129.25, h=0.8)
     text("+", 170.0, 109.4, h=1.0, thick=0.15)
     text("-", 175.08, 109.4, h=1.0, thick=0.15)
     text("5V IN", 178.8, 105.9, h=0.8, rot=90)
     text("SENS+", 152.95, 121.3, h=0.8)
     text("SENS-", 163.15, 121.3, h=0.8)
-    text("1", 100.9, 128.3, h=0.8)
-    text("10", 146.4, 124.0, h=0.8)
+    text("1", 148.6, 101.65, h=0.8)          # bar ascends east→west (ADR-015)
+    text("10", 100.95, 103.0, h=0.8, rot=90)
     text("Lemon Piano V5.5", 127.0, 116.5, layer=pcbnew.B_SilkS, h=1.0)
-    text(version, 127.0, 119.0, layer=pcbnew.B_SilkS, h=1.0)
+    text(version, 127.0, 113.5, layer=pcbnew.B_SilkS, h=1.0)
 
     # ── save + text post-passes ──────────────────────────────────────────
     out_dir = PROJ / "kicad"

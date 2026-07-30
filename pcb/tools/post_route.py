@@ -35,9 +35,8 @@ PROJ = Path(__file__).resolve().parents[1]          # arduino-lemon-piano/pcb
 TOOLKIT = Path(__file__).resolve().parents[3] / "eda-pcb-designer"
 sys.path.insert(0, str(TOOLKIT / "src"))
 
-from pcb_designer.kicad_pcb_io import remove_tiny_segments  # noqa: E402
 
-CFG_PATH = REPO_ROOT / "projects" / "lemon-piano" / "lemon-piano.yaml"
+CFG_PATH = PROJ / "lemon-piano.yaml"
 POWER_NETS = {"/+5V", "/GND", "/VIN", "/VRAW"}
 COPPER_CLEARANCE = 0.2   # mm, CONVENTIONS §7
 EDGE_CLEARANCE = 0.3     # mm, CONVENTIONS §7
@@ -54,18 +53,16 @@ def seg_point_dist(ax, ay, bx, by, px, py) -> float:
 
 
 def seg_rect_dist(ax, ay, bx, by, rx0, ry0, rx1, ry1) -> float:
-    """Distance from segment AB to axis-aligned rect (0 if intersecting)."""
-    steps = max(2, int(math.hypot(bx - ax, by - ay) / 0.05))
-    best = float("inf")
-    for i in range(steps + 1):
-        t = i / steps
-        px, py = ax + t * (bx - ax), ay + t * (by - ay)
-        dx = max(rx0 - px, 0.0, px - rx1)
-        dy = max(ry0 - py, 0.0, py - ry1)
-        best = min(best, math.hypot(dx, dy))
-        if best == 0.0:
+    """EXACT distance from segment AB to an axis-aligned rect (0 if
+    intersecting). A sampled approximation here once under-measured by
+    ~0.02 mm and let the widener create a real DRC clearance violation."""
+    # endpoint inside rect → intersecting
+    for px, py in ((ax, ay), (bx, by)):
+        if rx0 <= px <= rx1 and ry0 <= py <= ry1:
             return 0.0
-    return best
+    edges = ((rx0, ry0, rx1, ry0), (rx1, ry0, rx1, ry1),
+             (rx1, ry1, rx0, ry1), (rx0, ry1, rx0, ry0))
+    return min(seg_seg_dist((ax, ay, bx, by), e) for e in edges)
 
 
 def seg_seg_dist(a, b) -> float:
@@ -98,13 +95,35 @@ def main() -> None:
     w_pow = float(cfg["routing"]["trace_width_power"])
     geom = cfg["geometry"]["pcb"]
 
-    txt = pcb.read_text(encoding="utf-8")
-    txt, n_tiny = remove_tiny_segments(txt)
-    if n_tiny:
-        print(f"  removed {n_tiny} tiny segment(s)")
-    pcb.write_text(txt, encoding="utf-8")
-
     board = pcbnew.LoadBoard(str(pcb))
+
+    # tiny-segment cleanup (LESSONS_LEARNED §2), connectivity-safe version:
+    # a blanket text pass once removed a 0.05 mm JOG that was the only link
+    # between two /+5V tracks and split the net. Only remove a tiny segment
+    # when it sits entirely inside a same-net via barrel (the actual §2
+    # freerouting artifact) — anything else stays.
+    all_vias = [t for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
+    n_tiny = 0
+    for t in list(board.GetTracks()):
+        if t.GetClass() != "PCB_TRACK":
+            continue
+        s, e = t.GetStart(), t.GetEnd()
+        if math.hypot((e.x - s.x) / 1e6, (e.y - s.y) / 1e6) > 0.1:
+            continue
+        for v in all_vias:
+            if v.GetNetname() != t.GetNetname():
+                continue
+            vp = v.GetPosition()
+            r = v.GetDrillValue() / 2e6 + 0.15
+            if (math.hypot((s.x - vp.x) / 1e6, (s.y - vp.y) / 1e6) <= r
+                    and math.hypot((e.x - vp.x) / 1e6, (e.y - vp.y) / 1e6) <= r):
+                board.RemoveNative(t)
+                n_tiny += 1
+                break
+    if n_tiny:
+        print(f"  removed {n_tiny} tiny in-via segment(s)")
+        pcbnew.SaveBoard(str(pcb), board)
+        board = pcbnew.LoadBoard(str(pcb))
 
     # dangling-spur cleanup (non-GND nets; GND legitimately ends in the zone).
     # A segment end is "connected" if it lands on a same-net pad, via, or
@@ -170,10 +189,10 @@ def main() -> None:
             bb = pad.GetBoundingBox()
             rect = (bb.GetLeft() / 1e6, bb.GetTop() / 1e6,
                     bb.GetRight() / 1e6, bb.GetBottom() / 1e6)
-            if pad.GetAttribute() == pcbnew.PAD_ATTRIB_SMD:
-                layers = {pad.GetLayer()}
-            else:
-                layers = {pcbnew.F_Cu, pcbnew.B_Cu}
+            # NOTE: pad.GetLayer() lies for flipped footprints (returns
+            # F_Cu for pads living on B.Cu) — IsOnLayer() is authoritative.
+            layers = {ly for ly in (pcbnew.F_Cu, pcbnew.B_Cu)
+                      if pad.IsOnLayer(ly)}
             pads.append((layers, pad.GetNetname(), rect))
 
     def via_width(v) -> float:
@@ -236,18 +255,196 @@ def main() -> None:
     filler.Fill(zones)
     print(f"  refilled {len(zones)} zone(s)")
 
+    repair_split_nets(board, target)
     heal_zone_islands(board, filler, zones)
 
     pcbnew.SaveBoard(str(pcb), board)
     print(f"  saved {pcb}")
 
 
+def repair_split_nets(board, target) -> None:
+    """Freerouting occasionally omits a trivial link (observed: two 2.54 mm
+    hops of the +5V pull-up daisy-chain, reproducibly). For every non-GND
+    net whose copper falls into >1 connected fragment, bridge the closest
+    pad pair across fragments with a clearance-checked straight/L track."""
+    for _ in range(8):
+        split = _find_split(board)
+        if split is None:
+            return
+        net, frag_a, frag_b = split
+        if not _bridge_fragments(board, net, frag_a, frag_b, target):
+            raise SystemExit(f"net {net} is split and no clear repair "
+                             f"path was found")
+    raise SystemExit("net repair did not converge in 8 passes")
+
+
+def _find_split(board):
+    """Return (net, pads_a, pads_b) for the first non-GND net whose items
+    form more than one connected component, else None."""
+    by_net: dict = {}
+    for fp in board.GetFootprints():
+        for pad in fp.Pads():
+            n = pad.GetNetname()
+            if n and n != "/GND":
+                by_net.setdefault(n, []).append(("pad", pad))
+    for t in board.GetTracks():
+        n = t.GetNetname()
+        if n and n != "/GND":
+            by_net.setdefault(n, []).append(
+                ("via" if t.GetClass() == "PCB_VIA" else "track", t))
+
+    for net, items in by_net.items():
+        parent = list(range(len(items)))
+
+        def find(i):
+            while parent[i] != i:
+                parent[i] = parent[parent[i]]
+                i = parent[i]
+            return i
+
+        def union(i, j):
+            parent[find(i)] = find(j)
+
+        for i in range(len(items)):
+            for j in range(i + 1, len(items)):
+                if _touches(items[i], items[j]):
+                    union(i, j)
+        roots = {}
+        for i in range(len(items)):
+            roots.setdefault(find(i), []).append(items[i])
+        if len(roots) > 1:
+            frags = sorted(roots.values(), key=len, reverse=True)
+            pads_a = [it for k, it in frags[0] if k == "pad"]
+            pads_b = [it for k, it in frags[1] if k == "pad"]
+            if pads_a and pads_b:
+                return net, pads_a, pads_b
+    return None
+
+
+def _touches(a, b) -> bool:
+    (ka, ia), (kb, ib) = a, b
+    if ka == "pad" and kb == "pad":
+        ra, rb = ia.GetBoundingBox(), ib.GetBoundingBox()
+        return (ra.GetLeft() <= rb.GetRight() and rb.GetLeft() <= ra.GetRight()
+                and ra.GetTop() <= rb.GetBottom() and rb.GetTop() <= ra.GetBottom())
+    if ka == "pad" or kb == "pad":
+        pad, tr = (ia, ib) if ka == "pad" else (ib, ia)
+        bb = pad.GetBoundingBox()
+        rect = (bb.GetLeft() / 1e6, bb.GetTop() / 1e6,
+                bb.GetRight() / 1e6, bb.GetBottom() / 1e6)
+        if tr.GetClass() == "PCB_VIA":
+            p = tr.GetPosition()
+            return seg_rect_dist(p.x / 1e6, p.y / 1e6, p.x / 1e6, p.y / 1e6,
+                                 *rect) <= 0.3
+        if (pad.GetAttribute() == pcbnew.PAD_ATTRIB_SMD
+                and not pad.IsOnLayer(tr.GetLayer())):
+            return False
+        s, e = tr.GetStart(), tr.GetEnd()
+        return seg_rect_dist(s.x / 1e6, s.y / 1e6, e.x / 1e6, e.y / 1e6,
+                             *rect) <= tr.GetWidth() / 2e6 + 0.01
+    # track/via vs track/via
+    if ka == "via" or kb == "via":
+        via, other = (ia, ib) if ka == "via" else (ib, ia)
+        p = via.GetPosition()
+        if other.GetClass() == "PCB_VIA":
+            q = other.GetPosition()
+            return math.hypot((p.x - q.x) / 1e6, (p.y - q.y) / 1e6) <= 0.6
+        s, e = other.GetStart(), other.GetEnd()
+        return seg_point_dist(s.x / 1e6, s.y / 1e6, e.x / 1e6, e.y / 1e6,
+                              p.x / 1e6, p.y / 1e6) <= 0.3 + other.GetWidth() / 2e6
+    if ia.GetLayer() != ib.GetLayer():
+        return False
+    sa, ea = ia.GetStart(), ia.GetEnd()
+    sb, eb = ib.GetStart(), ib.GetEnd()
+    tol = (ia.GetWidth() + ib.GetWidth()) / 4e6 + 0.01
+    return seg_seg_dist((sa.x / 1e6, sa.y / 1e6, ea.x / 1e6, ea.y / 1e6),
+                        (sb.x / 1e6, sb.y / 1e6, eb.x / 1e6, eb.y / 1e6)) <= tol
+
+
+def _bridge_fragments(board, net, pads_a, pads_b, target) -> bool:
+    netinfo = board.FindNet(net)
+    pairs = []
+    for pa in pads_a:
+        for pb in pads_b:
+            qa, qb = pa.GetPosition(), pb.GetPosition()
+            pairs.append((math.hypot((qa.x - qb.x) / 1e6, (qa.y - qb.y) / 1e6),
+                          pa, pb))
+    pairs.sort(key=lambda p: p[0])
+    for d, pa, pb in pairs[:40]:
+        qa, qb = pa.GetPosition(), pb.GetPosition()
+        ax, ay, bx, by = qa.x / 1e6, qa.y / 1e6, qb.x / 1e6, qb.y / 1e6
+        for layer in (pcbnew.B_Cu, pcbnew.F_Cu):
+            if (pa.GetAttribute() == pcbnew.PAD_ATTRIB_SMD
+                    and not pa.IsOnLayer(layer)):
+                continue
+            if (pb.GetAttribute() == pcbnew.PAD_ATTRIB_SMD
+                    and not pb.IsOnLayer(layer)):
+                continue
+            for w in (target(net), 0.25, 0.2):
+                for path in (((ax, ay, bx, by),),
+                             ((ax, ay, bx, ay), (bx, ay, bx, by)),
+                             ((ax, ay, ax, by), (ax, by, bx, by))):
+                    if all(_repair_clear(board, net, seg, w, layer)
+                           for seg in path):
+                        for seg in path:
+                            t = pcbnew.PCB_TRACK(board)
+                            t.SetStart(pcbnew.VECTOR2I(int(seg[0] * 1e6),
+                                                       int(seg[1] * 1e6)))
+                            t.SetEnd(pcbnew.VECTOR2I(int(seg[2] * 1e6),
+                                                     int(seg[3] * 1e6)))
+                            t.SetWidth(int(w * 1e6))
+                            t.SetLayer(layer)
+                            t.SetNet(netinfo)
+                            board.Add(t)
+                        print(f"  repaired split net {net}: "
+                              f"({ax:.2f},{ay:.2f})->({bx:.2f},{by:.2f}) "
+                              f"w{w} L{layer} [{len(path)} seg]")
+                        return True
+    return False
+
+
+def _repair_clear(board, net, seg, w, layer) -> bool:
+    x1, y1, x2, y2 = seg
+    need = w / 2 + 0.2
+    for fp in board.GetFootprints():
+        for pad in fp.Pads():
+            if pad.GetNetname() == net:
+                continue
+            if not pad.IsOnLayer(layer):
+                continue
+            bb = pad.GetBoundingBox()
+            if seg_rect_dist(x1, y1, x2, y2, bb.GetLeft() / 1e6, bb.GetTop() / 1e6,
+                             bb.GetRight() / 1e6, bb.GetBottom() / 1e6) < need:
+                return False
+    for t in board.GetTracks():
+        if t.GetNetname() == net:
+            continue
+        s, e = t.GetStart(), t.GetEnd()
+        if t.GetClass() == "PCB_VIA":
+            if (seg_point_dist(x1, y1, x2, y2, s.x / 1e6, s.y / 1e6)
+                    < need + t.GetDrillValue() / 2e6 + 0.15):
+                return False
+        elif t.GetLayer() == layer:
+            if (seg_seg_dist((x1, y1, x2, y2),
+                             (s.x / 1e6, s.y / 1e6, e.x / 1e6, e.y / 1e6))
+                    < need + t.GetWidth() / 2e6):
+                return False
+    return True
+
+
 def heal_zone_islands(board, filler, zones) -> None:
-    """LESSONS_LEARNED §12, automated: freerouting occasionally fences off a
-    part of the B.Cu GND fill (fill needs min_thickness + clearance where a
-    plain track only needs clearance). Detect islands, lay a short B.Cu GND
-    stitch track across the narrowest pinch between the island and the main
-    fill, refill, repeat. Aborts loudly if an island cannot be healed."""
+    """LESSONS_LEARNED §12, automated. Two mechanisms, tried in order:
+
+    1. PINCH STITCH (B.Cu): where the fill fragments only because it needs
+       min_thickness + clearance, a plain 0.3 mm GND track fits through the
+       pinch between island and main fill.
+    2. VIA BRIDGE (F.Cu): a fully FENCED island (surrounded by other-net
+       B.Cu copper) is unreachable on its own layer — drop a GND via inside
+       the island and run an F.Cu track (straight or L) to the nearest GND
+       through-hole pad of the main fragment.
+
+    Refill + recheck after each stitch; abort loudly if an island survives.
+    """
     gnd = board.FindNet("/GND")
 
     def outlines():
@@ -258,17 +455,16 @@ def heal_zone_islands(board, filler, zones) -> None:
             pts = [(ch.CPoint(k).x / 1e6, ch.CPoint(k).y / 1e6)
                    for k in range(ch.PointCount())]
             bb = ch.BBox()
-            outs.append((bb.GetWidth() / 1e6 * bb.GetHeight() / 1e6, pts))
+            outs.append((bb.GetWidth() / 1e6 * bb.GetHeight() / 1e6, pts, ch))
         return sorted(outs, key=lambda o: -o[0])
 
-    def clear_of_others(x1, y1, x2, y2, w) -> bool:
+    def clear_of_others(x1, y1, x2, y2, w, layer) -> bool:
         need = w / 2 + 0.2
         for fp in board.GetFootprints():
             for pad in fp.Pads():
                 if pad.GetNetname() == "/GND":
                     continue
-                if (pad.GetAttribute() == pcbnew.PAD_ATTRIB_SMD
-                        and pad.GetLayer() != pcbnew.B_Cu):
+                if not pad.IsOnLayer(layer):
                     continue
                 bb = pad.GetBoundingBox()
                 if seg_rect_dist(x1, y1, x2, y2, bb.GetLeft() / 1e6, bb.GetTop() / 1e6,
@@ -282,45 +478,162 @@ def heal_zone_islands(board, filler, zones) -> None:
                 if (seg_point_dist(x1, y1, x2, y2, s.x / 1e6, s.y / 1e6)
                         < need + t.GetDrillValue() / 2e6 + 0.15):
                     return False
-            elif t.GetLayer() == pcbnew.B_Cu:
+            elif t.GetLayer() == layer:
                 if (seg_seg_dist((x1, y1, x2, y2),
                                  (s.x / 1e6, s.y / 1e6, e.x / 1e6, e.y / 1e6))
                         < need + t.GetWidth() / 2e6):
                     return False
         return True
 
-    for attempt in range(8):
-        outs = outlines()
-        if len(outs) <= 1:
-            if attempt:
-                print(f"  zone islands healed ({attempt} stitch(es))")
-            return
-        main_pts = outs[0][1]
-        island_pts = outs[1][1]
+    def drill_positions():
+        out = []
+        for fp in board.GetFootprints():
+            for pad in fp.Pads():
+                dr = pad.GetDrillSize()
+                if dr.x > 0:
+                    p = pad.GetPosition()
+                    out.append((p.x / 1e6, p.y / 1e6, dr.x / 2e6))
+        for t in board.GetTracks():
+            if t.GetClass() == "PCB_VIA":
+                p = t.GetPosition()
+                out.append((p.x / 1e6, p.y / 1e6, t.GetDrillValue() / 2e6))
+        return out
+
+    def add_track(x1, y1, x2, y2, layer):
+        t = pcbnew.PCB_TRACK(board)
+        t.SetStart(pcbnew.VECTOR2I(int(x1 * 1e6), int(y1 * 1e6)))
+        t.SetEnd(pcbnew.VECTOR2I(int(x2 * 1e6), int(y2 * 1e6)))
+        t.SetWidth(int(0.3 * 1e6))
+        t.SetLayer(layer)
+        t.SetNet(gnd)
+        board.Add(t)
+
+    def try_pinch(island_pts, main_pts) -> bool:
         pairs = sorted(((math.hypot(ax - bx, ay - by), ax, ay, bx, by)
                         for ax, ay in island_pts for bx, by in main_pts),
                        key=lambda p: p[0])
-        placed = False
         for d, ax, ay, bx, by in pairs[:400]:
             if d > 10.0:
                 break
-            if not clear_of_others(ax, ay, bx, by, 0.3):
+            if clear_of_others(ax, ay, bx, by, 0.3, pcbnew.B_Cu):
+                add_track(ax, ay, bx, by, pcbnew.B_Cu)
+                print(f"  pinch-stitched island: ({ax:.2f},{ay:.2f})->({bx:.2f},{by:.2f})")
+                return True
+        return False
+
+    def try_via_bridge(island_chain, island_pts, main_chain) -> bool:
+        drills = drill_positions()
+        # source points, cheapest first: (x, y, needs_via)
+        # 1. THT GND pads already inside the island — their F.Cu annulus can
+        #    take a top-side track directly, no via needed;
+        spots = []
+        for fp in board.GetFootprints():
+            for pad in fp.Pads():
+                if (pad.GetNetname() == "/GND"
+                        and pad.GetAttribute() != pcbnew.PAD_ATTRIB_SMD):
+                    p = pad.GetPosition()
+                    if island_chain.PointInside(p):
+                        spots.append((p.x / 1e6, p.y / 1e6, False))
+        # 2. free via spots: grid over the island, inside the fill, clear of
+        #    other-net copper on both layers and of every drill
+        xs = [p[0] for p in island_pts]
+        ys = [p[1] for p in island_pts]
+        step = 0.25
+        gx = min(xs)
+        while gx <= max(xs):
+            gy = min(ys)
+            while gy <= max(ys):
+                pt = pcbnew.VECTOR2I(int(gx * 1e6), int(gy * 1e6))
+                if (island_chain.PointInside(pt)
+                        and clear_of_others(gx, gy, gx, gy, 0.6, pcbnew.B_Cu)
+                        and clear_of_others(gx, gy, gx, gy, 0.6, pcbnew.F_Cu)
+                        and all(math.hypot(gx - dx, gy - dy) >= r + 0.65
+                                for dx, dy, r in drills)):
+                    spots.append((gx, gy, True))
+                gy += step
+            gx += step
+        if not spots:
+            return False
+        # targets: GND through-hole pads AND GND vias (earlier bridges count)
+        # whose centre lies in the MAIN fill
+        targets = []
+        for fp in board.GetFootprints():
+            for pad in fp.Pads():
+                if (pad.GetNetname() == "/GND"
+                        and pad.GetAttribute() != pcbnew.PAD_ATTRIB_SMD):
+                    p = pad.GetPosition()
+                    if main_chain.PointInside(p):
+                        targets.append((p.x / 1e6, p.y / 1e6))
+        for t in board.GetTracks():
+            if t.GetClass() == "PCB_VIA" and t.GetNetname() == "/GND":
+                p = t.GetPosition()
+                if main_chain.PointInside(p):
+                    targets.append((p.x / 1e6, p.y / 1e6))
+        cands = sorted(((math.hypot(vx - tx, vy - ty), needs_via, vx, vy, tx, ty)
+                        for vx, vy, needs_via in spots for tx, ty in targets),
+                       key=lambda c: (c[1], c[0]))   # pad sources first
+        for d, needs_via, vx, vy, tx, ty in cands[:600]:
+            if d > 25.0:
                 continue
-            t = pcbnew.PCB_TRACK(board)
-            t.SetStart(pcbnew.VECTOR2I(int(ax * 1e6), int(ay * 1e6)))
-            t.SetEnd(pcbnew.VECTOR2I(int(bx * 1e6), int(by * 1e6)))
-            t.SetWidth(int(0.3 * 1e6))
-            t.SetLayer(pcbnew.B_Cu)
-            t.SetNet(gnd)
-            board.Add(t)
+            for path in (((vx, vy, tx, ty),),
+                         ((vx, vy, tx, vy), (tx, vy, tx, ty)),
+                         ((vx, vy, vx, ty), (vx, ty, tx, ty))):
+                if all(clear_of_others(*seg, 0.3, pcbnew.F_Cu) for seg in path):
+                    if needs_via:
+                        via = pcbnew.PCB_VIA(board)
+                        via.SetPosition(pcbnew.VECTOR2I(int(vx * 1e6), int(vy * 1e6)))
+                        via.SetDrill(int(0.3 * 1e6))
+                        via.SetWidth(int(0.6 * 1e6))
+                        via.SetNet(gnd)
+                        board.Add(via)
+                    for seg in path:
+                        add_track(*seg, pcbnew.F_Cu)
+                    print(f"  {'via' if needs_via else 'pad'}-bridged island: "
+                          f"({vx:.2f},{vy:.2f}) -> ({tx:.2f},{ty:.2f}) "
+                          f"[{len(path)} seg]")
+                    return True
+        return False
+
+    def unconnected() -> int:
+        board.BuildConnectivity()
+        try:
+            return board.GetConnectivity().GetUnconnectedCount(True)
+        except TypeError:
+            return board.GetConnectivity().GetUnconnectedCount()
+
+    bridged: set = set()
+    for attempt in range(8):
+        if unconnected() == 0:
+            if attempt:
+                print(f"  zone islands healed ({attempt} bridge(s))")
+            return
+        outs = outlines()
+        _, main_pts, main_chain = outs[0]
+        target_isles = [(pts, ch) for _, pts, ch in outs[1:]
+                        if _bbox_key(pts) not in bridged]
+        if not target_isles:
+            # the remaining ratsnest is NOT a zone island (e.g. a net
+            # freerouting genuinely failed to route) — that is the DRC
+            # gate's job to report, not ours to mask
+            print(f"  [WARN] {unconnected()} unconnected item(s) remain that "
+                  f"are not healable zone islands — the DRC gate will report")
+            return
+        island_pts, island_chain = target_isles[0]
+        bridged.add(_bbox_key(island_pts))
+        if try_pinch(island_pts, main_pts) or \
+                try_via_bridge(island_chain, island_pts, main_chain):
             filler.Fill(zones)
-            print(f"  stitched zone island: ({ax:.2f},{ay:.2f})->({bx:.2f},{by:.2f})")
-            placed = True
-            break
-        if not placed:
-            raise SystemExit(f"zone island could not be healed "
-                             f"({len(outs)} fill fragments remain)")
+            continue
+        raise SystemExit("zone island could not be healed "
+                         "(no clear pinch stitch, pad bridge or via bridge)")
     raise SystemExit("zone island healing did not converge in 8 attempts")
+
+
+def _bbox_key(pts) -> tuple:
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    return (round(min(xs), 1), round(min(ys), 1),
+            round(max(xs), 1), round(max(ys), 1))
 
 
 if __name__ == "__main__":

@@ -10,54 +10,56 @@
 components:
 
   # ────────────────────────────────────────────────────────────────────
-  # Arduino Nano (ATmega328P) — TWO 1x15 sockets. Canonical frame: viewed
-  # from top with the mini-USB UP: left column pins 1-15 (TX1 top),
-  # right column pins 16-30 (D13 bottom, VIN top).
+  # Arduino Nano (ATmega328P) — TWO 1x15 sockets. PHYSICAL truth
+  # (v0.2.0 / ADR-015, verified on the official 2008 Nano V2.2 photo and
+  # clone boards): viewed from top with the mini-USB UP, the LEFT column
+  # top→bottom is D13,3V3,AREF,A0..A7,5V,RST,GND,VIN and the RIGHT
+  # column top→bottom is D12,D11..D2,GND,RST,RX0,TX1 — i.e. D12/D13 at
+  # the USB end, TX1/VIN at the ICSP end.
   # On this board the Nano mounts on TOP with USB facing WEST (-X):
-  # U1 = pins 1-15 (south row, TX1 west), U2 = pins 16-30 (north row,
-  # D13 east). chirality_triad guards against the mirror.
+  # U1 = south row (pin1 west = D13), U2 = north row (pin1 east = TX1).
   # ────────────────────────────────────────────────────────────────────
   NANO:
     refs: [U1, U2]
     mount_side: top
-    source: "Arduino Nano V3 pinout (official): 1..15 TX1,RX0,RST,GND,D2..D12; 16..30 D13,3V3,AREF,A0..A7,5V,RST,GND,VIN"
+    source: "Official Arduino Nano V2.2/V3 board: USB end flanked by D12 (TX1 column) and D13 (VIN column); commons.wikimedia.org File:ArduinoNanoTop.jpg + File:Arduino Nano.jpg"
     pins:
-      "U1.1":  {func: TX1,  net: null}
-      "U1.2":  {func: RX0,  net: null}
-      "U1.3":  {func: RST,  net: null}
-      "U1.4":  {func: GND,  net: /GND}
-      "U1.5":  {func: D2,   net: /LED1}
-      "U1.6":  {func: D3,   net: /LED2}
-      "U1.7":  {func: D4,   net: /LED3}
-      "U1.8":  {func: D5,   net: /LED4}
-      "U1.9":  {func: D6,   net: /LED5}
-      "U1.10": {func: D7,   net: /LED6}
-      "U1.11": {func: D8,   net: /LED7}
-      "U1.12": {func: D9,   net: /LED8}
-      "U1.13": {func: D10,  net: /LED9}
-      "U1.14": {func: D11,  net: /LED10}
-      "U1.15": {func: D12,  net: /SENS_PLUS}
-      "U2.1":  {func: D13,  net: /BUZZER}
-      "U2.2":  {func: 3V3,  net: null}
-      "U2.3":  {func: AREF, net: null}
-      "U2.4":  {func: A0,   net: /KEY1}
-      "U2.5":  {func: A1,   net: /KEY2}
-      "U2.6":  {func: A2,   net: /KEY3}
-      "U2.7":  {func: A3,   net: /KEY4}
-      "U2.8":  {func: A4,   net: /KEY5}
-      "U2.9":  {func: A5,   net: /KEY6}
-      "U2.10": {func: A6,   net: /KEY7}
-      "U2.11": {func: A7,   net: /SENS_MINUS}
-      "U2.12": {func: 5V,   net: /+5V}
-      "U2.13": {func: RST,  net: null}
-      "U2.14": {func: GND,  net: /GND}
-      "U2.15": {func: VIN,  net: null}   # rail feeds the 5V pin, not VIN
+      "U1.1":  {func: D13,  net: /BUZZER}
+      "U1.2":  {func: 3V3,  net: null}
+      "U1.3":  {func: AREF, net: null}
+      "U1.4":  {func: A0,   net: /KEY1}
+      "U1.5":  {func: A1,   net: /KEY2}
+      "U1.6":  {func: A2,   net: /KEY3}
+      "U1.7":  {func: A3,   net: /KEY4}
+      "U1.8":  {func: A4,   net: /KEY5}
+      "U1.9":  {func: A5,   net: /KEY6}
+      "U1.10": {func: A6,   net: /KEY7}
+      "U1.11": {func: A7,   net: /SENS_MINUS}
+      "U1.12": {func: 5V,   net: /+5V}
+      "U1.13": {func: RST,  net: null}
+      "U1.14": {func: GND,  net: /GND}
+      "U1.15": {func: VIN,  net: null}   # rail feeds the 5V pin, not VIN
+      "U2.1":  {func: TX1,  net: null}
+      "U2.2":  {func: RX0,  net: null}
+      "U2.3":  {func: RST,  net: null}
+      "U2.4":  {func: GND,  net: /GND}
+      "U2.5":  {func: D2,   net: /LED1}
+      "U2.6":  {func: D3,   net: /LED2}
+      "U2.7":  {func: D4,   net: /LED3}
+      "U2.8":  {func: D5,   net: /LED4}
+      "U2.9":  {func: D6,   net: /LED5}
+      "U2.10": {func: D7,   net: /LED6}
+      "U2.11": {func: D8,   net: /LED7}
+      "U2.12": {func: D9,   net: /LED8}
+      "U2.13": {func: D10,  net: /LED9}
+      "U2.14": {func: D11,  net: /LED10}
+      "U2.15": {func: D12,  net: /SENS_PLUS}
     chirality_triad:
-      # canonical (+Y up, USB up): left column x=-1, right column x=+1,
-      # USB-end pins at y=+7, far-end pins at y=-7.
-      - {at: "U1.1",  func: TX1, xy: [-1,  7]}
-      - {at: "U2.15", func: VIN, xy: [ 1,  7]}
-      - {at: "U1.15", func: D12, xy: [-1, -7]}
+      # canonical (+Y up, USB up): D13/VIN column at x=-1, D12/TX1 column
+      # at x=+1; USB-end pins y=+7, ICSP-end pins y=-7.
+      - {at: "U1.1",  func: D13, xy: [-1,  7]}
+      - {at: "U1.15", func: VIN, xy: [-1, -7]}
+      - {at: "U2.15", func: D12, xy: [ 1,  7]}
 
   # ────────────────────────────────────────────────────────────────────
   # Service-edge connectors
@@ -65,16 +67,16 @@ components:
   KEYS_HEADER:
     refs: [J2]
     mount_side: top
-    source: "docs/NETLIST.md — pin1=GND (west, above A7), then KEY7..KEY1"
+    source: "docs/NETLIST.md — KEY1..KEY7 west→east under A0..A6, then GND clip"
     pins:
-      "J2.1": {func: GND_CLIP, net: /GND}
-      "J2.2": {func: KEY7, net: /KEY7}
-      "J2.3": {func: KEY6, net: /KEY6}
-      "J2.4": {func: KEY5, net: /KEY5}
-      "J2.5": {func: KEY4, net: /KEY4}
-      "J2.6": {func: KEY3, net: /KEY3}
-      "J2.7": {func: KEY2, net: /KEY2}
-      "J2.8": {func: KEY1, net: /KEY1}
+      "J2.1": {func: KEY1, net: /KEY1}
+      "J2.2": {func: KEY2, net: /KEY2}
+      "J2.3": {func: KEY3, net: /KEY3}
+      "J2.4": {func: KEY4, net: /KEY4}
+      "J2.5": {func: KEY5, net: /KEY5}
+      "J2.6": {func: KEY6, net: /KEY6}
+      "J2.7": {func: KEY7, net: /KEY7}
+      "J2.8": {func: GND_CLIP, net: /GND}
 
   POWER_IN:
     refs: [J1]
@@ -145,36 +147,37 @@ components:
 
   # ────────────────────────────────────────────────────────────────────
   # Keyboard pull-ups (220R) + SENS− pull-up (10k). All on B.Cu.
-  # pad1 = south = rail (+5V), pad2 = north = the pin node (verified in
-  # the built board; the builder assigns these GEOMETRICALLY).
+  # v0.2.0: pad1 = south = the pin node (A row is the south row now),
+  # pad2 = north = +5V rail (verified in the built board; the builder
+  # assigns these GEOMETRICALLY).
   # ────────────────────────────────────────────────────────────────────
   KEY_PULLUPS:
     refs: [R1, R2, R3, R4, R5, R6, R7]
     mount_side: bottom
     source: "v5 HARDWARE.md — 220R pull-up per key, pin->R->+5V"
     pins:
-      "R1.1": {func: rail, net: /+5V}
-      "R1.2": {func: pin,  net: /KEY1}
-      "R2.1": {func: rail, net: /+5V}
-      "R2.2": {func: pin,  net: /KEY2}
-      "R3.1": {func: rail, net: /+5V}
-      "R3.2": {func: pin,  net: /KEY3}
-      "R4.1": {func: rail, net: /+5V}
-      "R4.2": {func: pin,  net: /KEY4}
-      "R5.1": {func: rail, net: /+5V}
-      "R5.2": {func: pin,  net: /KEY5}
-      "R6.1": {func: rail, net: /+5V}
-      "R6.2": {func: pin,  net: /KEY6}
-      "R7.1": {func: rail, net: /+5V}
-      "R7.2": {func: pin,  net: /KEY7}
+      "R1.1": {func: pin,  net: /KEY1}
+      "R1.2": {func: rail, net: /+5V}
+      "R2.1": {func: pin,  net: /KEY2}
+      "R2.2": {func: rail, net: /+5V}
+      "R3.1": {func: pin,  net: /KEY3}
+      "R3.2": {func: rail, net: /+5V}
+      "R4.1": {func: pin,  net: /KEY4}
+      "R4.2": {func: rail, net: /+5V}
+      "R5.1": {func: pin,  net: /KEY5}
+      "R5.2": {func: rail, net: /+5V}
+      "R6.1": {func: pin,  net: /KEY6}
+      "R6.2": {func: rail, net: /+5V}
+      "R7.1": {func: pin,  net: /KEY7}
+      "R7.2": {func: rail, net: /+5V}
 
   SENS_MINUS_PULLUP:
     refs: [R18]
     mount_side: bottom
     source: "v5 HARDWARE.md — A7 has no internal pull-up: external 10k to +5V"
     pins:
-      "R18.1": {func: rail, net: /+5V}
-      "R18.2": {func: pin,  net: /SENS_MINUS}
+      "R18.1": {func: pin,  net: /SENS_MINUS}
+      "R18.2": {func: rail, net: /+5V}
 
   # ────────────────────────────────────────────────────────────────────
   # LED bar: LED n anode <- pin n+1, cathode -> 220R -> GND

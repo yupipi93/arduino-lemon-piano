@@ -2,6 +2,30 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-30 (pcb/) — v0.2.0: Nano-orientation erratum fixed + full render suite
+
+The photo-overlay work caught a real v0.1.0 bug (exactly what that
+verification exists for): the socket net maps assumed TX1/VIN at the
+mini-USB end, but the REAL Nano has **D12/D13 at the USB end** (verified
+on the official 2008 V2.2 board photo + clones). v0.1.0 would only work
+inserted USB-east — where the buzzer blocks the plug.
+
+- **v0.2.0** keeps the mechanics (USB corridor west) and fixes the maps:
+  keys header now on the SOUTH edge (`1..7 G` under A0–A6), LED bar on
+  the NORTH edge ascending east→west, pull-ups moved with their pins.
+  All gates green again: DRC 0/0/0, ERC 0/0, anti-mirror/holes/geometry
+  PASS. Fab zip: `pcb/releases/v0.2.0/`. The v0.1.0 release folder is
+  renamed `v0.1.0-ERRATUM-do-not-fab`. Full story: `pcb/docs/DECISIONS.md`
+  ADR-015..018.
+- **Render suite** via the upgraded pcb-designer service (v0.3.0, now
+  with the KiCad 3D model packages): per side `bare`, `dim` (MT1-style
+  2D plots), `realistic`, `realistic-dim`, and a **photo overlay** with a
+  real Arduino Nano image (Wikimedia Commons, CC BY 2.0) composited
+  server-side — `pcb/renders/` + `pcb/overlays/`.
+- Pipeline self-healing upgrades in `pcb/tools/post_route.py` (zone
+  island bridging by connectivity, split-net repair, exact clearance
+  geometry, `IsOnLayer` fix) — ADR-018.
+
 ## 2026-07-30 (pcb/) — Fabricable V5.5 PCB, release v0.1.0
 
 New top-level `pcb/` folder: a 2-layer 100 × 30 mm KiCad-9 board that
