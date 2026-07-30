@@ -266,3 +266,86 @@ Nano, natively in the board pose (USB west, D12..TX1 / D13..VIN rows).
 Measured 57.95 px/mm (row spacing and pin span agree to <0.2%);
 image_rotation_deg=90 under the engine's −pcb_rot+img_rot convention
 (net rotation 0). Provenance + numbers in overlays/modules.yaml.
+
+## ADR-024 — v0.4.0: 120 × 40 mm frame and a full floor-plan remake
+
+The user asked for a complete remake at 120 × 40 mm with a specific
+distribution: Nano in the middle, keys header centred, the whole 5 V-in
+filter on the left, buttons on the right centred on the horizontal
+mid-line, a parallel 2-pin header per button, buzzer wherever it fits.
+Frame: x 90..210, y 100..140 (MT1 coordinate style), centre (150, 120).
+Anchor dividers move to x = 100 / 200; the four M2 holes go to the corners
+at 5 mm insets (95/205 × 105/135), still mirror-symmetric about both axes.
+
+Consequences of centring the Nano that drove the rest of the plan:
+
+1. The mini-USB corridor is no longer a 14 mm sliver at the west edge — it
+   is the whole 42 mm strip west of the socket field. Keeping all of it
+   clear would waste a third of the board, so the corridor is redefined as
+   the **band a cable actually needs**: x < 130.4 (socket courtyard west
+   edge), y 113..127 (±7 mm about the USB centreline). That band is
+   completely part-free; `geometry_gate` checks it against real courtyard
+   boxes rather than origin coordinates.
+2. The filter therefore **folds around** the corridor instead of sitting in
+   one strip: VIN section on the south strip (J1 → D1 → D2, all short
+   parts), VRAW/+5V section on the north strip (C1 → L1), and the +5 V
+   reservoir C3 at the south-strip east end. Three Ø8 mm radial parts do
+   not fit in one 27 mm strip (26.76 mm of courtyard in 26.84 mm of space
+   — zero clearance), which is what forced the split.
+3. **D2 is placed at rot = 180** so pad 2 (anode, VIN) lands WEST of pad 1
+   (cathode, VRAW) and the chain reads J1 → D1 → D2 west→east with no
+   doubling back. First use of rot=180 on this board; `EXPECTED_PADS` locks
+   the convention (pad 2 at x − 5.08).
+4. The LED bar is centred over the **D2..D11 pin span** (midpoint x =
+   146.2) rather than over the board, so the fan legs stay short at both
+   ends while keeping the non-crossing east→west order from ADR-015.
+5. `+5V` now runs ~40 mm from the choke to the Nano 5 V pin because the
+   user requires the whole filter on the left. At 0.5 mm/1 oz and 200 mA
+   worst case that is ≈ 50 mΩ / 10 mV — irrelevant next to the filter's
+   own drop. Accepted deliberately over splitting the filter.
+
+## ADR-025 — 5 V entry on a 2-pin 2.54 mm header (supersedes ADR-003)
+
+The user asked for the 5 V input "as 2 pines". J1 becomes
+`PinHeader_1x02_P2.54mm_Vertical`; pad 1 = +, pad 2 = GND, unchanged nets.
+This reverses ADR-003's screw-terminal choice: the header is what the user
+wants, it costs 33 mm² instead of 61 mm² (the Phoenix block's courtyard is
+11.2 × 10.9 mm), and the v5.5 BOM's "chop a USB-A cable" pigtail terminates
+in exactly this kind of DuPont pair. Trade-off accepted: a header has no
+strain relief, so the input wire wants a zip-tie to the board if the piano
+gets carried around.
+
+## ADR-026 — A parallel 2-pin header per SENS button
+
+User spec: "put for each button a parallel 2 pins for connect a external
+buton too". J3 sits on `/SENS_PLUS` + `/GND` (parallel to SW1) and J4 on
+`/SENS_MINUS` + `/GND` (parallel to SW2). Both are wired to the same two
+nodes as their button, so shorting a header is electrically identical to
+pressing the on-board tact switch — no jumper to cut, no mode select. Each
+header sits directly EAST of its button (1.16 mm courtyard gap) so the
+pairing is obvious without a wiring diagram; silk reads `SENS+`/`EXT+` and
+`SENS-`/`EXT-`. Both buttons keep their internal-pull-up / R18 arrangement,
+so an external button needs no extra parts.
+
+## ADR-027 — Buzzer in the NE corner; long /BUZZER trace accepted
+
+"Place the buzzer as you can". The Buzzer_12x9.5RM7.6 courtyard is
+12.56 × 12.56 mm and the east block has 28 mm of width for the buzzer, the
+button column (9.56) and the external headers (6.14) — the three cannot
+share x-lanes, so the buzzer takes its own y-lane in the north-east corner
+(y 100.5..113.06) with the buttons and headers below it. Cost: D13 is at
+the WEST end of the south socket row, so `/BUZZER` runs ~58 mm across the
+board. It carries a ~4 kHz square wave into a piezo — no current, no
+timing sensitivity, and it runs on F.Cu over the solid B.Cu GND plane, so
+the loop area stays small. The alternative (buzzer west, near D13) would
+have to displace the filter the user asked to keep on the left.
+
+## ADR-028 — Silk: title block moves into the USB corridor
+
+With the Nano centred there is no free strip along the south edge for the
+title any more (the keys header owns the middle of it). The part-free USB
+corridor is the largest open front-side area on the board, so
+`LEMON PIANO V5.5` + `pcb vX.Y.Z` go there (F.SilkS at y 118 / 121.5,
+B.SilkS at 123.5 / 125.5) — visible, and it stops the corridor reading as
+an unfinished gap. The `KEYS` word moved from west of the header to EAST of
+it, because the C3 reservoir now occupies the south-west.

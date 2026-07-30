@@ -7,17 +7,31 @@
 # tools/wiring_diagrams.py). Netlist ground truth: pcb/docs/NETLIST.md.
 # Placement rationale: pcb/docs/DECISIONS.md.
 #
-# Board frame: 100 × 30 mm, MT1 coordinate style (x 90..190, y 100..130).
-# Nano socketed (2×15 rows), mini-USB faces the WEST edge. v0.2.0 fixed the
-# Nano orientation erratum (ADR-015): the REAL Nano has D12/D13 at the USB
-# end, so the analog pins land on the SOUTH row → lemon-key header on the
-# SOUTH service edge, LED bar (D2..D11, north row) on the NORTH service
-# edge; SENS buttons south-east; power entry + filter in the EAST block.
+# Board frame: 120 × 40 mm (v0.4.0 full remake, ADR-024), MT1 coordinate
+# style (x 90..210, y 100..140; centre 150,120).
+#
+# v0.4.0 floor plan (user spec 2026-07-30):
+#   - Nano socket CENTERED on the board (pin field 132.22..167.78 about
+#     x=150, rows ±7.62 about y=120), mini-USB still facing WEST (ADR-002),
+#     row maps per the real Nano (ADR-015: D12/D13 at the USB end).
+#   - Power-entry filter entirely in the WEST block, folded around the
+#     USB-cable corridor (y 113..127 kept free of parts): VIN section on the
+#     south strip J1 → D1 → D2, VRAW/+5V section on the north strip C1 → L1,
+#     +5V reservoir C3 at the south-strip east end. Ceramics on B.Cu.
+#   - 5 V input is a 2-pin 2.54 mm header (J1, ADR-025), not a screw block.
+#   - Lemon-key header CENTERED on the SOUTH edge (J2 pins 141.11..158.89,
+#     centre exactly x=150).
+#   - LED bar on the NORTH edge, ascending east→west, centred over the
+#     D2..D11 pin span so the fan stays short and non-crossing.
+#   - SENS± buttons in the EAST block, the PAIR centred on y=120, each with
+#     a parallel 2-pin external-button header (J3/J4, ADR-026).
+#   - Buzzer in the NE corner (ADR-027).
+# ----------------------------------------------------------------------------
 
 project:
   name: lemon-piano
   full_name: "Lemon Piano V5.5 Board"
-  version: v0.3.0
+  version: v0.4.0
   vendor: "Lemon Piano"
   kicad_project_dir: pcb/kicad
   kicad_pcb_file: lemon-piano.kicad_pcb
@@ -28,91 +42,97 @@ project:
   releases_output_dir: pcb/releases
 
 # ----------------------------------------------------------------------------
-# Board outline + anchor dividers. Anchor zones are much narrower than MT1's:
-# one M2 hole per short edge, mirror-symmetric about x=140.
+# Board outline + anchor dividers. Anchor zones (x<100, x>200) hold only the
+# M2 holes; every other footprint stays between the dividers.
 # ----------------------------------------------------------------------------
 geometry:
   pcb:
     x0:  90.0
     y0: 100.0
-    x1: 190.0
-    y1: 130.0
+    x1: 210.0
+    y1: 140.0
   anchors:
     left_x:  100.0
-    right_x: 180.0
+    right_x: 200.0
 
 # ----------------------------------------------------------------------------
 # PLACEMENTS — [x_mm, y_mm, rot_deg, layer], footprint-origin coordinates.
 # rot semantics (KiCad, verified empirically): rot=90 maps local +Y → +X
-# (pin rows run EAST from pin 1); rot=270 runs WEST.
+# (pin rows run EAST from pin 1); rot=270 runs WEST; rot=180 mirrors a
+# horizontal 2-pad part (pad 2 lands WEST of pad 1).
 # ----------------------------------------------------------------------------
 placements:
-  # ── Mounting holes: TWO per short edge (v0.3.0), symmetric about x=140
-  #    and y=115 — same 20 mm vertical pattern as MT1's anchor pairs ──────
+  # ── Mounting holes: TWO per short edge, 5 mm insets, symmetric about
+  #    x=150 and y=120 ─────────────────────────────────────────────────────
   H1: [95.0, 105.0, 0, F.Cu]
-  H2: [185.0, 105.0, 0, F.Cu]
-  H3: [95.0, 125.0, 0, F.Cu]
-  H4: [185.0, 125.0, 0, F.Cu]
+  H2: [205.0, 105.0, 0, F.Cu]
+  H3: [95.0, 135.0, 0, F.Cu]
+  H4: [205.0, 135.0, 0, F.Cu]
 
-  # ── Nano socket rows (USB faces WEST edge) ───────────────────────────────
-  U1: [104.0, 122.62,  90, F.Cu]   # south row: D13(west)..VIN(east)
-  U2: [139.56, 107.38, 270, F.Cu]  # north row: TX1(east)..D12(west)
+  # ── Nano socket rows, CENTERED. USB faces the WEST edge ─────────────────
+  U1: [132.22, 127.62,  90, F.Cu]   # south row: D13(west)..VIN(east)
+  U2: [167.78, 112.38, 270, F.Cu]   # north row: TX1(east)..D12(west)
 
-  # ── Service-edge connectors ──────────────────────────────────────────────
-  J2: [111.62, 127.0, 90, F.Cu]    # keys header under A0..A7: K1..K7 then GND
-  J1: [170.0, 105.9, 0, F.Cu]      # 5V IN screw terminal, wire entry NORTH
+  # ── Lemon-key header: CENTERED on the south edge (pins 141.11..158.89) ──
+  J2: [141.11, 137.0, 90, F.Cu]
 
-  # ── Power-entry filter (east block, flow J1 → D1 → D2 → C1‖C2 → L1 → C3‖C4)
-  D1: [159.3, 103.8, 0, F.Cu]      # P6KE6.8A TVS (vertical), K=VIN A=GND
-  D2: [150.0, 103.8, 0, F.Cu]      # 1N5817 (vertical), K=VRAW A=VIN
-  C1: [159.5, 116.0, 0, F.Cu]      # 470u input reservoir
-  L1: [170.0, 116.0, 0, F.Cu]      # 100uH choke
-  C3: [171.3, 125.4, 0, F.Cu]      # 470u output reservoir
-  C2: [159.5, 111.5, 0, B.Cu]      # 100n input ceramic (bottom)
-  C4: [170.0, 121.5, 0, B.Cu]      # 100n output ceramic (bottom)
+  # ── Power entry + filter, WEST block ────────────────────────────────────
+  J1: [102.3, 133.0, 90, F.Cu]     # 5V IN, 2-pin header: pad1 (+), pad2 (−)
+  D1: [109.2, 133.0, 0, F.Cu]      # P6KE6.8A TVS (vertical), K=VIN A=GND
+  D2: [124.5, 133.0, 180, F.Cu]    # 1N5817: pad2 (A,VIN) west, pad1 (K,VRAW) east
+  C1: [104.0, 106.0, 0, F.Cu]      # 470u input reservoir (VRAW)
+  L1: [115.0, 106.0, 0, F.Cu]      # 100uH choke: pad1 VRAW, pad2 +5V
+  C3: [131.0, 134.5, 0, F.Cu]      # 470u output reservoir (+5V)
+  C2: [105.75, 111.5, 0, B.Cu]     # 100n input ceramic (bottom, under C1)
+  C4: [132.75, 131.0, 0, B.Cu]     # 100n output ceramic (bottom, by C3)
 
-  # ── UI ───────────────────────────────────────────────────────────────────
-  BUZ1: [146.5, 114.2, 0, F.Cu]    # passive buzzer, pad1(+)=D13 net
-  SW1: [149.7, 123.4, 0, F.Cu]     # SENS + (D12)
-  SW2: [159.9, 123.4, 0, F.Cu]     # SENS − (A7)
+  # ── UI, EAST block. The SW1/SW2 pair is centred on y=120; J3/J4 are the
+  #    parallel external-button headers (ADR-026) ─────────────────────────
+  SW1: [175.0, 113.47, 0, F.Cu]    # SENS + (D12)
+  SW2: [175.0, 122.01, 0, F.Cu]    # SENS − (A7)
+  J3: [186.0, 117.97, 90, F.Cu]    # SENS+ external button (parallel to SW1)
+  J4: [186.0, 126.51, 90, F.Cu]    # SENS− external button (parallel to SW2)
+  BUZ1: [188.0, 106.78, 0, F.Cu]   # passive buzzer, pad1(+)=D13 net
 
-  # ── LED bar D3..D12 = LED1..LED10, NORTH strip, ascending run E→W ────────
+  # ── LED bar D3..D12 = LED1..LED10, NORTH strip, ascending run E→W ───────
   # (D2..D11 sit on the north row descending west→east, so a non-crossing
   # fan needs LED1 at the east end — ADR-015). origin = cathode pad;
-  # rot=270 puts the anode 2.54 south (toward the D2..D11 pins).
-  D3:  [145.3, 101.65, 270, F.Cu]
-  D4:  [140.7, 101.65, 270, F.Cu]
-  D5:  [136.1, 101.65, 270, F.Cu]
-  D6:  [131.5, 101.65, 270, F.Cu]
-  D7:  [126.9, 101.65, 270, F.Cu]
-  D8:  [122.3, 101.65, 270, F.Cu]
-  D9:  [117.7, 101.65, 270, F.Cu]
-  D10: [113.1, 101.65, 270, F.Cu]
-  D11: [108.5, 101.65, 270, F.Cu]
-  D12: [103.9, 101.65, 270, F.Cu]
+  # rot=270 puts the anode 2.54 south (toward the D2..D11 pins). The bar is
+  # centred over the D2..D11 pin span (midpoint x=146.2) so the fan legs
+  # stay short on both ends.
+  D3:  [166.9, 101.65, 270, F.Cu]
+  D4:  [162.3, 101.65, 270, F.Cu]
+  D5:  [157.7, 101.65, 270, F.Cu]
+  D6:  [153.1, 101.65, 270, F.Cu]
+  D7:  [148.5, 101.65, 270, F.Cu]
+  D8:  [143.9, 101.65, 270, F.Cu]
+  D9:  [139.3, 101.65, 270, F.Cu]
+  D10: [134.7, 101.65, 270, F.Cu]
+  D11: [130.1, 101.65, 270, F.Cu]
+  D12: [125.5, 101.65, 270, F.Cu]
 
-  # ── LED series resistors (bottom, offset +2.3 east of each LED) ──────────
-  R8:  [147.6, 102.97, 90, B.Cu]
-  R9:  [143.0, 102.97, 90, B.Cu]
-  R10: [138.4, 102.97, 90, B.Cu]
-  R11: [133.8, 102.97, 90, B.Cu]
-  R12: [129.2, 102.97, 90, B.Cu]
-  R13: [124.6, 102.97, 90, B.Cu]
-  R14: [120.0, 102.97, 90, B.Cu]
-  R15: [115.4, 102.97, 90, B.Cu]
-  R16: [110.8, 102.97, 90, B.Cu]
-  R17: [106.2, 102.97, 90, B.Cu]
+  # ── LED series resistors (bottom, offset +2.3 east of each LED) ─────────
+  R8:  [169.2, 102.97, 90, B.Cu]
+  R9:  [164.6, 102.97, 90, B.Cu]
+  R10: [160.0, 102.97, 90, B.Cu]
+  R11: [155.4, 102.97, 90, B.Cu]
+  R12: [150.8, 102.97, 90, B.Cu]
+  R13: [146.2, 102.97, 90, B.Cu]
+  R14: [141.6, 102.97, 90, B.Cu]
+  R15: [137.0, 102.97, 90, B.Cu]
+  R16: [132.4, 102.97, 90, B.Cu]
+  R17: [127.8, 102.97, 90, B.Cu]
 
-  # ── Key pull-ups (bottom, between socket rows, x = its A-pin, which is
-  #    now on the SOUTH row: A0 at 111.62 … A7 at 129.4) ────────────────────
-  R1: [111.62, 119.4, 90, B.Cu]    # KEY1 / A0
-  R2: [114.16, 119.4, 90, B.Cu]
-  R3: [116.7,  119.4, 90, B.Cu]
-  R4: [119.24, 119.4, 90, B.Cu]
-  R5: [121.78, 119.4, 90, B.Cu]
-  R6: [124.32, 119.4, 90, B.Cu]
-  R7: [126.86, 119.4, 90, B.Cu]    # KEY7 / A6
-  R18: [129.4, 119.4, 90, B.Cu]    # SENS− pull-up / A7
+  # ── Key pull-ups (bottom, between the socket rows, x = its A-pin on the
+  #    SOUTH row: A0 at 139.84 … A7 at 157.62) ────────────────────────────
+  R1: [139.84, 124.4, 90, B.Cu]    # KEY1 / A0
+  R2: [142.38, 124.4, 90, B.Cu]
+  R3: [144.92, 124.4, 90, B.Cu]
+  R4: [147.46, 124.4, 90, B.Cu]
+  R5: [150.0,  124.4, 90, B.Cu]
+  R6: [152.54, 124.4, 90, B.Cu]
+  R7: [155.08, 124.4, 90, B.Cu]    # KEY7 / A6
+  R18: [157.62, 124.4, 90, B.Cu]   # SENS− pull-up / A7
 
 pin_counts:
   H1: 1
@@ -123,6 +143,8 @@ pin_counts:
   U2: 15
   J2: 8
   J1: 2
+  J3: 2
+  J4: 2
   D1: 2
   D2: 2
   C1: 2
@@ -170,7 +192,9 @@ pad_half:
   U1: [0.85, 0.85]
   U2: [0.85, 0.85]
   J2: [0.85, 0.85]
-  J1: [1.30, 1.30]
+  J1: [0.85, 0.85]
+  J3: [0.85, 0.85]
+  J4: [0.85, 0.85]
   D1: [1.20, 1.20]
   D2: [1.10, 1.10]
   C1: [0.80, 0.80]
@@ -211,13 +235,16 @@ pad_half:
   R18: [0.60, 0.70]
 
 # body_extent: courtyard bbox of each part measured from the real KiCad 9
-# footprints (pcbnew dump 2026-07-30) — half-extents + offset from pin 1 to
-# the courtyard centre, footprint-local frame at rot 0.
+# footprints (pcbnew dump 2026-07-30, re-dumped for v0.4.0) — half-extents
+# + offset from pin 1 to the courtyard centre, footprint-local frame at
+# rot 0. Never guess these (AGENT_PROMPT step 2).
 body_extent:
   U1:   { half: [1.80, 19.58], offset: [0.0, 17.76] }
   U2:   { half: [1.80, 19.58], offset: [0.0, 17.76] }
   J2:   { half: [1.79, 10.68], offset: [0.0, 8.89] }
-  J1:   { half: [5.61, 5.43],  offset: [2.55, -0.31] }
+  J1:   { half: [1.79, 3.07],  offset: [0.0, 1.27] }
+  J3:   { half: [1.79, 3.07],  offset: [0.0, 1.27] }
+  J4:   { half: [1.79, 3.07],  offset: [0.0, 1.27] }
   D1:   { half: [4.32, 2.08],  offset: [2.84, 0.0] }
   D2:   { half: [4.14, 1.81],  offset: [2.33, 0.0] }
   C1:   { half: [4.38, 4.28],  offset: [1.66, 0.0] }
@@ -228,6 +255,16 @@ body_extent:
   BUZ1: { half: [6.28, 6.28],  offset: [3.80, 0.0] }
   SW1:  { half: [4.78, 3.78],  offset: [3.26, 2.26] }
   SW2:  { half: [4.78, 3.78],  offset: [3.26, 2.26] }
+  D3:   { half: [2.44, 2.23],  offset: [1.27, 0.0] }
+  D4:   { half: [2.44, 2.23],  offset: [1.27, 0.0] }
+  D5:   { half: [2.44, 2.23],  offset: [1.27, 0.0] }
+  D6:   { half: [2.44, 2.23],  offset: [1.27, 0.0] }
+  D7:   { half: [2.44, 2.23],  offset: [1.27, 0.0] }
+  D8:   { half: [2.44, 2.23],  offset: [1.27, 0.0] }
+  D9:   { half: [2.44, 2.23],  offset: [1.27, 0.0] }
+  D10:  { half: [2.44, 2.23],  offset: [1.27, 0.0] }
+  D11:  { half: [2.44, 2.23],  offset: [1.27, 0.0] }
+  D12:  { half: [2.44, 2.23],  offset: [1.27, 0.0] }
 
 th_footprints:
   - H1
@@ -238,6 +275,8 @@ th_footprints:
   - U2
   - J2
   - J1
+  - J3
+  - J4
   - D1
   - D2
   - C1
@@ -258,7 +297,9 @@ th_footprints:
   - D12
 
 pin_local_positions:
-  J1:   [[0.0, 0.0], [5.08, 0.0]]
+  J1:   [[0.0, 0.0], [0.0, 2.54]]
+  J3:   [[0.0, 0.0], [0.0, 2.54]]
+  J4:   [[0.0, 0.0], [0.0, 2.54]]
   D1:   [[0.0, 0.0], [5.08, 0.0]]
   D2:   [[0.0, 0.0], [5.08, 0.0]]
   C1:   [[0.0, 0.0], [3.5, 0.0]]

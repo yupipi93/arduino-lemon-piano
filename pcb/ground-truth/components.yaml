@@ -81,10 +81,24 @@ components:
   POWER_IN:
     refs: [J1]
     mount_side: top
-    source: "v5.5 HARDWARE.md — 5 V in (+) and GND; + = pad 1 (west)"
+    source: "v5.5 HARDWARE.md — 5 V in (+) and GND; + = pad 1 (west). v0.4.0: 2-pin 2.54 mm header (ADR-025)"
     pins:
       "J1.1": {func: "5V_IN+", net: /VIN}
       "J1.2": {func: "GND",    net: /GND}
+
+  # External-button headers, one wired in parallel with each SENS button
+  # (v0.4.0 user spec, ADR-026): pad 1 = the signal the button pulls low,
+  # pad 2 = GND. Shorting the two pins is electrically identical to
+  # pressing the on-board tact switch.
+  SENS_EXT_HEADERS:
+    refs: [J3, J4]
+    mount_side: top
+    source: "user spec 2026-07-30 — a parallel 2-pin header per SENS button"
+    pins:
+      "J3.1": {func: pin, net: /SENS_PLUS}
+      "J3.2": {func: gnd, net: /GND}
+      "J4.1": {func: pin, net: /SENS_MINUS}
+      "J4.2": {func: gnd, net: /GND}
 
   # ────────────────────────────────────────────────────────────────────
   # Power-entry filter (v5.5 HARDWARE.md filter table)
@@ -259,7 +273,7 @@ components:
   MOUNTING:
     refs: [H1, H2, H3, H4]
     mount_side: top
-    source: "board spec v0.3.0 — 2x M2 per short edge, grounded pad+via ring"
+    source: "board spec v0.4.0 — 2x M2 per short edge (5 mm insets), grounded pad+via ring"
     pins:
       "H1.1": {func: hole, net: /GND}
       "H2.1": {func: hole, net: /GND}

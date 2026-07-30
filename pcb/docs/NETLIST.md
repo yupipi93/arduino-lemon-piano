@@ -26,14 +26,26 @@ The Nano is **socketed**: two 1×15 2.54 mm female rows (U1/U2), mini-USB end
 facing the WEST board edge (flash access; USB power stays behind the 1N5817
 so it cannot back-feed the filter — `HARDWARE.md` powering rule 2).
 
-## Components (26 + 18 R + 2 H = 45 footprints)
+**v0.4.0 circuit deltas** (user spec 2026-07-30, ADR-024…027) — the V5.5
+circuit itself is unchanged; only the board interface grew:
+
+- 5 V entry is a **2-pin 2.54 mm header** (J1) instead of the Phoenix screw
+  terminal. Same two nodes, same polarity (pad 1 = +, pad 2 = GND).
+- Two **external-button headers** (J3, J4) are wired in **parallel** with
+  SW1/SW2. Shorting a header's two pins is electrically identical to
+  pressing the on-board button, so a panel-mounted button can be added
+  without cutting a trace.
+
+## Components (28 + 18 R + 4 H = 50 footprints)
 
 | Ref | Value | Footprint (KiCad 9 lib) | Source line |
 |---|---|---|---|
 | U1 | Nano socket row A (Nano pins 1–15: TX1,RX0,RST,GND,D2…D12) | `Connector_PinSocket_2.54mm:PinSocket_1x15_P2.54mm_Vertical` | v5 HARDWARE pin map |
 | U2 | Nano socket row B (Nano pins 16–30: D13,3V3,AREF,A0…A7,5V,RST,GND,VIN) | idem | idem |
-| J1 | 5V_IN screw terminal | `TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal` | v5.5 BOM "5 V input pigtail / barrel jack" → terminal (ADR-003) |
-| J2 | LEMON_KEYS 1×8 header (GND + KEY7…KEY1) | `Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical` | keys A0–A6 + GND clip (ADR-004) |
+| J1 | 5V_IN 1×2 header | `Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical` | v5.5 BOM "5 V input pigtail" → 2-pin header (ADR-025, supersedes ADR-003) |
+| J2 | LEMON_KEYS 1×8 header (KEY1…KEY7 + GND) | `Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical` | keys A0–A6 + GND clip (ADR-004) |
+| J3 | SENS+_EXT 1×2 header (parallel to SW1) | `Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical` | user spec 2026-07-30 (ADR-026) |
+| J4 | SENS−_EXT 1×2 header (parallel to SW2) | idem | idem |
 | D1 | P6KE6.8A (TVS, 600 W) | `Diode_THT:D_DO-15_P5.08mm_Vertical_KathodeUp` | v5.5 HARDWARE filter table |
 | D2 | 1N5817 (Schottky) | `Diode_THT:D_DO-41_SOD81_P5.08mm_Vertical_AnodeUp` | idem |
 | C1 | 470u/16V (input reservoir) | `Capacitor_THT:CP_Radial_D8.0mm_P3.50mm` | idem |
@@ -49,6 +61,14 @@ so it cannot back-feed the filter — `HARDWARE.md` powering rule 2).
 | SW1 | SENS + push button (D12, to GND, internal pull-up) | `Button_Switch_THT:SW_PUSH_6mm` | v5 HARDWARE pin map |
 | SW2 | SENS − push button (A7, to GND, R18 pull-up) | idem | idem |
 | H1–H4 | M2 mounting hole | `MountingHole:MountingHole_2.5mm_Pad_Via` | board spec v0.3.0 (2 per short edge, ADR-020) |
+
+## Board frame (v0.4.0)
+
+120 × 40 mm, KiCad frame x 90..210 / y 100..140, centre (150, 120). The
+Nano pin field is centred on the board (x 132.22..167.78, rows y 112.38 /
+127.62); the keys header is centred on the south edge (pin centre exactly
+x = 150); the whole power-entry filter sits in the west block, folded
+around a part-free mini-USB cable corridor (x < 130.4, y 113..127).
 
 ## Nano socket pin map (physical, USB end = WEST) — v0.2.0, ADR-015
 
@@ -74,12 +94,12 @@ on the NORTH row → LED bar on the NORTH edge (both flipped vs v0.1.0).
 | # | Net | Pads |
 |---|---|---|
 | 1 | /+5V | U1.12 (5V), L1.2, C3.1(+), C4.1, R1.2…R7.2, R18.2 |
-| 2 | /GND | U1.14, U2.4, J1.2, J2.8, D1.2(A), C1.2(−), C2.2, C3.2(−), C4.2, R8.1…R17.1, BUZ1.2, SW1.2(×2), SW2.2(×2), H1.1…H4.1 |
+| 2 | /GND | U1.14, U2.4, J1.2, J2.8, J3.2, J4.2, D1.2(A), C1.2(−), C2.2, C3.2(−), C4.2, R8.1…R17.1, BUZ1.2, SW1.2(×2), SW2.2(×2), H1.1…H4.1 |
 | 3 | /VIN | J1.1(+), D1.1(K), D2.2(A) |
 | 4 | /VRAW | D2.1(K), C1.1(+), C2.1, L1.1 |
 | 5–11 | /KEY1…/KEY7 | U1.4…U1.10 (A0…A6), R1.1…R7.1, J2.1…J2.7 (KEY1=J2.1 … KEY7=J2.7) |
-| 12 | /SENS_MINUS | U1.11 (A7), R18.1, SW2.1(×2) |
-| 13 | /SENS_PLUS | U2.15 (D12), SW1.1(×2) |
+| 12 | /SENS_MINUS | U1.11 (A7), R18.1, SW2.1(×2), J4.1 |
+| 13 | /SENS_PLUS | U2.15 (D12), SW1.1(×2), J3.1 |
 | 14 | /BUZZER | U1.1 (D13), BUZ1.1(+) |
 | 15–24 | /LED1…/LED10 | U2.5…U2.14 (D2…D11) → D3.2…D12.2 (anodes) |
 | 25–34 | /LED1_K…/LED10_K | D3.1…D12.1 (cathodes) → R8.2…R17.2 |

@@ -58,9 +58,13 @@ FOOTPRINTS: dict[str, tuple[str, str, str]] = {
     # ref: (library, footprint, value)
     "U1": ("Connector_PinSocket_2.54mm", "PinSocket_1x15_P2.54mm_Vertical", "Nano_socket_A"),
     "U2": ("Connector_PinSocket_2.54mm", "PinSocket_1x15_P2.54mm_Vertical", "Nano_socket_B"),
-    "J1": ("TerminalBlock_Phoenix",
-           "TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal", "5V_IN"),
+    # v0.4.0 (ADR-025): 5 V entry is a 2-pin 2.54 mm header, not a screw block
+    "J1": ("Connector_PinHeader_2.54mm", "PinHeader_1x02_P2.54mm_Vertical", "5V_IN"),
     "J2": ("Connector_PinHeader_2.54mm", "PinHeader_1x08_P2.54mm_Vertical", "LEMON_KEYS"),
+    # v0.4.0 (ADR-026): one 2-pin header wired in parallel with each SENS
+    # button so an external panel button can be plugged in
+    "J3": ("Connector_PinHeader_2.54mm", "PinHeader_1x02_P2.54mm_Vertical", "SENS+_EXT"),
+    "J4": ("Connector_PinHeader_2.54mm", "PinHeader_1x02_P2.54mm_Vertical", "SENS-_EXT"),
     "D1": ("Diode_THT", "D_DO-15_P5.08mm_Vertical_KathodeUp", "P6KE6.8A"),
     "D2": ("Diode_THT", "D_DO-41_SOD81_P5.08mm_Vertical_AnodeUp", "1N5817"),
     "C1": ("Capacitor_THT", "CP_Radial_D8.0mm_P3.50mm", "470uF/16V"),
@@ -118,6 +122,8 @@ PAD_NETS: dict[tuple[str, str], str] = {
     ("U1", "10"): "KEY7", ("U1", "11"): "SENS_MINUS",
     ("U1", "12"): "+5V", ("U1", "14"): "GND",
     ("J1", "1"): "VIN", ("J1", "2"): "GND",
+    ("J3", "1"): "SENS_PLUS", ("J3", "2"): "GND",
+    ("J4", "1"): "SENS_MINUS", ("J4", "2"): "GND",
     ("J2", "1"): "KEY1", ("J2", "2"): "KEY2", ("J2", "3"): "KEY3",
     ("J2", "4"): "KEY4", ("J2", "5"): "KEY5", ("J2", "6"): "KEY6",
     ("J2", "7"): "KEY7", ("J2", "8"): "GND",
@@ -150,23 +156,32 @@ for _i in range(8, 18):                    # LED series: cathode north, GND sout
 # LESSONS_LEARNED §1). v0.0.2 DRC proved the SMD GND pads of R8..R17
 # starve on thermal reliefs in the packed LED strip (spokes 1 < 2).
 
-# expected pad positions (mm) — hard assertions against rot/flip surprises
+# expected pad positions (mm) — hard assertions against rot/flip surprises.
+# v0.4.0: every one re-derived for the 120x40 frame. D2 is the only rot=180
+# part (pad 2 = anode/VIN lands WEST of pad 1 so the filter chain flows
+# west→east along the south strip) — the assertion locks that convention.
 EXPECTED_PADS = [
-    ("U1", "1", 104.0, 122.62), ("U1", "15", 139.56, 122.62),
-    ("U2", "1", 139.56, 107.38), ("U2", "15", 104.0, 107.38),
-    ("J2", "1", 111.62, 127.0), ("J2", "8", 129.4, 127.0),
-    ("J1", "1", 170.0, 105.9), ("J1", "2", 175.08, 105.9),
-    ("D1", "1", 159.3, 103.8), ("D1", "2", 164.38, 103.8),
-    ("D2", "1", 150.0, 103.8), ("D2", "2", 155.08, 103.8),
-    ("C1", "1", 159.5, 116.0), ("C1", "2", 163.0, 116.0),
-    ("L1", "1", 170.0, 116.0), ("L1", "2", 175.0, 116.0),
-    ("C3", "1", 171.3, 125.4), ("C3", "2", 174.8, 125.4),
-    ("BUZ1", "1", 146.5, 114.2), ("BUZ1", "2", 154.1, 114.2),
-    ("D3", "1", 145.3, 101.65), ("D3", "2", 145.3, 104.19),
-    ("D12", "1", 103.9, 101.65), ("D12", "2", 103.9, 104.19),
-    ("H1", "1", 95.0, 105.0), ("H2", "1", 185.0, 105.0),
-    ("H3", "1", 95.0, 125.0), ("H4", "1", 185.0, 125.0),
+    ("U1", "1", 132.22, 127.62), ("U1", "15", 167.78, 127.62),
+    ("U2", "1", 167.78, 112.38), ("U2", "15", 132.22, 112.38),
+    ("J2", "1", 141.11, 137.0), ("J2", "8", 158.89, 137.0),
+    ("J1", "1", 102.3, 133.0), ("J1", "2", 104.84, 133.0),
+    ("J3", "1", 186.0, 117.97), ("J3", "2", 188.54, 117.97),
+    ("J4", "1", 186.0, 126.51), ("J4", "2", 188.54, 126.51),
+    ("D1", "1", 109.2, 133.0), ("D1", "2", 114.28, 133.0),
+    ("D2", "1", 124.5, 133.0), ("D2", "2", 119.42, 133.0),
+    ("C1", "1", 104.0, 106.0), ("C1", "2", 107.5, 106.0),
+    ("L1", "1", 115.0, 106.0), ("L1", "2", 120.0, 106.0),
+    ("C3", "1", 131.0, 134.5), ("C3", "2", 134.5, 134.5),
+    ("BUZ1", "1", 188.0, 106.78), ("BUZ1", "2", 195.6, 106.78),
+    ("D3", "1", 166.9, 101.65), ("D3", "2", 166.9, 104.19),
+    ("D12", "1", 125.5, 101.65), ("D12", "2", 125.5, 104.19),
+    ("H1", "1", 95.0, 105.0), ("H2", "1", 205.0, 105.0),
+    ("H3", "1", 95.0, 135.0), ("H4", "1", 205.0, 135.0),
 ]
+
+# SENS button pad rows: pad "1" = north row, pad "2" = south row (4.5 mm
+# apart). v0.4.0 stacks the two buttons so the PAIR is centred on y=120.
+SW_PAD_ROWS = {"SW1": (113.47, 117.97), "SW2": (122.01, 126.51)}
 
 # hide silk references only where physics leaves no room: the LEDs sit at
 # 4.6 mm pitch (courtyard gap 0.14 mm) so their refs go on B.SilkS as
@@ -175,15 +190,15 @@ HIDE_REF = {f"D{i}" for i in range(3, 13)}
 
 # bottom-side / hole refs: (x, y, rot) for the Reference field
 REF_POS = {
-    **{f"R{i}": (111.62 + 2.54 * (i - 1), 116.4, 90) for i in range(1, 8)},
-    "R18": (129.4, 116.4, 90),
-    **{f"R{i + 7}": (147.6 - 4.6 * (i - 1), 100.85, 0) for i in range(1, 11)},
-    "C2": (159.5, 109.4, 0),
-    "C4": (170.0, 119.4, 0),
+    **{f"R{i}": (139.84 + 2.54 * (i - 1), 121.4, 90) for i in range(1, 8)},
+    "R18": (157.62, 121.4, 90),
+    **{f"R{i + 7}": (169.2 - 4.6 * (i - 1), 100.85, 0) for i in range(1, 11)},
+    "C2": (105.75, 114.5, 0),
+    "C4": (137.5, 131.0, 0),
     "H1": (95.0, 101.5, 0),
-    "H2": (185.0, 101.5, 0),
-    "H3": (95.0, 128.5, 0),
-    "H4": (185.0, 128.5, 0),
+    "H2": (205.0, 101.5, 0),
+    "H3": (95.0, 138.5, 0),
+    "H4": (205.0, 138.5, 0),
 }
 
 
@@ -265,16 +280,18 @@ def build(cfg: dict) -> str:
 
     # reposition the visible refs into free silk pockets (v0.0.4: positions
     # tuned until /drc reports zero silk_overlap)
-    for ref, (tx, ty, trot) in {"U1": (102.0, 122.62, 90),
-                                "U2": (102.0, 107.38, 90),
-                                "BUZ1": (150.3, 111.5, 0),
-                                "J1": (167.0, 111.5, 0),
-                                "J2": (108.6, 127.0, 0),
-                                "D1": (161.84, 107.0, 0),
-                                "D2": (152.54, 107.0, 0),
-                                "C1": (161.16, 111.2, 0),
-                                "C3": (178.3, 125.4, 90),
-                                "L1": (178.9, 116.0, 90)}.items():
+    for ref, (tx, ty, trot) in {"U1": (130.22, 127.62, 90),
+                                "U2": (130.22, 112.38, 90),
+                                "BUZ1": (191.8, 104.08, 0),
+                                "J1": (103.57, 137.0, 0),
+                                "J2": (164.0, 136.6, 0),
+                                "J3": (192.5, 117.97, 0),
+                                "J4": (192.5, 126.51, 0),
+                                "D1": (111.74, 129.6, 0),
+                                "D2": (122.0, 129.6, 0),
+                                "C1": (105.66, 101.2, 0),
+                                "C3": (138.0, 134.5, 90),
+                                "L1": (117.5, 112.5, 0)}.items():
         fp = board.FindFootprintByReference(ref)
         r = fp.Reference()
         r.SetPosition(V(tx, ty))
@@ -291,21 +308,28 @@ def build(cfg: dict) -> str:
             got = ", ".join(f"({p.x / 1e6:.3f},{p.y / 1e6:.3f})" for p in cands)
             raise SystemExit(f"PAD ASSERTION FAILED {ref}.{num}: "
                              f"[{got}] != ({ex},{ey})")
-    # SW pads: both "1" pads north (y=123.4), both "2" pads south (y=127.9)
-    for ref in ("SW1", "SW2"):
+    # SW pads: pad "1" on the north row, pad "2" on the south row
+    for ref, (y1, y2) in SW_PAD_ROWS.items():
         fp = board.FindFootprintByReference(ref)
         for pad in fp.Pads():
-            want_y = 123.4 if pad.GetNumber() == "1" else 127.9
+            want_y = y1 if pad.GetNumber() == "1" else y2
             if abs(pad.GetPosition().y / 1e6 - want_y) > 0.01:
                 raise SystemExit(f"PAD ASSERTION FAILED {ref} pad "
                                  f"{pad.GetNumber()} y != {want_y}")
+    # the SENS button PAIR is centred on the board's horizontal mid-line
+    # (user spec v0.4.0). SW_PUSH_6mm courtyard runs pad1_y-1.52 .. pad1_y+6.04
+    board_cy = (geom["y0"] + geom["y1"]) / 2
+    pair_cy = ((SW_PAD_ROWS["SW1"][0] - 1.52)
+               + (SW_PAD_ROWS["SW2"][0] + 6.04)) / 2
+    if abs(pair_cy - board_cy) > 0.01:
+        raise SystemExit(f"SENS button pair centre {pair_cy} != {board_cy}")
     # geometric resistors: KEY pad must be the one nearer its A-pin row
     for i in range(1, 8):
         fp = board.FindFootprintByReference(f"R{i}")
         for pad in fp.Pads():
             if pad.GetNetname() == f"/KEY{i}":
-                if abs(pad.GetPosition().y / 1e6 - 120.4) > 0.05:
-                    raise SystemExit(f"R{i} KEY pad not at y=120.4")
+                if abs(pad.GetPosition().y / 1e6 - 125.4) > 0.05:
+                    raise SystemExit(f"R{i} KEY pad not at y=125.4")
 
     # ── board outline ────────────────────────────────────────────────────
     rect = pcbnew.PCB_SHAPE(board)
@@ -342,37 +366,45 @@ def build(cfg: dict) -> str:
             t.SetMirrored(True)
         board.Add(t)
 
-    text("LEMON PIANO V5.5", 140.0, 128.9, h=0.8)
-    text(f"pcb {version}", 121.8, 114.8, h=0.8)
+    # v0.4.0: the title block lives in the USB-cable corridor (the only
+    # large part-free area on the front now that the Nano is centred).
+    text("LEMON PIANO V5.5", 115.0, 118.0, h=0.8)
+    text(f"pcb {version}", 115.0, 121.5, h=0.8)
 
     # ── pin legends, MT1 style (h 0.8 / w 0.65, rotated 90) ─────────────
     # south row (U1): D13 3V3 AREF A0..A7 5V RST GND VIN, legend above pins
     for i, lab in enumerate(["D13", "3V3", "AREF", "A0", "A1", "A2", "A3",
                              "A4", "A5", "A6", "A7", "5V", "RST", "GND",
                              "VIN"]):
-        text(lab, 104.0 + 2.54 * i, 119.4, h=0.8, w=0.65, rot=90, thick=0.12)
+        text(lab, 132.22 + 2.54 * i, 124.4, h=0.8, w=0.65, rot=90, thick=0.12)
     # north row (U2, pin1 east): TX1 RX0 RST GND D2..D12, legend below pins
     for i, lab in enumerate(["TX1", "RX0", "RST", "GND", "D2", "D3", "D4",
                              "D5", "D6", "D7", "D8", "D9", "D10", "D11",
                              "D12"]):
-        text(lab, 139.56 - 2.54 * i, 110.25, h=0.8, w=0.65, rot=90, thick=0.12)
+        text(lab, 167.78 - 2.54 * i, 115.25, h=0.8, w=0.65, rot=90, thick=0.12)
     # LED refs (top parts, dense 4.6 mm pitch strip → label on the back)
     for k in range(10):
-        text(f"D{k + 3}", 145.3 - 4.6 * k, 105.85, layer=pcbnew.B_SilkS,
+        text(f"D{k + 3}", 166.9 - 4.6 * k, 105.85, layer=pcbnew.B_SilkS,
              h=0.8, w=0.65, thick=0.12)
-    # keys header labels: KEY1..KEY7 then GND clip (west→east)
+    # keys header labels: KEY1..KEY7 then GND clip (west→east). "KEYS" sits
+    # EAST of the header (the west side is the C3 reservoir now).
     for i, lab in enumerate(["1", "2", "3", "4", "5", "6", "7", "G"]):
-        text(lab, 111.62 + 2.54 * i, 129.25, h=0.8)
-    text("KEYS", 107.6, 129.25, h=0.8)
-    text("+", 170.0, 109.4, h=1.0, thick=0.15)
-    text("-", 175.08, 109.4, h=1.0, thick=0.15)
-    text("5V IN", 178.8, 105.9, h=0.8, rot=90)
-    text("SENS+", 152.95, 121.3, h=0.8)
-    text("SENS-", 163.15, 121.3, h=0.8)
-    text("1", 148.6, 101.65, h=0.8)          # bar ascends east→west (ADR-015)
-    text("10", 100.95, 103.0, h=0.8, rot=90)
-    text("Lemon Piano V5.5", 127.0, 111.9, layer=pcbnew.B_SilkS, h=1.0)
-    text(f"pcb {version}", 127.0, 113.5, layer=pcbnew.B_SilkS, h=1.0)
+        text(lab, 141.11 + 2.54 * i, 139.25, h=0.8)
+    text("KEYS", 164.0, 139.25, h=0.8)
+    # 5 V input header (ADR-025): polarity above the pads, name below
+    text("+", 102.3, 130.2, h=1.0, thick=0.15)
+    text("-", 104.84, 130.2, h=1.0, thick=0.15)
+    text("5V IN", 103.57, 127.6, h=0.8)
+    # SENS buttons + their parallel external-button headers (ADR-026)
+    text("SENS+", 178.2, 110.0, h=0.8)
+    text("SENS-", 178.2, 130.0, h=0.8)
+    text("EXT+", 187.3, 114.6, h=0.8)
+    text("EXT-", 187.3, 130.5, h=0.8)
+    # LED bar end markers (bar ascends east→west, ADR-015)
+    text("1", 166.9, 107.0, h=0.8)
+    text("10", 125.5, 107.0, h=0.8)
+    text("Lemon Piano V5.5", 115.0, 123.5, layer=pcbnew.B_SilkS, h=1.0)
+    text(f"pcb {version}", 115.0, 125.5, layer=pcbnew.B_SilkS, h=1.0)
 
     # ── save + text post-passes ──────────────────────────────────────────
     out_dir = PROJ / "kicad"

@@ -1,0 +1,419 @@
+==========================================================================
+  VERIFICACIÓN FÍSICA DE PLACEMENT (anti-espejo) — pcb_designer.verify
+==========================================================================
+
+C1 · Quiralidad (espejo)
+--------------------------------------------------------------------------
+  [PASS] NANO           quiralidad correcta (no espejada)
+         ↳ tríada [D13 , VIN , D12] · mount=top · signo board=-1 esperado=-1
+
+C2 · Integridad de flip a B.Cu
+--------------------------------------------------------------------------
+  [PASS] CAP_IN_HF      C2: footprint volteado correctamente a B.Cu
+  [PASS] CAP_OUT_HF     C4: footprint volteado correctamente a B.Cu
+  [PASS] KEY_PULLUPS    R1: footprint volteado correctamente a B.Cu
+  [PASS] KEY_PULLUPS    R2: footprint volteado correctamente a B.Cu
+  [PASS] KEY_PULLUPS    R3: footprint volteado correctamente a B.Cu
+  [PASS] KEY_PULLUPS    R4: footprint volteado correctamente a B.Cu
+  [PASS] KEY_PULLUPS    R5: footprint volteado correctamente a B.Cu
+  [PASS] KEY_PULLUPS    R6: footprint volteado correctamente a B.Cu
+  [PASS] KEY_PULLUPS    R7: footprint volteado correctamente a B.Cu
+  [PASS] SENS_MINUS_PULLUP R18: footprint volteado correctamente a B.Cu
+  [PASS] LED_RESISTORS  R8: footprint volteado correctamente a B.Cu
+  [PASS] LED_RESISTORS  R9: footprint volteado correctamente a B.Cu
+  [PASS] LED_RESISTORS  R10: footprint volteado correctamente a B.Cu
+  [PASS] LED_RESISTORS  R11: footprint volteado correctamente a B.Cu
+  [PASS] LED_RESISTORS  R12: footprint volteado correctamente a B.Cu
+  [PASS] LED_RESISTORS  R13: footprint volteado correctamente a B.Cu
+  [PASS] LED_RESISTORS  R14: footprint volteado correctamente a B.Cu
+  [PASS] LED_RESISTORS  R15: footprint volteado correctamente a B.Cu
+  [PASS] LED_RESISTORS  R16: footprint volteado correctamente a B.Cu
+  [PASS] LED_RESISTORS  R17: footprint volteado correctamente a B.Cu
+
+C3 · pad → net → función física
+--------------------------------------------------------------------------
+  [PASS] NANO           cada pad lleva el net de su pin físico
+  [PASS] KEYS_HEADER    cada pad lleva el net de su pin físico
+  [PASS] POWER_IN       cada pad lleva el net de su pin físico
+  [PASS] SENS_EXT_HEADERS cada pad lleva el net de su pin físico
+  [PASS] TVS_P6KE       cada pad lleva el net de su pin físico
+  [PASS] SCHOTTKY_1N5817 cada pad lleva el net de su pin físico
+  [PASS] CAP_IN_BULK    cada pad lleva el net de su pin físico
+  [PASS] CAP_IN_HF      cada pad lleva el net de su pin físico
+  [PASS] CHOKE          cada pad lleva el net de su pin físico
+  [PASS] CAP_OUT_BULK   cada pad lleva el net de su pin físico
+  [PASS] CAP_OUT_HF     cada pad lleva el net de su pin físico
+  [PASS] KEY_PULLUPS    cada pad lleva el net de su pin físico
+  [PASS] SENS_MINUS_PULLUP cada pad lleva el net de su pin físico
+  [PASS] LED_BAR        cada pad lleva el net de su pin físico
+  [PASS] LED_RESISTORS  cada pad lleva el net de su pin físico
+  [PASS] BUZZER         cada pad lleva el net de su pin físico
+  [PASS] SENS_BUTTONS   cada pad lleva el net de su pin físico
+  [PASS] MOUNTING       cada pad lleva el net de su pin físico
+
+C4 · Conectividad por intención
+--------------------------------------------------------------------------
+  [PASS] /+5V           /+5V conecta exactamente los pads previstos
+  [PASS] /GND           /GND conecta exactamente los pads previstos
+  [PASS] /VIN           /VIN conecta exactamente los pads previstos
+  [PASS] /VRAW          /VRAW conecta exactamente los pads previstos
+  [PASS] /KEY1          /KEY1 conecta exactamente los pads previstos
+  [PASS] /KEY2          /KEY2 conecta exactamente los pads previstos
+  [PASS] /KEY3          /KEY3 conecta exactamente los pads previstos
+  [PASS] /KEY4          /KEY4 conecta exactamente los pads previstos
+  [PASS] /KEY5          /KEY5 conecta exactamente los pads previstos
+  [PASS] /KEY6          /KEY6 conecta exactamente los pads previstos
+  [PASS] /KEY7          /KEY7 conecta exactamente los pads previstos
+  [PASS] /SENS_MINUS    /SENS_MINUS conecta exactamente los pads previstos
+  [PASS] /SENS_PLUS     /SENS_PLUS conecta exactamente los pads previstos
+  [PASS] /BUZZER        /BUZZER conecta exactamente los pads previstos
+  [PASS] /LED1          /LED1 conecta exactamente los pads previstos
+  [PASS] /LED2          /LED2 conecta exactamente los pads previstos
+  [PASS] /LED3          /LED3 conecta exactamente los pads previstos
+  [PASS] /LED4          /LED4 conecta exactamente los pads previstos
+  [PASS] /LED5          /LED5 conecta exactamente los pads previstos
+  [PASS] /LED6          /LED6 conecta exactamente los pads previstos
+  [PASS] /LED7          /LED7 conecta exactamente los pads previstos
+  [PASS] /LED8          /LED8 conecta exactamente los pads previstos
+  [PASS] /LED9          /LED9 conecta exactamente los pads previstos
+  [PASS] /LED10         /LED10 conecta exactamente los pads previstos
+  [PASS] /LED1_K        /LED1_K conecta exactamente los pads previstos
+  [PASS] /LED2_K        /LED2_K conecta exactamente los pads previstos
+  [PASS] /LED3_K        /LED3_K conecta exactamente los pads previstos
+  [PASS] /LED4_K        /LED4_K conecta exactamente los pads previstos
+  [PASS] /LED5_K        /LED5_K conecta exactamente los pads previstos
+  [PASS] /LED6_K        /LED6_K conecta exactamente los pads previstos
+  [PASS] /LED7_K        /LED7_K conecta exactamente los pads previstos
+  [PASS] /LED8_K        /LED8_K conecta exactamente los pads previstos
+  [PASS] /LED9_K        /LED9_K conecta exactamente los pads previstos
+  [PASS] /LED10_K       /LED10_K conecta exactamente los pads previstos
+
+==========================================================================
+  RESULTADO: 73 OK · 0 FALLO(S)
+  ✅ Placement físico verificado.
+==========================================================================
+
+ENUMERACIÓN DE PINES (interpretación top / bottom)
+==========================================================================
+
+▸ NANO  (refs=['U1', 'U2']  mount_side=top)
+  Official Arduino Nano V2.2/V3 board: USB end flanked by D12 (TX1 column) and D13 (VIN column); commons.wikimedia.org File:ArduinoNanoTop.jpg + File:Arduino Nano.jpg
+    U1  [F.Cu, at=(132.22,127.62,90.0°), vista top]  lib=PinSocket_1x15_P2.54mm_Vertical
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (132.22, 127.62) │ /BUZZER               │ D13         │ /BUZZER      │ ✔
+        2 │ (134.76, 127.62) │ —                     │ 3V3         │ —            │ ✔
+        3 │ (137.30, 127.62) │ —                     │ AREF        │ —            │ ✔
+        4 │ (139.84, 127.62) │ /KEY1                 │ A0          │ /KEY1        │ ✔
+        5 │ (142.38, 127.62) │ /KEY2                 │ A1          │ /KEY2        │ ✔
+        6 │ (144.92, 127.62) │ /KEY3                 │ A2          │ /KEY3        │ ✔
+        7 │ (147.46, 127.62) │ /KEY4                 │ A3          │ /KEY4        │ ✔
+        8 │ (150.00, 127.62) │ /KEY5                 │ A4          │ /KEY5        │ ✔
+        9 │ (152.54, 127.62) │ /KEY6                 │ A5          │ /KEY6        │ ✔
+       10 │ (155.08, 127.62) │ /KEY7                 │ A6          │ /KEY7        │ ✔
+       11 │ (157.62, 127.62) │ /SENS_MINUS           │ A7          │ /SENS_MINUS  │ ✔
+       12 │ (160.16, 127.62) │ /+5V                  │ 5V          │ /+5V         │ ✔
+       13 │ (162.70, 127.62) │ —                     │ RST         │ —            │ ✔
+       14 │ (165.24, 127.62) │ /GND                  │ GND         │ /GND         │ ✔
+       15 │ (167.78, 127.62) │ —                     │ VIN         │ —            │ ✔
+    U2  [F.Cu, at=(167.78,112.38,-90.0°), vista top]  lib=PinSocket_1x15_P2.54mm_Vertical
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (167.78, 112.38) │ —                     │ TX1         │ —            │ ✔
+        2 │ (165.24, 112.38) │ —                     │ RX0         │ —            │ ✔
+        3 │ (162.70, 112.38) │ —                     │ RST         │ —            │ ✔
+        4 │ (160.16, 112.38) │ /GND                  │ GND         │ /GND         │ ✔
+        5 │ (157.62, 112.38) │ /LED1                 │ D2          │ /LED1        │ ✔
+        6 │ (155.08, 112.38) │ /LED2                 │ D3          │ /LED2        │ ✔
+        7 │ (152.54, 112.38) │ /LED3                 │ D4          │ /LED3        │ ✔
+        8 │ (150.00, 112.38) │ /LED4                 │ D5          │ /LED4        │ ✔
+        9 │ (147.46, 112.38) │ /LED5                 │ D6          │ /LED5        │ ✔
+       10 │ (144.92, 112.38) │ /LED6                 │ D7          │ /LED6        │ ✔
+       11 │ (142.38, 112.38) │ /LED7                 │ D8          │ /LED7        │ ✔
+       12 │ (139.84, 112.38) │ /LED8                 │ D9          │ /LED8        │ ✔
+       13 │ (137.30, 112.38) │ /LED9                 │ D10         │ /LED9        │ ✔
+       14 │ (134.76, 112.38) │ /LED10                │ D11         │ /LED10       │ ✔
+       15 │ (132.22, 112.38) │ /SENS_PLUS            │ D12         │ /SENS_PLUS   │ ✔
+
+▸ KEYS_HEADER  (refs=['J2']  mount_side=top)
+  docs/NETLIST.md — KEY1..KEY7 west→east under A0..A6, then GND clip
+    J2  [F.Cu, at=(141.11,137.0,90.0°), vista top]  lib=PinHeader_1x08_P2.54mm_Vertical
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (141.11, 137.00) │ /KEY1                 │ KEY1        │ /KEY1        │ ✔
+        2 │ (143.65, 137.00) │ /KEY2                 │ KEY2        │ /KEY2        │ ✔
+        3 │ (146.19, 137.00) │ /KEY3                 │ KEY3        │ /KEY3        │ ✔
+        4 │ (148.73, 137.00) │ /KEY4                 │ KEY4        │ /KEY4        │ ✔
+        5 │ (151.27, 137.00) │ /KEY5                 │ KEY5        │ /KEY5        │ ✔
+        6 │ (153.81, 137.00) │ /KEY6                 │ KEY6        │ /KEY6        │ ✔
+        7 │ (156.35, 137.00) │ /KEY7                 │ KEY7        │ /KEY7        │ ✔
+        8 │ (158.89, 137.00) │ /GND                  │ GND_CLIP    │ /GND         │ ✔
+
+▸ POWER_IN  (refs=['J1']  mount_side=top)
+  v5.5 HARDWARE.md — 5 V in (+) and GND; + = pad 1 (west). v0.4.0: 2-pin 2.54 mm header (ADR-025)
+    J1  [F.Cu, at=(102.3,133.0,90.0°), vista top]  lib=PinHeader_1x02_P2.54mm_Vertical
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (102.30, 133.00) │ /VIN                  │ 5V_IN+      │ /VIN         │ ✔
+        2 │ (104.84, 133.00) │ /GND                  │ GND         │ /GND         │ ✔
+
+▸ SENS_EXT_HEADERS  (refs=['J3', 'J4']  mount_side=top)
+  user spec 2026-07-30 — a parallel 2-pin header per SENS button
+    J3  [F.Cu, at=(186.0,117.97,90.0°), vista top]  lib=PinHeader_1x02_P2.54mm_Vertical
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (186.00, 117.97) │ /SENS_PLUS            │ pin         │ /SENS_PLUS   │ ✔
+        2 │ (188.54, 117.97) │ /GND                  │ gnd         │ /GND         │ ✔
+    J4  [F.Cu, at=(186.0,126.51,90.0°), vista top]  lib=PinHeader_1x02_P2.54mm_Vertical
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (186.00, 126.51) │ /SENS_MINUS           │ pin         │ /SENS_MINUS  │ ✔
+        2 │ (188.54, 126.51) │ /GND                  │ gnd         │ /GND         │ ✔
+
+▸ TVS_P6KE  (refs=['D1']  mount_side=top)
+  P6KE6.8A unidirectional: cathode(K)=pad1 to +, anode=pad2 to GND
+    D1  [F.Cu, at=(109.2,133.0,0.0°), vista top]  lib=D_DO-15_P5.08mm_Vertical_KathodeUp
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (109.20, 133.00) │ /VIN                  │ K           │ /VIN         │ ✔
+        2 │ (114.28, 133.00) │ /GND                  │ A           │ /GND         │ ✔
+
+▸ SCHOTTKY_1N5817  (refs=['D2']  mount_side=top)
+  series 1N5817: anode from VIN, cathode into the filter (VRAW)
+    D2  [F.Cu, at=(124.5,133.0,180.0°), vista top]  lib=D_DO-41_SOD81_P5.08mm_Vertical_AnodeUp
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (124.50, 133.00) │ /VRAW                 │ K           │ /VRAW        │ ✔
+        2 │ (119.42, 133.00) │ /VIN                  │ A           │ /VIN         │ ✔
+
+▸ CAP_IN_BULK  (refs=['C1']  mount_side=top)
+  470uF input reservoir; pad1=+ (KiCad CP_Radial convention)
+    C1  [F.Cu, at=(104.0,106.0,0.0°), vista top]  lib=CP_Radial_D8.0mm_P3.50mm
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (104.00, 106.00) │ /VRAW                 │ +           │ /VRAW        │ ✔
+        2 │ (107.50, 106.00) │ /GND                  │ -           │ /GND         │ ✔
+
+▸ CAP_IN_HF  (refs=['C2']  mount_side=bottom)
+  100nF input ceramic (unpolarised)
+    C2  [B.Cu, at=(105.75,111.5,0.0°), vista bottom]  lib=C_0805_2012Metric_Pad1.18x1.45mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (106.79, 111.50) │ /VRAW                 │ a           │ /VRAW        │ ✔
+        2 │ (104.71, 111.50) │ /GND                  │ b           │ /GND         │ ✔
+
+▸ CHOKE  (refs=['L1']  mount_side=top)
+  100uH >=1A drum choke, series element of the pi
+    L1  [F.Cu, at=(115.0,106.0,0.0°), vista top]  lib=L_Radial_D8.7mm_P5.00mm_Fastron_07HCP
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (115.00, 106.00) │ /VRAW                 │ a           │ /VRAW        │ ✔
+        2 │ (120.00, 106.00) │ /+5V                  │ b           │ /+5V         │ ✔
+
+▸ CAP_OUT_BULK  (refs=['C3']  mount_side=top)
+  470uF output reservoir at the rail; pad1=+
+    C3  [F.Cu, at=(131.0,134.5,0.0°), vista top]  lib=CP_Radial_D8.0mm_P3.50mm
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (131.00, 134.50) │ /+5V                  │ +           │ /+5V         │ ✔
+        2 │ (134.50, 134.50) │ /GND                  │ -           │ /GND         │ ✔
+
+▸ CAP_OUT_HF  (refs=['C4']  mount_side=bottom)
+  100nF output ceramic (unpolarised)
+    C4  [B.Cu, at=(132.75,131.0,0.0°), vista bottom]  lib=C_0805_2012Metric_Pad1.18x1.45mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (133.79, 131.00) │ /+5V                  │ a           │ /+5V         │ ✔
+        2 │ (131.71, 131.00) │ /GND                  │ b           │ /GND         │ ✔
+
+▸ KEY_PULLUPS  (refs=['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7']  mount_side=bottom)
+  v5 HARDWARE.md — 220R pull-up per key, pin->R->+5V
+    R1  [B.Cu, at=(139.84,124.4,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (139.84, 123.40) │ /KEY1                 │ pin         │ /KEY1        │ ✔
+        2 │ (139.84, 125.40) │ /+5V                  │ rail        │ /+5V         │ ✔
+    R2  [B.Cu, at=(142.38,124.4,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (142.38, 123.40) │ /KEY2                 │ pin         │ /KEY2        │ ✔
+        2 │ (142.38, 125.40) │ /+5V                  │ rail        │ /+5V         │ ✔
+    R3  [B.Cu, at=(144.92,124.4,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (144.92, 123.40) │ /KEY3                 │ pin         │ /KEY3        │ ✔
+        2 │ (144.92, 125.40) │ /+5V                  │ rail        │ /+5V         │ ✔
+    R4  [B.Cu, at=(147.46,124.4,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (147.46, 123.40) │ /KEY4                 │ pin         │ /KEY4        │ ✔
+        2 │ (147.46, 125.40) │ /+5V                  │ rail        │ /+5V         │ ✔
+    R5  [B.Cu, at=(150.0,124.4,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (150.00, 123.40) │ /KEY5                 │ pin         │ /KEY5        │ ✔
+        2 │ (150.00, 125.40) │ /+5V                  │ rail        │ /+5V         │ ✔
+    R6  [B.Cu, at=(152.54,124.4,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (152.54, 123.40) │ /KEY6                 │ pin         │ /KEY6        │ ✔
+        2 │ (152.54, 125.40) │ /+5V                  │ rail        │ /+5V         │ ✔
+    R7  [B.Cu, at=(155.08,124.4,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (155.08, 123.40) │ /KEY7                 │ pin         │ /KEY7        │ ✔
+        2 │ (155.08, 125.40) │ /+5V                  │ rail        │ /+5V         │ ✔
+
+▸ SENS_MINUS_PULLUP  (refs=['R18']  mount_side=bottom)
+  v5 HARDWARE.md — A7 has no internal pull-up: external 10k to +5V
+    R18  [B.Cu, at=(157.62,124.4,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (157.62, 123.40) │ /SENS_MINUS           │ pin         │ /SENS_MINUS  │ ✔
+        2 │ (157.62, 125.40) │ /+5V                  │ rail        │ /+5V         │ ✔
+
+▸ LED_BAR  (refs=['D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12']  mount_side=top)
+  v5 HARDWARE.md — Dn --[220R]--|>-- GND, LED n on pin n+1
+    D3  [F.Cu, at=(166.9,101.65,-90.0°), vista top]  lib=LED_D3.0mm
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (166.90, 101.65) │ /LED1_K               │ K           │ /LED1_K      │ ✔
+        2 │ (166.90, 104.19) │ /LED1                 │ A           │ /LED1        │ ✔
+    D4  [F.Cu, at=(162.3,101.65,-90.0°), vista top]  lib=LED_D3.0mm
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (162.30, 101.65) │ /LED2_K               │ K           │ /LED2_K      │ ✔
+        2 │ (162.30, 104.19) │ /LED2                 │ A           │ /LED2        │ ✔
+    D5  [F.Cu, at=(157.7,101.65,-90.0°), vista top]  lib=LED_D3.0mm
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (157.70, 101.65) │ /LED3_K               │ K           │ /LED3_K      │ ✔
+        2 │ (157.70, 104.19) │ /LED3                 │ A           │ /LED3        │ ✔
+    D6  [F.Cu, at=(153.1,101.65,-90.0°), vista top]  lib=LED_D3.0mm
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (153.10, 101.65) │ /LED4_K               │ K           │ /LED4_K      │ ✔
+        2 │ (153.10, 104.19) │ /LED4                 │ A           │ /LED4        │ ✔
+    D7  [F.Cu, at=(148.5,101.65,-90.0°), vista top]  lib=LED_D3.0mm
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (148.50, 101.65) │ /LED5_K               │ K           │ /LED5_K      │ ✔
+        2 │ (148.50, 104.19) │ /LED5                 │ A           │ /LED5        │ ✔
+    D8  [F.Cu, at=(143.9,101.65,-90.0°), vista top]  lib=LED_D3.0mm
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (143.90, 101.65) │ /LED6_K               │ K           │ /LED6_K      │ ✔
+        2 │ (143.90, 104.19) │ /LED6                 │ A           │ /LED6        │ ✔
+    D9  [F.Cu, at=(139.3,101.65,-90.0°), vista top]  lib=LED_D3.0mm
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (139.30, 101.65) │ /LED7_K               │ K           │ /LED7_K      │ ✔
+        2 │ (139.30, 104.19) │ /LED7                 │ A           │ /LED7        │ ✔
+    D10  [F.Cu, at=(134.7,101.65,-90.0°), vista top]  lib=LED_D3.0mm
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (134.70, 101.65) │ /LED8_K               │ K           │ /LED8_K      │ ✔
+        2 │ (134.70, 104.19) │ /LED8                 │ A           │ /LED8        │ ✔
+    D11  [F.Cu, at=(130.1,101.65,-90.0°), vista top]  lib=LED_D3.0mm
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (130.10, 101.65) │ /LED9_K               │ K           │ /LED9_K      │ ✔
+        2 │ (130.10, 104.19) │ /LED9                 │ A           │ /LED9        │ ✔
+    D12  [F.Cu, at=(125.5,101.65,-90.0°), vista top]  lib=LED_D3.0mm
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (125.50, 101.65) │ /LED10_K              │ K           │ /LED10_K     │ ✔
+        2 │ (125.50, 104.19) │ /LED10                │ A           │ /LED10       │ ✔
+
+▸ LED_RESISTORS  (refs=['R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15', 'R16', 'R17']  mount_side=bottom)
+  v5 HARDWARE.md — one 220R per LED, cathode->R->GND
+    R8  [B.Cu, at=(169.2,102.97,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (169.20, 101.97) │ /GND                  │ gnd         │ /GND         │ ✔
+        2 │ (169.20, 103.97) │ /LED1_K               │ k           │ /LED1_K      │ ✔
+    R9  [B.Cu, at=(164.6,102.97,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (164.60, 101.97) │ /GND                  │ gnd         │ /GND         │ ✔
+        2 │ (164.60, 103.97) │ /LED2_K               │ k           │ /LED2_K      │ ✔
+    R10  [B.Cu, at=(160.0,102.97,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (160.00, 101.97) │ /GND                  │ gnd         │ /GND         │ ✔
+        2 │ (160.00, 103.97) │ /LED3_K               │ k           │ /LED3_K      │ ✔
+    R11  [B.Cu, at=(155.4,102.97,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (155.40, 101.97) │ /GND                  │ gnd         │ /GND         │ ✔
+        2 │ (155.40, 103.97) │ /LED4_K               │ k           │ /LED4_K      │ ✔
+    R12  [B.Cu, at=(150.8,102.97,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (150.80, 101.97) │ /GND                  │ gnd         │ /GND         │ ✔
+        2 │ (150.80, 103.97) │ /LED5_K               │ k           │ /LED5_K      │ ✔
+    R13  [B.Cu, at=(146.2,102.97,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (146.20, 101.97) │ /GND                  │ gnd         │ /GND         │ ✔
+        2 │ (146.20, 103.97) │ /LED6_K               │ k           │ /LED6_K      │ ✔
+    R14  [B.Cu, at=(141.6,102.97,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (141.60, 101.97) │ /GND                  │ gnd         │ /GND         │ ✔
+        2 │ (141.60, 103.97) │ /LED7_K               │ k           │ /LED7_K      │ ✔
+    R15  [B.Cu, at=(137.0,102.97,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (137.00, 101.97) │ /GND                  │ gnd         │ /GND         │ ✔
+        2 │ (137.00, 103.97) │ /LED8_K               │ k           │ /LED8_K      │ ✔
+    R16  [B.Cu, at=(132.4,102.97,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (132.40, 101.97) │ /GND                  │ gnd         │ /GND         │ ✔
+        2 │ (132.40, 103.97) │ /LED9_K               │ k           │ /LED9_K      │ ✔
+    R17  [B.Cu, at=(127.8,102.97,90.0°), vista bottom]  lib=R_0805_2012Metric_Pad1.20x1.40mm_HandSolder
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (127.80, 101.97) │ /GND                  │ gnd         │ /GND         │ ✔
+        2 │ (127.80, 103.97) │ /LED10_K              │ k           │ /LED10_K     │ ✔
+
+▸ BUZZER  (refs=['BUZ1']  mount_side=top)
+  v5 HARDWARE.md — passive buzzer on D13; footprint pad1 = +
+    BUZ1  [F.Cu, at=(188.0,106.78,0.0°), vista top]  lib=Buzzer_12x9.5RM7.6
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (188.00, 106.78) │ /BUZZER               │ +           │ /BUZZER      │ ✔
+        2 │ (195.60, 106.78) │ /GND                  │ -           │ /GND         │ ✔
+
+▸ SENS_BUTTONS  (refs=['SW1', 'SW2']  mount_side=top)
+  v5 HARDWARE.md — SENS+ D12 to GND (internal pull-up); SENS- A7 to GND (R18)
+    SW1  [F.Cu, at=(175.0,113.47,0.0°), vista top]  lib=SW_PUSH_6mm
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (181.50, 113.47) │ /SENS_PLUS            │ pin         │ /SENS_PLUS   │ ✔
+        2 │ (181.50, 117.97) │ /GND                  │ gnd         │ /GND         │ ✔
+    SW2  [F.Cu, at=(175.0,122.01,0.0°), vista top]  lib=SW_PUSH_6mm
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (181.50, 122.01) │ /SENS_MINUS           │ pin         │ /SENS_MINUS  │ ✔
+        2 │ (181.50, 126.51) │ /GND                  │ gnd         │ /GND         │ ✔
+
+▸ MOUNTING  (refs=['H1', 'H2', 'H3', 'H4']  mount_side=top)
+  board spec v0.4.0 — 2x M2 per short edge (5 mm insets), grounded pad+via ring
+    H1  [F.Cu, at=(95.0,105.0,0.0°), vista top]  lib=MountingHole_2.5mm_Pad_Via
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (96.88, 105.00)  │ /GND                  │ hole        │ /GND         │ ✔
+    H2  [F.Cu, at=(205.0,105.0,0.0°), vista top]  lib=MountingHole_2.5mm_Pad_Via
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (206.88, 105.00) │ /GND                  │ hole        │ /GND         │ ✔
+    H3  [F.Cu, at=(95.0,135.0,0.0°), vista top]  lib=MountingHole_2.5mm_Pad_Via
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (96.88, 135.00)  │ /GND                  │ hole        │ /GND         │ ✔
+    H4  [F.Cu, at=(205.0,135.0,0.0°), vista top]  lib=MountingHole_2.5mm_Pad_Via
+      pad │  global (x,y)    │ net actual            │ func física │ net esperado │ ok
+      ────┼──────────────────┼───────────────────────┼─────────────┼──────────────┼───
+        1 │ (206.88, 135.00) │ /GND                  │ hole        │ /GND         │ ✔

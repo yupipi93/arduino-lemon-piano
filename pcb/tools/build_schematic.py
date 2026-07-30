@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Build the Lemon Piano V5.5 schematic via kicad-sch-api.
 
-Mirrors the PCB exactly (docs/NETLIST.md): 43 electrical components
-(mounting holes H1/H2 are mechanical-only and stay out of the schematic,
-MT1 convention). Flat single sheet, local labels, PWR_FLAGs on the three
-power-source nets. Net names come out as "/<NAME>" matching the board.
+Mirrors the PCB exactly (docs/NETLIST.md): 44 electrical components
+(mounting holes H1..H4 are mechanical-only and stay out of the schematic,
+MT1 convention) + 3 PWR_FLAGs = 47 symbols. Flat single sheet, local
+labels. Net names come out as "/<NAME>" matching the board.
 
 Runs inside the eda-pcb-designer Docker image:
 
@@ -37,6 +37,7 @@ CFG = yaml.safe_load((PROJ / "lemon-piano.yaml").read_text(encoding="utf-8"))
 R_FP = "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
 C_FP = "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
 SOCKET_FP = "Connector_PinSocket_2.54mm:PinSocket_1x15_P2.54mm_Vertical"
+HDR2_FP = "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical"
 
 
 def build() -> None:
@@ -94,11 +95,9 @@ def build() -> None:
     })
 
     # ── service-edge connectors ─────────────────────────────────────────
-    sch.components.add(lib_id="Connector:Screw_Terminal_01x02",
+    sch.components.add(lib_id="Connector_Generic:Conn_01x02",
                        reference="J1", value="5V_IN",
-                       position=g(30, 40),
-                       footprint="TerminalBlock_Phoenix:TerminalBlock_Phoenix_"
-                                 "MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal")
+                       position=g(30, 40), footprint=HDR2_FP)
     auto_label(sch, "J1", {"1": ("VIN", "right"), "2": ("GND", "right")})
 
     sch.components.add(lib_id="Connector_Generic:Conn_01x08",
@@ -183,6 +182,18 @@ def build() -> None:
                        position=g(30, 110),
                        footprint="Button_Switch_THT:SW_PUSH_6mm")
     auto_label(sch, "SW2", {"1": ("SENS_MINUS", "left"), "2": ("GND", "right")})
+
+    # external-button headers, wired in PARALLEL with SW1/SW2 (ADR-026):
+    # same two nets, so shorting a header is the same as pressing the button
+    sch.components.add(lib_id="Connector_Generic:Conn_01x02",
+                       reference="J3", value="SENS+_EXT",
+                       position=g(30, 125), footprint=HDR2_FP)
+    auto_label(sch, "J3", {"1": ("SENS_PLUS", "left"), "2": ("GND", "left")})
+
+    sch.components.add(lib_id="Connector_Generic:Conn_01x02",
+                       reference="J4", value="SENS-_EXT",
+                       position=g(30, 140), footprint=HDR2_FP)
+    auto_label(sch, "J4", {"1": ("SENS_MINUS", "left"), "2": ("GND", "left")})
 
     # ── PWR_FLAGs: VIN is sourced by J1; +5V by the choke; GND by J1.2 ──
     add_pwr_flag(sch, (30, 25), "VIN", "01")

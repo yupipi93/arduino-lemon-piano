@@ -2,6 +2,44 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-30 (pcb/) — v0.4.0: 120 × 40 mm remake, centred Nano, external-button headers
+
+Complete floor-plan remake on a bigger board, to the user's distribution
+spec. Same V5.5 circuit — no value, pin or part invented; only the board
+interface grew.
+
+- **120 × 40 mm frame** (was 100 × 30), KiCad frame x 90–210 / y 100–140.
+  Anchor dividers at x=100/200; the four M2 holes move to the corners at
+  5 mm insets (95/205 × 105/135), still mirror-symmetric about both axes.
+- **Nano socket centred on the board** (pin field x 132.22–167.78, rows
+  y 112.38/127.62), mini-USB still facing WEST. Centring it turned the USB
+  corridor from a 14 mm sliver into a 42 mm strip, so the corridor is now
+  defined as the band a cable actually needs — x < 130.4, y 113–127 — kept
+  completely part-free and checked against real courtyard boxes.
+- **Whole 5 V filter in the west block, folded around that corridor**:
+  VIN section on the south strip (J1 → D1 → D2), VRAW/+5 V on the north
+  strip (C1 → L1), output reservoir C3 at the south-strip east end. Three
+  Ø8 mm radial parts do not fit in one 27 mm strip, which forced the split.
+  D2 is placed at rot=180 so the chain reads west→east with no doubling
+  back (first use of that rotation here; the pad assertions lock it).
+- **5 V entry is now a 2-pin 2.54 mm header** (J1), replacing the Phoenix
+  screw terminal — the user asked for "2 pines". Same nets, same polarity.
+- **A parallel 2-pin header per SENS button** (J3 ∥ SW1 on /SENS_PLUS,
+  J4 ∥ SW2 on /SENS_MINUS), so an external panel button can be plugged in
+  without cutting a trace. Each sits directly east of its button.
+- **Lemon-key header centred** on the south edge (pin centre exactly
+  x=150); **SENS button pair centred** on the y=120 mid-line; **LED bar**
+  centred over the D2–D11 pin span so the fan legs stay short at both ends.
+- **Buzzer in the NE corner** — the only place its 12.56 mm courtyard fits
+  once the button column and external headers claim their x-lanes.
+- Title block moved into the USB corridor (the south edge belongs to the
+  keys header now). `geometry_gate` rewritten: 23 checks including the new
+  centring and corridor rules.
+- **Green on the first pipeline run**: DRC 0 errors / 0 warnings /
+  0 unconnected, ERC 0/0, verify_placement + verify_holes (vision ran,
+  max LOO 0.0222 mm) + geometry_gate ALL PASS. Fab zip:
+  `pcb/releases/v0.4.0/`. ADR-024..028.
+
 ## 2026-07-30 (pcb/) — v0.3.0: 4 anchor holes, VU-meter LEDs, render fixes
 
 - **Four M2 anchor holes** (two per short edge at x=95/185, y=105/125,

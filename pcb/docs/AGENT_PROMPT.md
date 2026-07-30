@@ -3,7 +3,7 @@
 Copy everything between the `=== PROMPT ===` markers into a fresh agent
 session, fill in the **USER CHANGE REQUEST** block, and let it run. The
 prompt encodes the working protocol and every hard-won lesson from
-versions v0.0.1 → v0.3.0 of this board.
+versions v0.0.1 → v0.4.0 of this board.
 
 === PROMPT ===
 
@@ -21,14 +21,24 @@ going. Stop only for a hard blocker you cannot resolve.
 
 ## What this board is
 
-A 100 × 30 mm 2-layer KiCad-9 board (frame x 90..190, y 100..130) that
-replaces the arduino-lemon-piano V5.5 breadboard: socketed Arduino Nano
-(2×15 rows, mini-USB facing the WEST edge), 7 lemon-key lines + GND clip
-on a labelled south-edge header, ten-LED VU-meter bar (3 green / 3
-yellow / 2 orange / 2 red) on the north edge ascending east→west, SENS±
-buttons, D13 buzzer, and the V5.5 power-entry filter (P6KE6.8A TVS →
-1N5817 → 470 µF‖100 nF → 100 µH → 470 µF‖100 nF) feeding the +5 V rail.
-Four M2 anchor holes, two per short edge (x=95/185, y=105/125).
+A 120 × 40 mm 2-layer KiCad-9 board (frame x 90..210, y 100..140, centre
+150/120) that replaces the arduino-lemon-piano V5.5 breadboard: socketed
+Arduino Nano **centred on the board** (2×15 rows, pin field
+x 132.22..167.78, rows y 112.38/127.62, mini-USB facing the WEST edge down
+a part-free cable corridor), 7 lemon-key lines + GND clip on a labelled
+south-edge header **centred** on x=150, ten-LED VU-meter bar (3 green / 3
+yellow / 2 orange / 2 red) on the north edge ascending east→west and
+centred over its D2..D11 pin span, SENS± buttons in the east block with the
+**pair centred on y=120** plus one parallel 2-pin external-button header
+each (J3/J4), D13 buzzer in the NE corner, and the V5.5 power-entry filter
+(2-pin 5 V header → P6KE6.8A TVS → 1N5817 → 470 µF‖100 nF → 100 µH →
+470 µF‖100 nF) feeding the +5 V rail — the whole filter lives in the WEST
+block, folded around the USB corridor. Four M2 anchor holes, two per short
+edge (x=95/205, y=105/135).
+
+**The USB corridor is a hard constraint, not a guideline**: x < 130.4 (the
+socket courtyard's west edge), y 113..127. No footprint of any kind may
+enter it — `geometry_gate` checks real courtyard boxes, not origins.
 
 ## Where everything lives (two sibling repos, fixed protocol)
 
@@ -67,9 +77,9 @@ Four M2 anchor holes, two per short edge (x=95/185, y=105/125).
 ## Version bump rule (repo convention)
 
 - Physical change (footprints, holes, outline, placements, netlist) →
-  bump MINOR of the pcb version: v0.3.0 → v0.4.0.
+  bump MINOR of the pcb version: v0.4.0 → v0.5.0.
 - Cosmetic-only change (silk, labels, renders) → bump PATCH:
-  v0.3.0 → v0.3.1.
+  v0.4.0 → v0.4.1.
 - Set it in `pcb/lemon-piano.yaml` (`project.version`) — the silk label
   "pcb vX.Y.Z" and every artefact name derive from it. Never regenerate
   a released version tag with different content; if a released version
@@ -94,9 +104,14 @@ Four M2 anchor holes, two per short edge (x=95/185, y=105/125).
    (`/usr/share/kicad/footprints`) — verify with pcbnew before using,
    and dump real courtyards for floor-planning (never guess extents).
 2. **Floor-plan against REAL courtyard boxes** (pcbnew dump), keeping:
-   USB corridor west of the sockets free of tall parts; LED bar north;
-   keys header south under A0..A6; anchor zones (x<100, x>180)
-   component-free; silk text ≥ 0.8 mm height everywhere.
+   the USB corridor (x<130.4, y 113..127) completely part-free; LED bar
+   north; keys header south under A0..A6 and centred; the filter in the
+   west block; the SENS button pair centred on y=120 with its EXT header
+   east of each button; anchor zones (x<100, x>200) component-free; silk
+   text ≥ 0.8 mm height everywhere. Before running the pipeline, check the
+   plan numerically — the standalone bbox math in `tools/geometry_gate.py`
+   (`bbox()` is module-level, importable) will list overlaps and gaps for a
+   candidate YAML in seconds, which is far cheaper than a routed iteration.
 3. **Run the pipeline** (from `arduino-lemon-piano/`):
    `./pcb/tools/cloud_pipeline.sh vX.Y.Z` — it does: build_board
    (Docker, byte-stable) → cloud /place → cloud /route → post_route
