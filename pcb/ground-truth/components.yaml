@@ -257,12 +257,14 @@ components:
       "SW2.2": {func: gnd, net: /GND}
 
   MOUNTING:
-    refs: [H1, H2]
+    refs: [H1, H2, H3, H4]
     mount_side: top
-    source: "board spec — 2x M2, grounded pad+via ring"
+    source: "board spec v0.3.0 — 2x M2 per short edge, grounded pad+via ring"
     pins:
       "H1.1": {func: hole, net: /GND}
       "H2.1": {func: hole, net: /GND}
+      "H3.1": {func: hole, net: /GND}
+      "H4.1": {func: hole, net: /GND}
 
 # Every net participates in the intent check (C4): the set of pads each
 # net touches must match the ground truth exactly.

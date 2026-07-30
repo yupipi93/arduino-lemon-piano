@@ -52,23 +52,28 @@ def main() -> int:
         check(abs((x1 - x0) - 100.0) < 1e-6 and abs((y1 - y0) - 30.0) < 1e-6,
               "outline is exactly 100 x 30 mm")
 
-    # 2. mounting holes --------------------------------------------------
+    # 2. mounting holes: TWO per short edge (v0.3.0) ----------------------
     holes = {}
-    for ref in ("H1", "H2"):
+    for ref in ("H1", "H2", "H3", "H4"):
         mm_ = re.search(rf'\(property "Reference" "{ref}"', text)
         blk_start = text.rfind("(footprint", 0, mm_.start())
         at = re.search(r'\(at ([\d.\-]+) ([\d.\-]+)', text[blk_start:mm_.start() + 500])
         holes[ref] = (float(at.group(1)), float(at.group(2)))
     n_h = len(re.findall(r'\(property "Reference" "H\d+"', text))
-    check(n_h == 2, f"exactly 2 mounting holes (found {n_h})")
-    (h1x, h1y), (h2x, h2y) = holes["H1"], holes["H2"]
+    check(n_h == 4, f"exactly 4 mounting holes (found {n_h})")
     cx = (geom["x0"] + geom["x1"]) / 2
-    check(abs((cx - h1x) - (h2x - cx)) <= 0.1,
-          f"H1/H2 mirror-symmetric about x={cx} (offsets {cx - h1x:.2f}/{h2x - cx:.2f})")
-    check(abs(h1y - h2y) <= 0.1, f"H1/H2 same height (y {h1y} / {h2y})")
-    check(h1x - geom["x0"] <= 10 and geom["x1"] - h2x <= 10,
+    cy = (geom["y0"] + geom["y1"]) / 2
+    for a, b in (("H1", "H2"), ("H3", "H4")):
+        (ax, ay), (bx, by) = holes[a], holes[b]
+        check(abs((cx - ax) - (bx - cx)) <= 0.1 and abs(ay - by) <= 0.1,
+              f"{a}/{b} mirror-symmetric about x={cx}")
+    for a, b in (("H1", "H3"), ("H2", "H4")):
+        (ax, ay), (bx, by) = holes[a], holes[b]
+        check(abs((cy - ay) - (by - cy)) <= 0.1 and abs(ax - bx) <= 0.1,
+              f"{a}/{b} mirror-symmetric about y={cy}")
+    check(all(h[0] - geom["x0"] <= 10 or geom["x1"] - h[0] <= 10
+              for h in holes.values()),
           "holes at the short-edge extremes (<=10 mm from edge)")
-    check(abs(h1y - (geom["y0"] + geom["y1"]) / 2) <= 0.1, "holes at board mid-height")
 
     # 3. orientation / service edges -------------------------------------
     pl = CFG["placements"]
@@ -83,7 +88,7 @@ def main() -> int:
     # USB corridor: no F.Cu part with body in x<103, 105.5<y<124.5 except H1
     intruders = []
     for ref, (x, y, rot, layer) in pl.items():
-        if ref in ("H1",) or layer != "F.Cu":
+        if ref in ("H1", "H3") or layer != "F.Cu":
             continue
         if x < 103.0 and 105.5 < y < 124.5:
             intruders.append(ref)

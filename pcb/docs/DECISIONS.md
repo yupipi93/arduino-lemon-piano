@@ -230,3 +230,39 @@ deterministic and clearance-checked with exact geometry:
    `realistic-dim` dropped from the board's suite (the API keeps the
    style); `overlays/` holds only the client-side assets
    (component-images/ + modules.yaml).
+
+## ADR-020 — v0.3.0: two anchor holes per short edge (user spec)
+
+H1..H4 at x=95/185, y=105/125 — the same 20 mm vertical pair pattern as
+MT1's anchors, mirror-symmetric about x=140 AND y=115. With ≥3 holes the
+toolkit's hole-VISION pass becomes calibratable, so verify_holes now
+attempts it against the version's normal renders (non-fatal when the
+detector cannot lock; a completed pass with real deviation fails the
+gate). Geometry gate rewritten for the 4-hole pattern.
+
+## ADR-021 — VU-meter LED colors with per-LED 3D bodies
+
+LED1..10 = 3×GREEN, 3×YELLOW, 2×ORANGE, 2×RED (progress bar reads
+green→red as it fills). Values drive the BOM; each footprint's 3D model
+points at the matching kicad-packages3d body (`LED_D3.0mm_Green/_Yellow`,
+base red) — orange doesn't exist upstream, so the service image ships
+`LED_D3.0mm_Orange.step` (stock red model, body COLOUR_RGB patched;
+eda-pcb-designer assets/3dmodels/).
+
+## ADR-022 — Realistic-bottom bug: /place stripped models from native flips
+
+The cloud /place stripped `(model ...)` from EVERY B.Cu-target footprint
+(an MT1-era guard against the tag-swap-flip render artifact,
+LESSONS_LEARNED §5) — so the realistic bottom render lost all 20 back
+parts and looked identical to `normal`. Fixed in the toolkit: strip only
+blocks lacking `(justify mirror)` (native flips keep their correctly-
+rendered models). Regression tests in eda-pcb-designer.
+
+## ADR-023 — Brighter Nano overlay photo
+
+`File:Arduino nano.jpg` (Wikimedia Commons, CC BY-SA 4.0) replaces the
+dark clone shot: bright perpendicular studio photo of an Arduino-branded
+Nano, natively in the board pose (USB west, D12..TX1 / D13..VIN rows).
+Measured 57.95 px/mm (row spacing and pin span agree to <0.2%);
+image_rotation_deg=90 under the engine's −pcb_rot+img_rot convention
+(net rotation 0). Provenance + numbers in overlays/modules.yaml.

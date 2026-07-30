@@ -44,11 +44,11 @@ so it cannot back-feed the filter — `HARDWARE.md` powering rule 2).
 | R1–R7 | 220 (key pull-ups KEY1…KEY7 = A0…A6) | `Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | v5 HARDWARE "220 Ω pull-up per key" |
 | R8–R17 | 220 (LED series, LED1…LED10) | idem | v5 HARDWARE "one per LED" |
 | R18 | 10k (SENS− external pull-up on A7) | idem | v5 HARDWARE "A7 has no internal pull-up" |
-| D3–D12 | GREEN LED 1…10 | `LED_THT:LED_D3.0mm` | v5 HARDWARE "Green LEDs ×10" (3 mm: ADR-005) |
+| D3–D12 | LED 1…10: 3×GREEN, 3×YELLOW, 2×ORANGE, 2×RED | `LED_THT:LED_D3.0mm` (colored 3D bodies per LED, ADR-021) | v5 HARDWARE "Green LEDs ×10"; VU-meter colors per user spec 2026-07-30 |
 | BUZ1 | passive buzzer | `Buzzer_Beeper:Buzzer_12x9.5RM7.6` | v5 HARDWARE (D13) + CONVENTIONS §5 |
 | SW1 | SENS + push button (D12, to GND, internal pull-up) | `Button_Switch_THT:SW_PUSH_6mm` | v5 HARDWARE pin map |
 | SW2 | SENS − push button (A7, to GND, R18 pull-up) | idem | idem |
-| H1, H2 | M2 mounting hole | `MountingHole:MountingHole_2.5mm_Pad_Via` | board spec (2 anchors) |
+| H1–H4 | M2 mounting hole | `MountingHole:MountingHole_2.5mm_Pad_Via` | board spec v0.3.0 (2 per short edge, ADR-020) |
 
 ## Nano socket pin map (physical, USB end = WEST) — v0.2.0, ADR-015
 
@@ -74,7 +74,7 @@ on the NORTH row → LED bar on the NORTH edge (both flipped vs v0.1.0).
 | # | Net | Pads |
 |---|---|---|
 | 1 | /+5V | U1.12 (5V), L1.2, C3.1(+), C4.1, R1.2…R7.2, R18.2 |
-| 2 | /GND | U1.14, U2.4, J1.2, J2.8, D1.2(A), C1.2(−), C2.2, C3.2(−), C4.2, R8.1…R17.1, BUZ1.2, SW1.2(×2), SW2.2(×2), H1.1, H2.1 |
+| 2 | /GND | U1.14, U2.4, J1.2, J2.8, D1.2(A), C1.2(−), C2.2, C3.2(−), C4.2, R8.1…R17.1, BUZ1.2, SW1.2(×2), SW2.2(×2), H1.1…H4.1 |
 | 3 | /VIN | J1.1(+), D1.1(K), D2.2(A) |
 | 4 | /VRAW | D2.1(K), C1.1(+), C2.1, L1.1 |
 | 5–11 | /KEY1…/KEY7 | U1.4…U1.10 (A0…A6), R1.1…R7.1, J2.1…J2.7 (KEY1=J2.1 … KEY7=J2.7) |

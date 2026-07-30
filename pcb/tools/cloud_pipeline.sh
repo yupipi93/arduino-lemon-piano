@@ -125,10 +125,24 @@ kicad-cli sch erc --output arduino-lemon-piano/pcb/validation/erc-'"$VER"'.txt \
   --exit-code-violations arduino-lemon-piano/pcb/kicad/lemon-piano.kicad_sch' \
   && echo "  ERC clean" || { echo "ERC VIOLATIONS"; exit 1; }
 
+echo "== [$VER] vision inputs (transparent-bg bare renders, LL §22) =="
+curl -sf -F "pcb=@$PCB" "$API/render?side=both&style=bare&background=transparent" \
+  -o "/tmp/vision-$VER.zip"
+python3 - "/tmp/vision-$VER.zip" "$PROJ/validation" "$VER" <<'EOF2'
+import sys, zipfile, shutil, os
+zf, outdir, ver = sys.argv[1:4]
+with zipfile.ZipFile(zf) as z:
+    for n in z.namelist():
+        side = "top" if "top" in n else "bottom"
+        with z.open(n) as src, open(os.path.join(outdir, f"vision-{ver}-{side}.png"), "wb") as dst:
+            shutil.copyfileobj(src, dst)
+EOF2
+
 echo "== [$VER] gates: verify_placement + verify_holes + geometry =="
 python3 "$PROJ/tools/verify_placement.py" > "$PROJ/validation/verify-placement-$VER.txt" \
   && echo "  verify_placement PASS" || { tail -30 "$PROJ/validation/verify-placement-$VER.txt"; exit 1; }
-python3 "$PROJ/tools/verify_holes.py" > "$PROJ/validation/verify-holes-$VER.txt" \
+dk arduino-lemon-piano/pcb/tools/verify_holes.py --version "$VER" \
+  > "$PROJ/validation/verify-holes-$VER.txt" \
   && echo "  verify_holes PASS" || { cat "$PROJ/validation/verify-holes-$VER.txt"; exit 1; }
 python3 "$PROJ/tools/geometry_gate.py" > "$PROJ/validation/geometry-$VER.txt" \
   && echo "  geometry_gate PASS" || { cat "$PROJ/validation/geometry-$VER.txt"; exit 1; }

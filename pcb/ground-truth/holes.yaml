@@ -9,7 +9,7 @@
 
 meta:
   board: lemon-piano
-  version: v0.1.0
+  version: v0.3.0
   units: mm
   axes: "KiCad global: +X right, +Y down"
   pcb_outline_mm: [90.0, 100.0, 190.0, 130.0]   # 100 x 30 mm
@@ -25,12 +25,17 @@ screw: M2
 drill_dia_mm: 2.5
 pad_dia_mm: 5.0
 
-# Exactly TWO anchor holes, one per short-edge extreme, mirror-symmetric
-# about the board's vertical centreline x = 140 (board spec).
+# FOUR anchor holes (v0.3.0, user spec): two per short edge,
+# mirror-symmetric about x = 140 and y = 115 (20 mm vertical pattern,
+# same as MT1's anchor pairs).
 holes:
-  H1: {x: 95.0,  y: 115.0, group: left_anchor}
-  H2: {x: 185.0, y: 115.0, group: right_anchor}
+  H1: {x: 95.0,  y: 105.0, group: left_anchor}
+  H2: {x: 185.0, y: 105.0, group: right_anchor}
+  H3: {x: 95.0,  y: 125.0, group: left_anchor}
+  H4: {x: 185.0, y: 125.0, group: right_anchor}
 
 expected_spacings:
-  - {a: H1, b: H2, axis: x, mm: 90.0}   # symmetric: 140-45 / 140+45
-  - {a: H1, b: H2, axis: y, mm: 0.0}    # same height (board mid, y=115)
+  - {a: H1, b: H2, axis: x, mm: 90.0}   # top pair, symmetric about x=140
+  - {a: H3, b: H4, axis: x, mm: 90.0}   # bottom pair
+  - {a: H1, b: H3, axis: y, mm: 20.0}   # left column
+  - {a: H2, b: H4, axis: y, mm: 20.0}   # right column

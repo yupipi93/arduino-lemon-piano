@@ -73,9 +73,24 @@ FOOTPRINTS: dict[str, tuple[str, str, str]] = {
     "SW2": ("Button_Switch_THT", "SW_PUSH_6mm", "SENS-"),
     "H1": ("MountingHole", "MountingHole_2.5mm_Pad_Via", "M2"),
     "H2": ("MountingHole", "MountingHole_2.5mm_Pad_Via", "M2"),
+    "H3": ("MountingHole", "MountingHole_2.5mm_Pad_Via", "M2"),
+    "H4": ("MountingHole", "MountingHole_2.5mm_Pad_Via", "M2"),
 }
+# LED bar colors (user spec 2026-07-30): progress 1→10 = 3 green,
+# 3 yellow, 2 orange, 2 red. Values drive the BOM; LED_MODELS below give
+# each its colored 3D body (orange ships in the API image — the stock
+# library has Green/Yellow and the base red only).
+LED_COLORS = ["GREEN", "GREEN", "GREEN", "YELLOW", "YELLOW", "YELLOW",
+              "ORANGE", "ORANGE", "RED", "RED"]
+_LED_MODEL = {
+    "GREEN": "${KICAD9_3DMODEL_DIR}/LED_THT.3dshapes/LED_D3.0mm_Green.step",
+    "YELLOW": "${KICAD9_3DMODEL_DIR}/LED_THT.3dshapes/LED_D3.0mm_Yellow.step",
+    "ORANGE": "${KICAD9_3DMODEL_DIR}/LED_THT.3dshapes/LED_D3.0mm_Orange.step",
+    "RED": "${KICAD9_3DMODEL_DIR}/LED_THT.3dshapes/LED_D3.0mm.step",
+}
+LED_MODELS = {f"D{_i + 3}": _LED_MODEL[LED_COLORS[_i]] for _i in range(10)}
 for _i in range(10):                       # D3..D12 = LED1..LED10
-    FOOTPRINTS[f"D{_i + 3}"] = ("LED_THT", "LED_D3.0mm", f"GREEN_LED{_i + 1}")
+    FOOTPRINTS[f"D{_i + 3}"] = ("LED_THT", "LED_D3.0mm", LED_COLORS[_i])
 for _i in range(1, 8):                     # key pull-ups
     FOOTPRINTS[f"R{_i}"] = ("Resistor_SMD",
                             "R_0805_2012Metric_Pad1.20x1.40mm_HandSolder", "220")
@@ -117,6 +132,7 @@ PAD_NETS: dict[tuple[str, str], str] = {
     ("SW1", "1"): "SENS_PLUS", ("SW1", "2"): "GND",
     ("SW2", "1"): "SENS_MINUS", ("SW2", "2"): "GND",
     ("H1", "1"): "GND", ("H2", "1"): "GND",
+    ("H3", "1"): "GND", ("H4", "1"): "GND",
 }
 for _i in range(10):                       # LED pads: 1=cathode, 2=anode
     PAD_NETS[(f"D{_i + 3}", "1")] = f"LED{_i + 1}_K"
@@ -148,7 +164,8 @@ EXPECTED_PADS = [
     ("BUZ1", "1", 146.5, 114.2), ("BUZ1", "2", 154.1, 114.2),
     ("D3", "1", 145.3, 101.65), ("D3", "2", 145.3, 104.19),
     ("D12", "1", 103.9, 101.65), ("D12", "2", 103.9, 104.19),
-    ("H1", "1", 95.0, 115.0), ("H2", "1", 185.0, 115.0),
+    ("H1", "1", 95.0, 105.0), ("H2", "1", 185.0, 105.0),
+    ("H3", "1", 95.0, 125.0), ("H4", "1", 185.0, 125.0),
 ]
 
 # hide silk references only where physics leaves no room: the LEDs sit at
@@ -163,8 +180,10 @@ REF_POS = {
     **{f"R{i + 7}": (147.6 - 4.6 * (i - 1), 100.85, 0) for i in range(1, 11)},
     "C2": (159.5, 109.4, 0),
     "C4": (170.0, 119.4, 0),
-    "H1": (95.0, 111.4, 0),
-    "H2": (185.0, 111.4, 0),
+    "H1": (95.0, 101.5, 0),
+    "H2": (185.0, 101.5, 0),
+    "H3": (95.0, 128.5, 0),
+    "H4": (185.0, 128.5, 0),
 }
 
 
@@ -238,6 +257,11 @@ def build(cfg: dict) -> str:
         for pad in pads:
             if pad.GetNetname() == "/GND":
                 pad.SetLocalZoneConnection(pcbnew.ZONE_CONNECTION_FULL)
+
+        if ref in LED_MODELS:              # colored 3D body per LED
+            models = fp.Models()
+            if len(models):
+                models[0].m_Filename = LED_MODELS[ref]
 
     # reposition the visible refs into free silk pockets (v0.0.4: positions
     # tuned until /drc reports zero silk_overlap)

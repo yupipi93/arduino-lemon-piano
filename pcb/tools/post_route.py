@@ -521,6 +521,10 @@ def heal_zone_islands(board, filler, zones) -> None:
                 return True
         return False
 
+    extra_targets: list = []   # GND anchor points of islands already
+                               # bridged to main (electrically connected,
+                               # even though geometrically separate fills)
+
     def try_via_bridge(island_chain, island_pts, main_chain) -> bool:
         drills = drill_positions()
         # source points, cheapest first: (x, y, needs_via)
@@ -569,6 +573,7 @@ def heal_zone_islands(board, filler, zones) -> None:
                 p = t.GetPosition()
                 if main_chain.PointInside(p):
                     targets.append((p.x / 1e6, p.y / 1e6))
+        targets.extend(extra_targets)
         cands = sorted(((math.hypot(vx - tx, vy - ty), needs_via, vx, vy, tx, ty)
                         for vx, vy, needs_via in spots for tx, ty in targets),
                        key=lambda c: (c[1], c[0]))   # pad sources first
@@ -622,6 +627,15 @@ def heal_zone_islands(board, filler, zones) -> None:
         bridged.add(_bbox_key(island_pts))
         if try_pinch(island_pts, main_pts) or \
                 try_via_bridge(island_chain, island_pts, main_chain):
+            # this island is now electrically on the main net — its GND
+            # through-hole pads can anchor bridges for later islands
+            for fp in board.GetFootprints():
+                for pad in fp.Pads():
+                    if (pad.GetNetname() == "/GND"
+                            and pad.GetAttribute() != pcbnew.PAD_ATTRIB_SMD):
+                        pp = pad.GetPosition()
+                        if island_chain.PointInside(pp):
+                            extra_targets.append((pp.x / 1e6, pp.y / 1e6))
             filler.Fill(zones)
             continue
         raise SystemExit("zone island could not be healed "

@@ -2,6 +2,26 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-30 (pcb/) — v0.3.0: 4 anchor holes, VU-meter LEDs, render fixes
+
+- **Four M2 anchor holes** (two per short edge at x=95/185, y=105/125,
+  MT1's 20 mm pair pattern) — and with ≥3 holes the toolkit's hole-VISION
+  verification now runs (affine over detected centres on
+  transparent-background renders per LESSONS_LEARNED §22; LOO ≤0.04 mm
+  both sides).
+- **LED bar colors as the real build**: LED1..10 = 3 green, 3 yellow,
+  2 orange, 2 red (fills green→red). Values drive the BOM and each LED's
+  3D body is colored in the realistic renders — orange doesn't exist in
+  kicad-packages3d, so the pcb-designer service now ships a derived
+  `LED_D3.0mm_Orange.step`.
+- **Realistic-bottom fixed**: the cloud /place endpoint stripped 3D
+  models from every back-side footprint (an MT1-era guard against
+  tag-swap flips); natively flipped parts keep their models now — the
+  bottom render finally shows all 20 resistors/capacitors.
+- **Brighter Nano overlay photo**: Wikimedia `File:Arduino nano.jpg`
+  (CC BY-SA 4.0), studio-lit and natively in the board pose; measured at
+  57.95 px/mm. Fab zip: `pcb/releases/v0.3.0/`. ADR-020..023.
+
 ## 2026-07-30 (pcb/) — v0.2.1: silk label pass + render naming
 
 - Version silk now reads `pcb v0.2.1` (front corridor + back), MT1-style
