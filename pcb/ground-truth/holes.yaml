@@ -9,7 +9,7 @@
 
 meta:
   board: lemon-piano
-  version: v0.4.0
+  version: v0.5.1
   units: mm
   axes: "KiCad global: +X right, +Y down"
   pcb_outline_mm: [90.0, 100.0, 210.0, 140.0]   # 120 x 40 mm (v0.4.0)

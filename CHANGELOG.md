@@ -2,6 +2,34 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-30 (pcb/) — v0.5.1: D1's missing 3D body (Kathode/Cathode filename split)
+
+Cosmetic-only fix, user-reported ("¿por qué D1 no está renderizado?").
+
+- **D1 had no 3D body in any realistic render** — bare pads and silk only,
+  while D2 beside it rendered fine. Cause: KiCad 9's
+  `D_DO-15_P5.08mm_Vertical_KathodeUp` footprint references a STEP of the
+  same name, but kicad-packages3D ships that body spelled the English way,
+  `..._Vertical_CathodeUp.step`. The footprint kept the legacy German-ish
+  "**K**athode"; the 3D library moved to "**C**athode". `kicad-cli pcb
+  render` skips models it cannot resolve **silently** — no warning, no DRC
+  item, no build error — so it went unnoticed from v0.3.0 (first release with
+  3D bodies) through v0.5.0. D2 is fine because its footprint and model names
+  agree (`..._AnodeUp`).
+- Fixed by pointing D1 at the file that exists, reusing the per-footprint
+  model override already there for the coloured LEDs: `LED_MODELS` is folded
+  into a general `MODEL_OVERRIDES` table, and the override loop now raises if
+  a target footprint has no `(model ...)` block, so a future library change
+  fails loudly instead of silently reverting to no body.
+- **No effect on fabrication.** 3D models play no part in gerbers, drill,
+  BOM, position files, netlist or DRC, so v0.5.0's fab package was never
+  wrong — only its renders were incomplete. PATCH bump per the version rule.
+- Audited all 44 model paths the board references against upstream
+  kicad-packages3D while in there. Three more are absent upstream but resolve
+  on the render host and render correctly, so no action:  L1's Fastron choke
+  and the two `LED_D3.0mm_Orange.step` bodies (service-shipped, ADR-021).
+  D1 was the only broken reference. ADR-033.
+
 ## 2026-07-30 (pcb/) — v0.5.0: Nano flipped (USB east), keys north, LEDs south, filter refactored
 
 Second pass on the 120 × 40 mm board, to the user's follow-up spec. Circuit

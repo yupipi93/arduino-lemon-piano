@@ -3,7 +3,7 @@
 Copy everything between the `=== PROMPT ===` markers into a fresh agent
 session, fill in the **USER CHANGE REQUEST** block, and let it run. The
 prompt encodes the working protocol and every hard-won lesson from
-versions v0.0.1 → v0.5.0 of this board.
+versions v0.0.1 → v0.5.1 of this board.
 
 === PROMPT ===
 
@@ -89,9 +89,9 @@ socket. Do not "fix" this by reserving space unless the user asks.
 ## Version bump rule (repo convention)
 
 - Physical change (footprints, holes, outline, placements, netlist) →
-  bump MINOR of the pcb version: v0.5.0 → v0.6.0.
+  bump MINOR of the pcb version: v0.5.1 → v0.6.0.
 - Cosmetic-only change (silk, labels, renders) → bump PATCH:
-  v0.5.0 → v0.5.1.
+  v0.5.1 → v0.5.2.
 - Set it in `pcb/lemon-piano.yaml` (`project.version`) — the silk label
   "pcb vX.Y.Z" and every artefact name derive from it. Never regenerate
   a released version tag with different content; if a released version
@@ -145,6 +145,17 @@ socket. Do not "fix" this by reserving space unless the user asks.
    labels, the overlay photo sitting on the socket field **USB-east**
    (since ADR-029 — the photo crop is natively USB-west, so the engine must
    be rotating it 180°; if it looks USB-west, the overlay data is stale).
+   **Also check every part actually has a 3D body in the `realistic` render.**
+   `kicad-cli pcb render` skips models it cannot resolve SILENTLY — no
+   warning, no DRC item, no build error — so a missing body is invisible to
+   every automated gate here and only your eyes can catch it. Tell-tale: the
+   part's pads and drill holes stay visible instead of being occluded. D1
+   shipped bodiless from v0.3.0 to v0.5.0 that way (ADR-033: the footprint
+   asks for `..._KathodeUp.step`, the 3D library ships `..._CathodeUp.step`).
+   To audit all of them at once, list every `(model "...")` path in the
+   `.kicad_pcb` and check each against the upstream package listing
+   (`gitlab.com/api/v4/projects/kicad%2Flibraries%2Fkicad-packages3D/repository/tree?path=<Lib>.3dshapes`);
+   fix a bad path with a `MODEL_OVERRIDES` entry in `build_board.py`.
 5. **Docs in the same change**: DESIGN_STATE (state + iteration-log
    row), DECISIONS (new ADRs), NETLIST if the circuit view changed,
    README if user-facing facts changed, CHANGELOG.md (repo root,

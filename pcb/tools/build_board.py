@@ -94,6 +94,20 @@ _LED_MODEL = {
     "RED": "${KICAD9_3DMODEL_DIR}/LED_THT.3dshapes/LED_D3.0mm.step",
 }
 LED_MODELS = {f"D{_i + 3}": _LED_MODEL[LED_COLORS[_i]] for _i in range(10)}
+
+# 3D-model filename overrides, applied after each footprint is loaded.
+# Beyond the colored LEDs: KiCad's Diode_THT footprint for the TVS is named
+# "..._Vertical_KathodeUp" and references a STEP of the same name, but
+# kicad-packages3D ships that model spelled the English way,
+# "..._Vertical_CathodeUp" (the footprint kept the legacy K). The render host
+# silently skips models it cannot resolve, so D1 came out as bare pads in
+# every realistic render from v0.3.0 to v0.5.0 — no DRC or build error, just
+# a missing body. Point it at the file that actually exists (ADR-033).
+MODEL_OVERRIDES: dict[str, str] = {
+    **LED_MODELS,
+    "D1": "${KICAD9_3DMODEL_DIR}/Diode_THT.3dshapes/"
+          "D_DO-15_P5.08mm_Vertical_CathodeUp.step",
+}
 for _i in range(10):                       # D3..D12 = LED1..LED10
     FOOTPRINTS[f"D{_i + 3}"] = ("LED_THT", "LED_D3.0mm", LED_COLORS[_i])
 for _i in range(1, 8):                     # key pull-ups
@@ -287,10 +301,13 @@ def build(cfg: dict) -> str:
             if pad.GetNetname() == "/GND":
                 pad.SetLocalZoneConnection(pcbnew.ZONE_CONNECTION_FULL)
 
-        if ref in LED_MODELS:              # colored 3D body per LED
+        if ref in MODEL_OVERRIDES:         # colored LED bodies + D1 (ADR-033)
             models = fp.Models()
             if len(models):
-                models[0].m_Filename = LED_MODELS[ref]
+                models[0].m_Filename = MODEL_OVERRIDES[ref]
+            else:
+                raise SystemExit(f"{ref}: footprint has no (model ...) block "
+                                 f"to override")
 
     # reposition the visible refs into free silk pockets (v0.0.4: positions
     # tuned until /drc reports zero silk_overlap)

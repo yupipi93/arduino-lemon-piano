@@ -1,11 +1,12 @@
 # DESIGN_STATE.md — Lemon Piano V5.5 Board
 
-**Current version: v0.5.0 — the Nano is FLIPPED (mini-USB faces EAST), which
+**Current version: v0.5.1 — the Nano is FLIPPED (mini-USB faces EAST), which
 puts the analog column on the north row and the digital column on the south
 row: lemon-key header on the NORTH edge (centred, KEY1 east), ten-LED bar on
 the SOUTH edge (centred on x=150, ascending west→east), power-entry filter
 refactored into a compact 3-row west block with C1 ‖ C3 adjacent, and no
-USB-cable keepout.** (2026-07-30)
+USB-cable keepout. v0.5.1 adds D1's missing 3D body (ADR-033).**
+(2026-07-30)
 
 > **Flashing note (ADR-030, deliberate):** the mini-USB faces east with no
 > cable clearance reserved — the shell reaches x≈173.3 and SW1's courtyard
@@ -30,20 +31,20 @@ USB-cable keepout.** (2026-07-30)
 | GND | ✅ B.Cu zone, solid connect on all GND pads; now refilled after split-net repair too (ADR-032) |
 | Mounting (H1–H4, M2) | ✅ (95,105) / (205,105) / (95,135) / (205,135), symmetric about x=150 and y=120 |
 | Schematic | ✅ mirrors PCB (47 symbols incl. 3 PWR_FLAGs), ERC 0/0. Unchanged by the flip — the pin→net map is electrical, only placements moved |
-| Fab package | ✅ `pcb/releases/v0.5.0/lemon-piano-v0.5.0-fab.zip` (14 files) |
+| Fab package | ✅ `pcb/releases/v0.5.1/lemon-piano-v0.5.1-fab.zip` (14 files) |
 
-## Verification snapshot (v0.5.0)
+## Verification snapshot (v0.5.1)
 
 | Gate | Result |
 |---|---|
-| Cloud `/drc` | **0 errors, 0 warnings, 0 unconnected** (`validation/drc-v0.5.0.json`; `included_severities` = error + warning, `schematic_parity` empty) |
-| ERC | 0 errors, 0 warnings (`validation/erc-v0.5.0.txt`) |
+| Cloud `/drc` | **0 errors, 0 warnings, 0 unconnected** (`validation/drc-v0.5.1.json`; `included_severities` = error + warning, `schematic_parity` empty) |
+| ERC | 0 errors, 0 warnings (`validation/erc-v0.5.1.txt`) |
 | `verify_placement` (C1 chirality, C2 flip, C3 pad↔net↔function, C4 net intent) | **73 OK / 0 FAIL** — including the re-derived pad numbers for both flipped 0805 groups |
 | `verify_holes` (geometric + VISION) | PASS |
-| `geometry_gate` (24 checks: outline, hole symmetry, flip orientation, keys north + KEY1-east, LED bar south + centred + west→east, filter-in-west, C1/C3 adjacency, button-pair centring, EXT headers east, copper per net, courtyards) | ALL PASS |
-| Render inspection (top+bottom, 4 styles) | PASS — see below |
-| post_route widths | 107 segments at target, 7 short pad-entry stubs capped (all ≥0.2 mm, worst-case current ≈200 mA); 1 split-net bridge repaired, zone refilled twice (ADR-032) |
-| Idempotency | build_board byte-identical across runs (`b4a164d340e8`) |
+| `geometry_gate` (27 checks: outline, hole symmetry, flip orientation, keys north + KEY1-east, LED bar south + centred + west→east, filter-in-west, C1/C3 adjacency, button-pair centring, EXT headers east, copper per net, courtyards) | ALL PASS |
+| Render inspection (top+bottom, 4 styles) | PASS — every part now shows a 3D body, D1 included (ADR-033) |
+| post_route widths | 111 segments at target, 7 short pad-entry stubs capped (all ≥0.2 mm, worst-case current ≈200 mA); no split net this run, 1 zone refill |
+| Idempotency | build_board byte-identical across runs (`0fc6335c02c7`) |
 
 ## Iteration history
 
@@ -61,7 +62,8 @@ USB-cable keepout.** (2026-07-30)
 | v0.3.0 | 4 anchor holes (ADR-020), VU-meter LED colors + 3D bodies (ADR-021), /place model-strip bugfix (ADR-022), brighter Nano photo (ADR-023), hole VISION pass (LL §22) | **0 / 0 / 0** | released |
 | v0.4.0 | 120 × 40 mm frame + floor-plan remake (ADR-024): Nano centred, keys centred south, filter folded around a USB corridor, D2 at rot=180; 2-pin 5 V header (ADR-025); parallel EXT headers J3/J4 (ADR-026); buzzer NE (ADR-027); title in the corridor (ADR-028) | **0 / 0 / 0** | released (superseded by v0.5.0) |
 | v0.5.0 (run 1) | Nano FLIPPED to USB-east (ADR-029), keys north, LED bar south + centred, USB keepout dropped (ADR-030), filter refactored with C1 ‖ C3 adjacent (ADR-031) | 2 / 0 / 0 | **FAILED the DRC gate** — two `/+5V` bus bridges laid on filled ground |
-| v0.5.0 (run 2) | post_route now refills the GND zone after split-net repair (ADR-032) | **0 / 0 / 0** | **RELEASED** |
+| v0.5.0 (run 2) | post_route now refills the GND zone after split-net repair (ADR-032) | **0 / 0 / 0** | released |
+| v0.5.1 | D1's 3D body restored: its footprint asks for `..._KathodeUp.step`, upstream ships `..._CathodeUp.step` (ADR-033). Cosmetic only — fab outputs never affected | **0 / 0 / 0** | **RELEASED** |
 
 (One v0.1.0 route attempt produced a GND-zone island — caught by the
 DRC gate, fixed by the automatic island healing, re-run clean. Kept in
@@ -71,9 +73,9 @@ DRC gate, fixed by the automatic island healing, re-run clean. Kept in
 
 ```bash
 # full iteration (build → /place → /route → post → /drc → /render → gates):
-./pcb/tools/cloud_pipeline.sh v0.5.0
+./pcb/tools/cloud_pipeline.sh v0.5.1
 # release (adds /fab):
-./pcb/tools/cloud_pipeline.sh v0.5.0 --fab
+./pcb/tools/cloud_pipeline.sh v0.5.1 --fab
 ```
 
 ## Open items
@@ -84,7 +86,7 @@ DRC gate, fixed by the automatic island healing, re-run clean. Kept in
   take a USB cable. If that becomes annoying in practice, the fix is either
   a right-angle USB adapter or moving the SENS buttons ~4 mm east, which
   would collide with J3/J4 and need the east block re-planned.
-- The 3 capped stubs (ADR-008) are ≥0.2 mm and current-safe.
+- The 7 capped stubs (ADR-008) are ≥0.2 mm and current-safe.
 - C1 and C3 sit adjacent by user request, so the unfiltered VRAW and
   filtered +5 V nodes run ~10 mm apart (ADR-031 explains why that is
   acceptable for this filter's job). If the board ever needs real HF

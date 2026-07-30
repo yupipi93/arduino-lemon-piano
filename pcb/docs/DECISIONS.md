@@ -460,3 +460,48 @@ Moving the pull-ups to y=115.6 put the bus in the middle of a filled region
 and exposed it. Worth remembering as a class of bug: a stage that adds
 copper after the last fill is a silent DRC failure waiting for a placement
 change.
+
+## ADR-033 — v0.5.1: D1's 3D model — KiCad's Kathode/Cathode filename split
+
+**Symptom** (user-reported): D1 has no body in any `realistic` render — just
+a bare square pad, a round pad and the silk outline, while D2 right next to
+it renders fine.
+
+**Cause.** KiCad 9's `Diode_THT:D_DO-15_P5.08mm_Vertical_KathodeUp` footprint
+references a model of the same name:
+
+```
+${KICAD9_3DMODEL_DIR}/Diode_THT.3dshapes/D_DO-15_P5.08mm_Vertical_KathodeUp.step
+```
+
+but kicad-packages3D ships that body spelled the **English** way,
+`D_DO-15_P5.08mm_Vertical_CathodeUp.step`. The footprint kept the legacy
+German-ish "**K**athode" while the 3D library moved to "**C**athode", so the
+path resolves to nothing. `kicad-cli pcb render` skips unresolvable models
+silently — no warning, no DRC item, no build error. That is why it survived
+from v0.3.0 (first release with 3D bodies) through v0.5.0 unnoticed.
+
+D2 is unaffected because its footprint and its model agree
+(`D_DO-41_SOD81_P5.08mm_Vertical_AnodeUp`), with no K/C discrepancy.
+
+**Fix.** Point D1 at the file that exists, via the same per-footprint model
+override already used for the coloured LEDs. `LED_MODELS` is now folded into
+a general `MODEL_OVERRIDES` table in `build_board.py`, and the override loop
+raises if a target footprint has no `(model ...)` block to patch — so a
+future library change that drops the block fails loudly instead of silently
+reverting to no body.
+
+**Scope: cosmetic only.** 3D models take no part in gerbers, drill files,
+BOM, position files, the netlist or DRC, so v0.5.0's fabrication package was
+never wrong — only its renders were incomplete. Hence a PATCH bump per the
+repo's version rule, not a MINOR.
+
+**Audit done at the same time.** All 44 model paths the board references
+were checked against upstream kicad-packages3D. Three others are absent
+upstream but resolve on the render host anyway, so they render correctly and
+need no action: `L_Radial_D8.7mm_P5.00mm_Fastron_07HCP.step` (L1) and
+`LED_D3.0mm_Orange.step` (D9, D10 — shipped in the service image per
+ADR-021). D1 was the only genuinely broken reference. Useful lesson: a
+missing 3D body is invisible to every automated gate this project has, so
+the render-inspection step (workflow gate 4) is the only thing that can
+catch it — look at the bodies, not just the copper and the labels.
