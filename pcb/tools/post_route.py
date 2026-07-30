@@ -255,26 +255,38 @@ def main() -> None:
     filler.Fill(zones)
     print(f"  refilled {len(zones)} zone(s)")
 
-    repair_split_nets(board, target)
+    # Split-net bridges are new copper laid AFTER the fill above, so the zone
+    # has to retreat around them — otherwise DRC reports "clearance 0.2 mm;
+    # actual 0.0000 mm" for every bridge that lands on filled ground.
+    # (v0.5.0: both +5V pull-up bus repairs did exactly that.)
+    if repair_split_nets(board, target):
+        filler.Fill(zones)
+        print(f"  refilled {len(zones)} zone(s) after split-net repair")
     heal_zone_islands(board, filler, zones)
 
     pcbnew.SaveBoard(str(pcb), board)
     print(f"  saved {pcb}")
 
 
-def repair_split_nets(board, target) -> None:
+def repair_split_nets(board, target) -> int:
     """Freerouting occasionally omits a trivial link (observed: two 2.54 mm
     hops of the +5V pull-up daisy-chain, reproducibly). For every non-GND
     net whose copper falls into >1 connected fragment, bridge the closest
-    pad pair across fragments with a clearance-checked straight/L track."""
+    pad pair across fragments with a clearance-checked straight/L track.
+
+    Returns the number of bridges laid — the caller must refill the zones
+    when it is non-zero (the bridges are copper the existing fill has not
+    made room for)."""
+    n_bridges = 0
     for _ in range(8):
         split = _find_split(board)
         if split is None:
-            return
+            return n_bridges
         net, frag_a, frag_b = split
         if not _bridge_fragments(board, net, frag_a, frag_b, target):
             raise SystemExit(f"net {net} is split and no clear repair "
                              f"path was found")
+        n_bridges += 1
     raise SystemExit("net repair did not converge in 8 passes")
 
 

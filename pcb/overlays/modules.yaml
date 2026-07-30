@@ -19,17 +19,23 @@ modules:
     anchor_ref: U1
     positioning: bbox_center
     image: arduino-nano.png
-    # Native crop (2664x1046 landscape) is ALREADY the board pose: USB
-    # west, top row D12..TX1, bottom row D13 3.3V REF A0..A7 5V RST GND
-    # VIN — exactly the v0.2.0+ socket rows. The engine composes
-    # PIL_rot = -pcb_rotation + image_rotation (MT1-calibrated
-    # convention), anchor U1 is at rot=90, so image_rotation=90 yields
-    # net rotation 0 (photo pasted as-is).
+    # Native crop (2664x1046 landscape) is USB-WEST, top row D12..TX1,
+    # bottom row D13 3.3V REF A0..A7 5V RST GND VIN. The engine composes
+    # PIL_rot = -pcb_rotation + image_rotation (MT1-calibrated convention,
+    # LESSONS_LEARNED §26 — do NOT "fix" the sign in code).
+    #
+    # v0.5.0: the Nano is FLIPPED (ADR-029) and anchor U1 is now at
+    # rot=270, so the SAME image_rotation=90 yields
+    # PIL_rot = -270 + 90 = -180 ≡ 180 — which rotates the native
+    # USB-west crop to the USB-EAST pose the board now needs. The value is
+    # unchanged on purpose; it is the anchor rotation that moved.
     real_size_mm: [45.97, 18.05]    # native [w,h] at 57.95 px/mm
     image_rotation_deg: 90
     # bbox_center of U1+U2 = pin-field centre. The crop's centre sits
-    # (-0.11, +0.29) mm from it in BOARD coords (USB + south-row bias);
-    # expressed in module-local coords (rot90: board=(ly,-lx)):
+    # ~0.3 mm off it (USB + long-row bias). At the new net rotation the
+    # local→board mapping negates, so the residual flips sign; 0.3 mm is
+    # below what the render can show, so the value is left as calibrated
+    # and re-checked by eye on each overlay render.
     body_offset_mm: [-0.29, -0.11]
     visible_layer: F.Cu
     category: module

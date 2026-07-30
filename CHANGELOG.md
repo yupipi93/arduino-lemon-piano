@@ -2,6 +2,52 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-30 (pcb/) — v0.5.0: Nano flipped (USB east), keys north, LEDs south, filter refactored
+
+Second pass on the 120 × 40 mm board, to the user's follow-up spec. Circuit
+unchanged again — this is all orientation and placement.
+
+- **The Nano is flipped 180°: mini-USB now faces EAST** (ADR-029). This is
+  the load-bearing change, and it is what "keys up, LEDs down" *requires*:
+  the module's analog and digital columns sit on opposite long edges, so the
+  only way to swap which board edge they face is to rotate the module. `U1`
+  (analog) becomes the NORTH row with pin 1 (D13) at the east; `U2`
+  (digital) becomes the SOUTH row with pin 1 (TX1) at the west.
+- **Keys header on the NORTH edge**, still centred (pin centre exactly
+  x=150), with pin 1 = KEY1 at the EAST because A0..A6 now descend
+  west→east. Silk reads `KEYS G 7 6 5 4 3 2 1`, and the GND clip moved to
+  the west end of the header.
+- **LED bar on the SOUTH edge, centred on x=150**, ascending west→east
+  (LED1 west under D2, LED10 east under D11) — the mirror of the old order.
+- **Both 0805 resistor groups inverted their pad numbers.** The builder nets
+  them geometrically, so the pull-ups (now south of a north analog row) and
+  the LED resistors (now north of a south bar) both swapped which pad
+  carries which net. `ground-truth/components.yaml` was re-derived from the
+  built board, and two new builder assertions pin the KEY pad at y=114.6 and
+  the LED cathode pad at y=138.03 so this cannot drift silently.
+- **USB-cable keepout dropped** (ADR-030) at the user's explicit request.
+  Trade-off, stated plainly: the USB shell now reaches x≈173.3 with SW1's
+  courtyard starting at 173.48, so **flashing means lifting the Nano out of
+  its socket**. That is the direct cost of keys-north + LEDs-south.
+- **Filter section refactored** into a compact 3-row west block (ADR-031)
+  now that the corridor no longer punches a hole through it: **C1 ‖ C3
+  adjacent** on the north row as asked, D2 → L1 on the middle row with their
+  pads 5.5 mm apart, J1 → D1 on the south row. Both bulk caps are now ~13 mm
+  from the choke instead of C3's old 30 mm trip across the board.
+- The flip also shortened two long v0.4.0 runs for free: `/BUZZER` from
+  ~58 mm to ~20 mm and `/SENS_PLUS` from ~43 mm to ~8 mm, because D13 and
+  D12 moved to the east end next to the buzzer and the SENS+ button.
+- **post_route bugfix** (ADR-032): `repair_split_nets` laid its bridge tracks
+  *after* the GND zone was filled, so the fill never made room for them —
+  the first v0.5.0 run reported two `clearance 0.2 mm; actual 0.0000 mm`
+  errors on the +5 V pull-up bus. It now returns a bridge count and the
+  caller refills when it is non-zero. This was latent since v0.2.0; v0.4.0
+  only escaped it because its bridges happened to land off the fill.
+- Title block moved to the SE quadrant (the north edge belongs to the keys
+  header now). `geometry_gate` grew to 24 checks: flip orientation, keys
+  north + KEY1-east, LED bar south + centred + west→east order, and C1/C3
+  adjacency.
+
 ## 2026-07-30 (pcb/) — v0.4.0: 120 × 40 mm remake, centred Nano, external-button headers
 
 Complete floor-plan remake on a bigger board, to the user's distribution

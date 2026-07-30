@@ -16,8 +16,10 @@ components:
   # top→bottom is D13,3V3,AREF,A0..A7,5V,RST,GND,VIN and the RIGHT
   # column top→bottom is D12,D11..D2,GND,RST,RX0,TX1 — i.e. D12/D13 at
   # the USB end, TX1/VIN at the ICSP end.
-  # On this board the Nano mounts on TOP with USB facing WEST (-X):
-  # U1 = south row (pin1 west = D13), U2 = north row (pin1 east = TX1).
+  # v0.5.0 (ADR-029): the Nano mounts on TOP with USB facing EAST (+X),
+  # flipped 180° from v0.4.0. U1 = NORTH row (pin1 east = D13, the analog
+  # column), U2 = SOUTH row (pin1 west = TX1, the digital column). The flip
+  # is what puts the keys header north and the LED bar south.
   # ────────────────────────────────────────────────────────────────────
   NANO:
     refs: [U1, U2]
@@ -67,7 +69,7 @@ components:
   KEYS_HEADER:
     refs: [J2]
     mount_side: top
-    source: "docs/NETLIST.md — KEY1..KEY7 west→east under A0..A6, then GND clip"
+    source: "docs/NETLIST.md — v0.5.0: KEY1 at the EAST under A0, KEY7 west, then the GND clip"
     pins:
       "J2.1": {func: KEY1, net: /KEY1}
       "J2.2": {func: KEY2, net: /KEY2}
@@ -161,41 +163,44 @@ components:
 
   # ────────────────────────────────────────────────────────────────────
   # Keyboard pull-ups (220R) + SENS− pull-up (10k). All on B.Cu.
-  # v0.2.0: pad1 = south = the pin node (A row is the south row now),
-  # pad2 = north = +5V rail (verified in the built board; the builder
-  # assigns these GEOMETRICALLY).
+  # v0.5.0: the analog row is the NORTH row, so the pin node is now the
+  # NORTH pad = pad2, and the +5V rail the SOUTH pad = pad1 (both flipped
+  # vs v0.4.0). The builder assigns these GEOMETRICALLY and asserts the
+  # KEY pad lands at y=114.6; these numbers were then read back off the
+  # built board (the verifier compares pad NUMBERS).
   # ────────────────────────────────────────────────────────────────────
   KEY_PULLUPS:
     refs: [R1, R2, R3, R4, R5, R6, R7]
     mount_side: bottom
     source: "v5 HARDWARE.md — 220R pull-up per key, pin->R->+5V"
     pins:
-      "R1.1": {func: pin,  net: /KEY1}
-      "R1.2": {func: rail, net: /+5V}
-      "R2.1": {func: pin,  net: /KEY2}
-      "R2.2": {func: rail, net: /+5V}
-      "R3.1": {func: pin,  net: /KEY3}
-      "R3.2": {func: rail, net: /+5V}
-      "R4.1": {func: pin,  net: /KEY4}
-      "R4.2": {func: rail, net: /+5V}
-      "R5.1": {func: pin,  net: /KEY5}
-      "R5.2": {func: rail, net: /+5V}
-      "R6.1": {func: pin,  net: /KEY6}
-      "R6.2": {func: rail, net: /+5V}
-      "R7.1": {func: pin,  net: /KEY7}
-      "R7.2": {func: rail, net: /+5V}
+      "R1.1": {func: rail, net: /+5V}
+      "R1.2": {func: pin,  net: /KEY1}
+      "R2.1": {func: rail, net: /+5V}
+      "R2.2": {func: pin,  net: /KEY2}
+      "R3.1": {func: rail, net: /+5V}
+      "R3.2": {func: pin,  net: /KEY3}
+      "R4.1": {func: rail, net: /+5V}
+      "R4.2": {func: pin,  net: /KEY4}
+      "R5.1": {func: rail, net: /+5V}
+      "R5.2": {func: pin,  net: /KEY5}
+      "R6.1": {func: rail, net: /+5V}
+      "R6.2": {func: pin,  net: /KEY6}
+      "R7.1": {func: rail, net: /+5V}
+      "R7.2": {func: pin,  net: /KEY7}
 
   SENS_MINUS_PULLUP:
     refs: [R18]
     mount_side: bottom
     source: "v5 HARDWARE.md — A7 has no internal pull-up: external 10k to +5V"
     pins:
-      "R18.1": {func: pin,  net: /SENS_MINUS}
-      "R18.2": {func: rail, net: /+5V}
+      "R18.1": {func: rail, net: /+5V}
+      "R18.2": {func: pin,  net: /SENS_MINUS}
 
   # ────────────────────────────────────────────────────────────────────
   # LED bar: LED n anode <- pin n+1, cathode -> 220R -> GND
-  # LED pad1 = cathode (KiCad LED_THT), R pad1 = GND (south), pad2 = cathode net
+  # LED pad1 = cathode (KiCad LED_THT). v0.5.0: the bar is SOUTH, so the
+  # resistor's cathode pad is its SOUTH pad = pad1, GND the north = pad2.
   # ────────────────────────────────────────────────────────────────────
   LED_BAR:
     refs: [D3, D4, D5, D6, D7, D8, D9, D10, D11, D12]
@@ -228,26 +233,26 @@ components:
     mount_side: bottom
     source: "v5 HARDWARE.md — one 220R per LED, cathode->R->GND"
     pins:
-      "R8.1":  {func: gnd, net: /GND}
-      "R8.2":  {func: k,   net: /LED1_K}
-      "R9.1":  {func: gnd, net: /GND}
-      "R9.2":  {func: k,   net: /LED2_K}
-      "R10.1": {func: gnd, net: /GND}
-      "R10.2": {func: k,   net: /LED3_K}
-      "R11.1": {func: gnd, net: /GND}
-      "R11.2": {func: k,   net: /LED4_K}
-      "R12.1": {func: gnd, net: /GND}
-      "R12.2": {func: k,   net: /LED5_K}
-      "R13.1": {func: gnd, net: /GND}
-      "R13.2": {func: k,   net: /LED6_K}
-      "R14.1": {func: gnd, net: /GND}
-      "R14.2": {func: k,   net: /LED7_K}
-      "R15.1": {func: gnd, net: /GND}
-      "R15.2": {func: k,   net: /LED8_K}
-      "R16.1": {func: gnd, net: /GND}
-      "R16.2": {func: k,   net: /LED9_K}
-      "R17.1": {func: gnd, net: /GND}
-      "R17.2": {func: k,   net: /LED10_K}
+      "R8.1": {func: k,   net: /LED1_K}
+      "R8.2": {func: gnd, net: /GND}
+      "R9.1": {func: k,   net: /LED2_K}
+      "R9.2": {func: gnd, net: /GND}
+      "R10.1": {func: k,   net: /LED3_K}
+      "R10.2": {func: gnd, net: /GND}
+      "R11.1": {func: k,   net: /LED4_K}
+      "R11.2": {func: gnd, net: /GND}
+      "R12.1": {func: k,   net: /LED5_K}
+      "R12.2": {func: gnd, net: /GND}
+      "R13.1": {func: k,   net: /LED6_K}
+      "R13.2": {func: gnd, net: /GND}
+      "R14.1": {func: k,   net: /LED7_K}
+      "R14.2": {func: gnd, net: /GND}
+      "R15.1": {func: k,   net: /LED8_K}
+      "R15.2": {func: gnd, net: /GND}
+      "R16.1": {func: k,   net: /LED9_K}
+      "R16.2": {func: gnd, net: /GND}
+      "R17.1": {func: k,   net: /LED10_K}
+      "R17.2": {func: gnd, net: /GND}
 
   # ────────────────────────────────────────────────────────────────────
   # UI + mechanical

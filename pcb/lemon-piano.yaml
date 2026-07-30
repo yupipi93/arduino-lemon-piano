@@ -7,31 +7,37 @@
 # tools/wiring_diagrams.py). Netlist ground truth: pcb/docs/NETLIST.md.
 # Placement rationale: pcb/docs/DECISIONS.md.
 #
-# Board frame: 120 × 40 mm (v0.4.0 full remake, ADR-024), MT1 coordinate
-# style (x 90..210, y 100..140; centre 150,120).
+# Board frame: 120 × 40 mm (ADR-024), MT1 coordinate style
+# (x 90..210, y 100..140; centre 150,120).
 #
-# v0.4.0 floor plan (user spec 2026-07-30):
+# v0.5.0 floor plan (user spec 2026-07-30 — supersedes the v0.4.0 plan):
 #   - Nano socket CENTERED on the board (pin field 132.22..167.78 about
-#     x=150, rows ±7.62 about y=120), mini-USB still facing WEST (ADR-002),
-#     row maps per the real Nano (ADR-015: D12/D13 at the USB end).
-#   - Power-entry filter entirely in the WEST block, folded around the
-#     USB-cable corridor (y 113..127 kept free of parts): VIN section on the
-#     south strip J1 → D1 → D2, VRAW/+5V section on the north strip C1 → L1,
-#     +5V reservoir C3 at the south-strip east end. Ceramics on B.Cu.
+#     x=150, rows ±7.62 about y=120) and **FLIPPED 180°: mini-USB now faces
+#     EAST** (ADR-029, supersedes ADR-002). The flip is what puts the ANALOG
+#     column on the NORTH row and the DIGITAL column on the SOUTH row, so
+#     the keys header can go north and the LED bar south as the user asked.
+#     Row maps still per the real Nano (ADR-015: D12/D13 at the USB end).
+#   - Lemon-key header on the NORTH edge, CENTERED (J2 pins 141.11..158.89,
+#     centre exactly x=150). Pin 1 = KEY1 at the EAST so KEY1..KEY7 sit
+#     under A0..A6 (which now descend west→east) with no crossings.
+#   - LED bar on the SOUTH edge, CENTERED on x=150, ascending west→east
+#     (D2..D11 now ascend west→east along the south row).
+#   - Power-entry filter refactored into a compact 3-row WEST block
+#     (ADR-031): C1 ‖ C3 ADJACENT on the north row, D2 + L1 on the middle
+#     row, J1 → D1 on the south row. The USB-corridor keepout is GONE —
+#     the user explicitly does not need clearance for the USB cable
+#     (ADR-030), which is what freed the middle of the west block.
 #   - 5 V input is a 2-pin 2.54 mm header (J1, ADR-025), not a screw block.
-#   - Lemon-key header CENTERED on the SOUTH edge (J2 pins 141.11..158.89,
-#     centre exactly x=150).
-#   - LED bar on the NORTH edge, ascending east→west, centred over the
-#     D2..D11 pin span so the fan stays short and non-crossing.
 #   - SENS± buttons in the EAST block, the PAIR centred on y=120, each with
 #     a parallel 2-pin external-button header (J3/J4, ADR-026).
-#   - Buzzer in the NE corner (ADR-027).
+#   - Buzzer in the NE corner (ADR-027) — now only ~20 mm from D13, which
+#     the flip moved to the east end of the north row.
 # ----------------------------------------------------------------------------
 
 project:
   name: lemon-piano
   full_name: "Lemon Piano V5.5 Board"
-  version: v0.4.0
+  version: v0.5.0
   vendor: "Lemon Piano"
   kicad_project_dir: pcb/kicad
   kicad_pcb_file: lemon-piano.kicad_pcb
@@ -69,22 +75,28 @@ placements:
   H3: [95.0, 135.0, 0, F.Cu]
   H4: [205.0, 135.0, 0, F.Cu]
 
-  # ── Nano socket rows, CENTERED. USB faces the WEST edge ─────────────────
-  U1: [132.22, 127.62,  90, F.Cu]   # south row: D13(west)..VIN(east)
-  U2: [167.78, 112.38, 270, F.Cu]   # north row: TX1(east)..D12(west)
+  # ── Nano socket rows, CENTERED, FLIPPED: USB faces the EAST edge ────────
+  #    U1 = ANALOG column, now the NORTH row, pin 1 (D13) at the EAST.
+  #    U2 = DIGITAL column, now the SOUTH row, pin 1 (TX1) at the WEST.
+  U1: [167.78, 112.38, 270, F.Cu]   # north row: D13(east)..VIN(west)
+  U2: [132.22, 127.62,  90, F.Cu]   # south row: TX1(west)..D12(east)
 
-  # ── Lemon-key header: CENTERED on the south edge (pins 141.11..158.89) ──
-  J2: [141.11, 137.0, 90, F.Cu]
+  # ── Lemon-key header: CENTERED on the NORTH edge (pins 141.11..158.89),
+  #    pin 1 = KEY1 at the EAST, under A0 ─────────────────────────────────
+  J2: [158.89, 103.0, 270, F.Cu]
 
-  # ── Power entry + filter, WEST block ────────────────────────────────────
-  J1: [102.3, 133.0, 90, F.Cu]     # 5V IN, 2-pin header: pad1 (+), pad2 (−)
-  D1: [109.2, 133.0, 0, F.Cu]      # P6KE6.8A TVS (vertical), K=VIN A=GND
-  D2: [124.5, 133.0, 180, F.Cu]    # 1N5817: pad2 (A,VIN) west, pad1 (K,VRAW) east
-  C1: [104.0, 106.0, 0, F.Cu]      # 470u input reservoir (VRAW)
-  L1: [115.0, 106.0, 0, F.Cu]      # 100uH choke: pad1 VRAW, pad2 +5V
-  C3: [131.0, 134.5, 0, F.Cu]      # 470u output reservoir (+5V)
-  C2: [105.75, 111.5, 0, B.Cu]     # 100n input ceramic (bottom, under C1)
-  C4: [132.75, 131.0, 0, B.Cu]     # 100n output ceramic (bottom, by C3)
+  # ── Power entry + filter: compact 3-row WEST block (ADR-031) ────────────
+  #    north row  C1 ‖ C3 (the two bulk caps, adjacent as requested)
+  #    middle row D2 → L1  (VIN→VRAW→+5V, 5.5 mm apart)
+  #    south row  J1 → D1  (entry + TVS right at the terminals)
+  C1: [108.0, 106.0, 0, F.Cu]      # 470u input reservoir (VRAW)
+  C3: [118.0, 106.0, 0, F.Cu]      # 470u output reservoir (+5V)
+  D2: [110.0, 119.0, 180, F.Cu]    # 1N5817: pad2 (A,VIN) west, pad1 (K,VRAW) east
+  L1: [115.5, 119.0, 0, F.Cu]      # 100uH choke: pad1 VRAW, pad2 +5V
+  J1: [102.3, 134.5, 90, F.Cu]     # 5V IN, 2-pin header: pad1 (+), pad2 (−)
+  D1: [109.2, 134.5, 0, F.Cu]      # P6KE6.8A TVS (vertical), K=VIN A=GND
+  C2: [109.75, 112.5, 0, B.Cu]     # 100n input ceramic (bottom, at VRAW)
+  C4: [119.25, 112.5, 0, B.Cu]     # 100n output ceramic (bottom, at +5V)
 
   # ── UI, EAST block. The SW1/SW2 pair is centred on y=120; J3/J4 are the
   #    parallel external-button headers (ADR-026) ─────────────────────────
@@ -94,45 +106,43 @@ placements:
   J4: [186.0, 126.51, 90, F.Cu]    # SENS− external button (parallel to SW2)
   BUZ1: [188.0, 106.78, 0, F.Cu]   # passive buzzer, pad1(+)=D13 net
 
-  # ── LED bar D3..D12 = LED1..LED10, NORTH strip, ascending run E→W ───────
-  # (D2..D11 sit on the north row descending west→east, so a non-crossing
-  # fan needs LED1 at the east end — ADR-015). origin = cathode pad;
-  # rot=270 puts the anode 2.54 south (toward the D2..D11 pins). The bar is
-  # centred over the D2..D11 pin span (midpoint x=146.2) so the fan legs
-  # stay short on both ends.
-  D3:  [166.9, 101.65, 270, F.Cu]
-  D4:  [162.3, 101.65, 270, F.Cu]
-  D5:  [157.7, 101.65, 270, F.Cu]
-  D6:  [153.1, 101.65, 270, F.Cu]
-  D7:  [148.5, 101.65, 270, F.Cu]
-  D8:  [143.9, 101.65, 270, F.Cu]
-  D9:  [139.3, 101.65, 270, F.Cu]
-  D10: [134.7, 101.65, 270, F.Cu]
-  D11: [130.1, 101.65, 270, F.Cu]
-  D12: [125.5, 101.65, 270, F.Cu]
+  # ── LED bar D3..D12 = LED1..LED10, SOUTH strip, CENTRED on x=150 ──────
+  # (D2..D11 now ascend west→east along the south row, so a non-crossing fan
+  # needs LED1 at the WEST end). origin = cathode pad; rot=90 puts the anode
+  # 2.54 NORTH (toward the D2..D11 pins).
+  D3:  [129.3, 138.35, 90, F.Cu]
+  D4:  [133.9, 138.35, 90, F.Cu]
+  D5:  [138.5, 138.35, 90, F.Cu]
+  D6:  [143.1, 138.35, 90, F.Cu]
+  D7:  [147.7, 138.35, 90, F.Cu]
+  D8:  [152.3, 138.35, 90, F.Cu]
+  D9:  [156.9, 138.35, 90, F.Cu]
+  D10: [161.5, 138.35, 90, F.Cu]
+  D11: [166.1, 138.35, 90, F.Cu]
+  D12: [170.7, 138.35, 90, F.Cu]
 
   # ── LED series resistors (bottom, offset +2.3 east of each LED) ─────────
-  R8:  [169.2, 102.97, 90, B.Cu]
-  R9:  [164.6, 102.97, 90, B.Cu]
-  R10: [160.0, 102.97, 90, B.Cu]
-  R11: [155.4, 102.97, 90, B.Cu]
-  R12: [150.8, 102.97, 90, B.Cu]
-  R13: [146.2, 102.97, 90, B.Cu]
-  R14: [141.6, 102.97, 90, B.Cu]
-  R15: [137.0, 102.97, 90, B.Cu]
-  R16: [132.4, 102.97, 90, B.Cu]
-  R17: [127.8, 102.97, 90, B.Cu]
+  R8:  [131.6, 137.03, 90, B.Cu]
+  R9:  [136.2, 137.03, 90, B.Cu]
+  R10: [140.8, 137.03, 90, B.Cu]
+  R11: [145.4, 137.03, 90, B.Cu]
+  R12: [150.0, 137.03, 90, B.Cu]
+  R13: [154.6, 137.03, 90, B.Cu]
+  R14: [159.2, 137.03, 90, B.Cu]
+  R15: [163.8, 137.03, 90, B.Cu]
+  R16: [168.4, 137.03, 90, B.Cu]
+  R17: [173.0, 137.03, 90, B.Cu]
 
-  # ── Key pull-ups (bottom, between the socket rows, x = its A-pin on the
-  #    SOUTH row: A0 at 139.84 … A7 at 157.62) ────────────────────────────
-  R1: [139.84, 124.4, 90, B.Cu]    # KEY1 / A0
-  R2: [142.38, 124.4, 90, B.Cu]
-  R3: [144.92, 124.4, 90, B.Cu]
-  R4: [147.46, 124.4, 90, B.Cu]
-  R5: [150.0,  124.4, 90, B.Cu]
-  R6: [152.54, 124.4, 90, B.Cu]
-  R7: [155.08, 124.4, 90, B.Cu]    # KEY7 / A6
-  R18: [157.62, 124.4, 90, B.Cu]   # SENS− pull-up / A7
+  # ── Key pull-ups (bottom, just SOUTH of the north row, x = its A-pin;
+  #    the analogs descend west→east now: A0 at 160.16 … A7 at 142.38) ──────
+  R1: [160.16, 115.6, 90, B.Cu]    # KEY1 / A0
+  R2: [157.62, 115.6, 90, B.Cu]
+  R3: [155.08, 115.6, 90, B.Cu]
+  R4: [152.54, 115.6, 90, B.Cu]
+  R5: [150.0,  115.6, 90, B.Cu]
+  R6: [147.46, 115.6, 90, B.Cu]
+  R7: [144.92, 115.6, 90, B.Cu]    # KEY7 / A6
+  R18: [142.38, 115.6, 90, B.Cu]   # SENS− pull-up / A7
 
 pin_counts:
   H1: 1

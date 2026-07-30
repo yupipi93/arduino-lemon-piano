@@ -349,3 +349,114 @@ corridor is the largest open front-side area on the board, so
 B.SilkS at 123.5 / 125.5) — visible, and it stops the corridor reading as
 an unfinished gap. The `KEYS` word moved from west of the header to EAST of
 it, because the C3 reservoir now occupies the south-west.
+
+## ADR-029 — v0.5.0: the Nano is FLIPPED, mini-USB faces EAST (supersedes ADR-002)
+
+User instruction: *"flip the arduino and put the leds down center vertically,
+put key keyboard up"*. These are one change, not three. The Nano's pinout is
+fixed (ADR-015): the analog column (D13, 3V3, AREF, A0..A7, 5V, RST, GND,
+VIN) and the digital column (D12..D2, GND, RST, RX0, TX1) are on opposite
+long edges of the module. Which board edge each column faces is therefore
+decided entirely by the module's orientation, and rotating it 180° in-plane
+is the ONLY way to swap them — which necessarily moves the mini-USB from
+west to east. So "keys up + LEDs down" *requires* the flip, and the user's
+next instruction (ADR-030) confirms they understood that consequence.
+
+What the flip changes:
+- `U1` (analog) becomes the **NORTH** row, pin 1 (D13) at the **EAST**
+  (rot=270, origin x=167.78). `U2` (digital) becomes the **SOUTH** row,
+  pin 1 (TX1) at the **WEST** (rot=90, origin x=132.22). The two YAML
+  placement entries essentially trade places.
+- A0..A6 now **descend** west→east (A0 at 160.16 … A6 at 144.92), so the
+  keys header needs **pin 1 (KEY1) at the EAST** to keep straight drops.
+  Header still centred: pins 141.11..158.89, centre exactly x=150, so silk
+  reads `KEYS G 7 6 5 4 3 2 1` west→east.
+- D2..D11 now **ascend** west→east, so the LED bar ascends **west→east**
+  (LED1 west, LED10 east) — the mirror of ADR-015's east→west order. The
+  bar is centred on x=150 per the user's "center" instruction, rather than
+  over its pin span as in v0.4.0.
+- Both geometric-0805 groups **flip their pad numbers**. The pull-ups now
+  sit south of a NORTH analog row (pin node = north pad = pad 2, rail =
+  pad 1); the LED resistors sit north of a SOUTH bar (cathode = south pad =
+  pad 1, GND = pad 2). Exactly the trap AGENT_PROMPT warns about: the
+  builder assigns these by measured position, so `ground-truth/components.yaml`
+  was re-derived from the built board and both groups' pad numbers inverted.
+  New builder assertions lock the KEY pad at y=114.6 and the cathode pad at
+  y=138.03 so a future move cannot silently swap them.
+- Bonus: D13 and D12 move to the EAST end, next to the buzzer and the SENS+
+  button. `/BUZZER` drops from ~58 mm (ADR-027) to ~20 mm and `/SENS_PLUS`
+  from ~43 mm to ~8 mm.
+
+## ADR-030 — The USB-cable keepout is dropped (supersedes the ADR-024 corridor)
+
+User instruction: *"dont care about usb connector space"*. The corridor
+keepout introduced in ADR-024 is therefore removed from the design and from
+`geometry_gate`. This is what makes the ADR-031 filter refactor possible —
+the corridor was consuming a 30 × 14 mm hole in the middle of the west
+block, which is why v0.4.0 had to fold the filter around it.
+
+**Consequence the user should know about**: with the USB now facing east
+(ADR-029) and no clearance reserved, the mini-USB shell reaches about
+x=173.3 while SW1's courtyard starts at x=173.48 — they nearly touch, and a
+plugged USB cable will foul the SENS buttons. **Flashing the Nano means
+lifting it out of its socket** (or flashing before it is seated). That is an
+accepted trade, not an oversight: it is the direct cost of keys-north +
+LEDs-south, and the socket exists precisely so the module can come out.
+
+## ADR-031 — Power-filter section refactored into a compact 3-row block
+
+User instruction: *"put c1 and c3 together and refactorize this section"*.
+With the corridor gone (ADR-030) the whole west block (x 100.5..127,
+y 100..140) is usable, so the filter is rebuilt as three tidy rows:
+
+| Row | y | Parts | Node |
+|---|---|---|---|
+| north | 106.0 | **C1 ‖ C3**, 1.24 mm apart | VRAW bulk ‖ +5 V bulk |
+| middle | 119.0 | D2 → L1, pads 5.5 mm apart | VIN→VRAW→+5 V |
+| south | 134.5 | J1 → D1 | 5 V entry + TVS |
+| B.Cu | 112.5 | C2, C4 under the gap between rows | HF bypass at each node |
+
+The two bulk caps are adjacent on one row as asked, and the choke sits
+directly beneath the pair so C1's `+` is 13 mm from L1 pad 1 and C3's `+` is
+13 mm from L1 pad 2 — both far shorter than v0.4.0, where C3 lived 30 mm
+away on the opposite side of the board.
+
+Engineering note on the literal reading: a pi filter is normally laid out
+C1—L1—C3 *in series order* so the unfiltered and filtered rails never run
+side by side. Putting C1 and C3 adjacent does place VRAW and +5 V ~10 mm
+apart. Accepted because the choke physically separates the two nodes'
+current paths, the B.Cu ground plane provides the return directly under
+both, and this filter's job is conducted mains transients (µs–ms), not
+MHz isolation where that coupling would matter. `geometry_gate` now asserts
+the two caps stay on one row within 3 mm, so the intent cannot be lost.
+
+## ADR-032 — post_route bugfix: refill the GND zone after split-net repair
+
+The first v0.5.0 run failed the DRC gate with two `clearance 0.2 mm; actual
+0.0000 mm` errors, both `Track [/+5V] on B.Cu, length 2.5400 mm` against
+`Zone [/GND]`. Cause, straight from post_route's own log ordering:
+
+```
+refilled 1 zone(s)                                    <- fill computed here
+repaired split net /+5V: (147.46,116.60)->(150.00,116.60)   <- copper added
+repaired split net /+5V: (155.08,116.60)->(157.62,116.60)      AFTER the fill
+```
+
+`repair_split_nets` fixes the two 2.54 mm pull-up-bus links that freerouting
+reproducibly drops (ADR-018 item 3), but it ran *after* `filler.Fill()`, so
+the ground fill had never made room for those bridges and they sat directly
+on filled copper. `_bridge_fragments`' clearance check looks at tracks, vias
+and pads — not at the zone's filled polygons — so it saw nothing wrong.
+
+Fix: `repair_split_nets` now returns the number of bridges it laid, and the
+caller refills the zones when that count is non-zero (LESSONS_LEARNED §11 —
+the filler must run after *any* copper is added, not just after the SES
+import and the stitches). Re-run: DRC 0/0/0.
+
+This was **latent since v0.2.0**, when the repair pass was introduced.
+v0.4.0 escaped it only by luck: the same two bus links were dropped there
+too, but the bridges happened to land where the fill had already retreated.
+Moving the pull-ups to y=115.6 put the bus in the middle of a filled region
+and exposed it. Worth remembering as a class of bug: a stage that adds
+copper after the last fill is a silent DRC failure waiting for a placement
+change.

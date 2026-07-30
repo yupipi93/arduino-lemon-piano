@@ -3,7 +3,7 @@
 Copy everything between the `=== PROMPT ===` markers into a fresh agent
 session, fill in the **USER CHANGE REQUEST** block, and let it run. The
 prompt encodes the working protocol and every hard-won lesson from
-versions v0.0.1 → v0.4.0 of this board.
+versions v0.0.1 → v0.5.0 of this board.
 
 === PROMPT ===
 
@@ -23,22 +23,34 @@ going. Stop only for a hard blocker you cannot resolve.
 
 A 120 × 40 mm 2-layer KiCad-9 board (frame x 90..210, y 100..140, centre
 150/120) that replaces the arduino-lemon-piano V5.5 breadboard: socketed
-Arduino Nano **centred on the board** (2×15 rows, pin field
-x 132.22..167.78, rows y 112.38/127.62, mini-USB facing the WEST edge down
-a part-free cable corridor), 7 lemon-key lines + GND clip on a labelled
-south-edge header **centred** on x=150, ten-LED VU-meter bar (3 green / 3
-yellow / 2 orange / 2 red) on the north edge ascending east→west and
-centred over its D2..D11 pin span, SENS± buttons in the east block with the
-**pair centred on y=120** plus one parallel 2-pin external-button header
-each (J3/J4), D13 buzzer in the NE corner, and the V5.5 power-entry filter
-(2-pin 5 V header → P6KE6.8A TVS → 1N5817 → 470 µF‖100 nF → 100 µH →
-470 µF‖100 nF) feeding the +5 V rail — the whole filter lives in the WEST
-block, folded around the USB corridor. Four M2 anchor holes, two per short
-edge (x=95/205, y=105/135).
+Arduino Nano **centred on the board and FLIPPED so the mini-USB faces EAST**
+(2×15 rows, pin field x 132.22..167.78, rows y 112.38/127.62), 7 lemon-key
+lines + GND clip on a labelled **north**-edge header **centred** on x=150
+with pin 1 (KEY1) at the EAST, ten-LED VU-meter bar (3 green / 3 yellow /
+2 orange / 2 red) on the **south** edge **centred** on x=150 ascending
+west→east, SENS± buttons in the east block with the **pair centred on
+y=120** plus one parallel 2-pin external-button header each (J3/J4), D13
+buzzer in the NE corner, and the V5.5 power-entry filter (2-pin 5 V header →
+P6KE6.8A TVS → 1N5817 → 470 µF‖100 nF → 100 µH → 470 µF‖100 nF) feeding the
++5 V rail — the whole filter lives in the WEST block as a compact 3-row
+group with **C1 ‖ C3 adjacent** on its north row. Four M2 anchor holes, two
+per short edge (x=95/205, y=105/135).
 
-**The USB corridor is a hard constraint, not a guideline**: x < 130.4 (the
-socket courtyard's west edge), y 113..127. No footprint of any kind may
-enter it — `geometry_gate` checks real courtyard boxes, not origins.
+**Orientation is the highest-leverage fact on this board.** The Nano's own
+pinout is fixed (ADR-015: D12/D13 flank the USB, TX1/VIN at the ICSP end),
+so which board edge carries the analogs vs the digitals is decided ONLY by
+the module's rotation. Since v0.5.0 (ADR-029) the USB faces EAST, which
+means: analogs on the NORTH row descending west→east (A0 at 160.16 … A6 at
+144.92) → keys header north with KEY1 EAST; digitals on the SOUTH row
+ascending west→east → LED bar south ascending west→east. If a request asks
+to move the keys header or the LED bar to the other edge, it is really
+asking to flip the Nano — say so, and flip BOTH the socket placements and
+every dependent map in one change.
+
+**There is NO USB-cable keepout** (ADR-030, explicit user decision). The USB
+shell reaches ~x=173.3 and SW1's courtyard starts at 173.48, so a plugged
+cable fouls the SENS buttons: flashing means lifting the Nano out of its
+socket. Do not "fix" this by reserving space unless the user asks.
 
 ## Where everything lives (two sibling repos, fixed protocol)
 
@@ -77,9 +89,9 @@ enter it — `geometry_gate` checks real courtyard boxes, not origins.
 ## Version bump rule (repo convention)
 
 - Physical change (footprints, holes, outline, placements, netlist) →
-  bump MINOR of the pcb version: v0.4.0 → v0.5.0.
+  bump MINOR of the pcb version: v0.5.0 → v0.6.0.
 - Cosmetic-only change (silk, labels, renders) → bump PATCH:
-  v0.4.0 → v0.4.1.
+  v0.5.0 → v0.5.1.
 - Set it in `pcb/lemon-piano.yaml` (`project.version`) — the silk label
   "pcb vX.Y.Z" and every artefact name derive from it. Never regenerate
   a released version tag with different content; if a released version
@@ -104,14 +116,18 @@ enter it — `geometry_gate` checks real courtyard boxes, not origins.
    (`/usr/share/kicad/footprints`) — verify with pcbnew before using,
    and dump real courtyards for floor-planning (never guess extents).
 2. **Floor-plan against REAL courtyard boxes** (pcbnew dump), keeping:
-   the USB corridor (x<130.4, y 113..127) completely part-free; LED bar
-   north; keys header south under A0..A6 and centred; the filter in the
-   west block; the SENS button pair centred on y=120 with its EXT header
-   east of each button; anchor zones (x<100, x>200) component-free; silk
-   text ≥ 0.8 mm height everywhere. Before running the pipeline, check the
-   plan numerically — the standalone bbox math in `tools/geometry_gate.py`
+   keys header NORTH under A0..A6 and centred (KEY1 east); LED bar SOUTH
+   and centred, ascending west→east; the filter in the west block with
+   C1 ‖ C3 adjacent; the SENS button pair centred on y=120 with its EXT
+   header east of each button; anchor zones (x<100, x>200) component-free;
+   silk text ≥ 0.8 mm height everywhere. Before running the pipeline, check
+   the plan numerically — the standalone bbox math in `tools/geometry_gate.py`
    (`bbox()` is module-level, importable) will list overlaps and gaps for a
    candidate YAML in seconds, which is far cheaper than a routed iteration.
+   **If you move either 0805 resistor group, its pad NUMBERS may invert**:
+   the builder nets them GEOMETRICALLY (north/south by position), so build
+   first, read the pad→net pairs back off the `.kicad_pcb`, and only then
+   fix `ground-truth/components.yaml`. Both groups inverted in v0.5.0.
 3. **Run the pipeline** (from `arduino-lemon-piano/`):
    `./pcb/tools/cloud_pipeline.sh vX.Y.Z` — it does: build_board
    (Docker, byte-stable) → cloud /place → cloud /route → post_route
@@ -126,7 +142,9 @@ enter it — `geometry_gate` checks real courtyard boxes, not origins.
    renders** (you have vision — DRC cannot see "wrong"). Check: pin
    legends match the REAL Nano (D12/D13 at the USB end, TX1/VIN at the
    ICSP end — v0.1.0 shipped 180° wrong, see ADR-015), LED color order,
-   labels, the overlay photo sitting on the socket field USB-west.
+   labels, the overlay photo sitting on the socket field **USB-east**
+   (since ADR-029 — the photo crop is natively USB-west, so the engine must
+   be rotating it 180°; if it looks USB-west, the overlay data is stale).
 5. **Docs in the same change**: DESIGN_STATE (state + iteration-log
    row), DECISIONS (new ADRs), NETLIST if the circuit view changed,
    README if user-facing facts changed, CHANGELOG.md (repo root,
@@ -173,9 +191,19 @@ enter it — `geometry_gate` checks real courtyard boxes, not origins.
   stitch → pad bridge → via bridge, chaining through bridged islands)
   and repairs split nets; if it aborts, read its message — do not
   weaken the DRC gate.
-- **Never run the pipeline with `--skip-route` after a routed board
-  exists** — build_board regenerates the BASE and overwrites the routed
-  artefact. Snapshot first if you need placement-only experiments.
+- **Never regenerate the base board over a routed one.** `build_board.py`
+  emits the BASE board (no tracks, unfilled zone), so running it standalone
+  — or the pipeline with `--skip-route` — silently leaves you with bare
+  copper: the file still opens in KiCad and still passes verify_placement,
+  so the loss is easy to miss until DRC reports every net unrouted. Since
+  v0.5.0 `guard_routed_board()` **refuses** that write unless
+  `LEMON_PCB_REBUILD=1` is set (`cloud_pipeline.sh` sets it, because /route
+  re-applies the routing straight after). If you hit the guard, use the
+  pipeline. Cost of learning this: one wasted route cycle on v0.5.0, plus a
+  rebuilt fab package so the release matched the committed board.
+- **Do not edit `cloud_pipeline.sh` while it is running** — bash reads
+  scripts lazily, so changing the file shifts the offsets it has yet to read
+  and it can execute a partial line. Wait for the run to finish.
 - **Overlay photo rotation**: the engine composes
   `PIL_rot = −pcb_rotation + image_rotation` (MT1-calibrated; do NOT
   "fix" the sign in code). Calibrate `overlays/modules.yaml`

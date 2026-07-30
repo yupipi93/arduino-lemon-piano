@@ -28,7 +28,11 @@ PCB="$PROJ/kicad/lemon-piano.kicad_pcb"
 CFG="$PROJ/lemon-piano.yaml"
 IMG=eda-pcb-designer:latest
 
+# LEMON_PCB_REBUILD=1 tells build_board.py that discarding the routing on the
+# existing artefact is intentional here: /route re-applies it two steps down.
+# Standalone runs lack the flag and are refused (build_board.guard_routed_board).
 dk() { docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+        -e LEMON_PCB_REBUILD=1 \
         -v "$PARENT":/work -w /work --entrypoint python3 "$IMG" "$@"; }
 
 cd "$PARENT"

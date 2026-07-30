@@ -5,12 +5,14 @@ Pure-text checks over the routed .kicad_pcb (no pcbnew needed):
   1. outline is exactly 120 x 40 mm at (90,100)-(210,140) (v0.4.0);
   2. exactly 4 mounting holes, mirror-symmetric about x=150 AND y=120
      within 0.1 mm, all at the short-edge extremes;
-  3. the v0.4.0 floor plan holds: Nano socket pin field centred on the
-     board, mini-USB corridor west of it free of parts, key header
-     centred on the SOUTH edge, LED bar on the NORTH edge, power entry +
-     whole filter in the WEST block, SENS buttons in the EAST block with
-     their pair centred on y=120, and one parallel external-button
-     header EAST of each button;
+  3. the v0.5.0 floor plan holds: Nano pin field centred on the board and
+     FLIPPED (mini-USB faces EAST, so the analog row is NORTH and the
+     digital row SOUTH), key header centred on the NORTH edge with KEY1 at
+     the east, LED bar on the SOUTH edge centred on x=150 ascending
+     west→east, power entry + whole filter in the WEST block with C1 ‖ C3
+     adjacent, SENS buttons in the EAST block with their pair centred on
+     y=120, and one parallel external-button header EAST of each button.
+     There is deliberately NO USB-cable keepout check (ADR-030);
   4. every net in the YAML has copper (>=1 segment, or GND-zone), and
      every pad's net matches docs/NETLIST.md via the ground-truth file
      (that part is verify_placement's job — here we count copper);
@@ -114,29 +116,49 @@ def main() -> int:
               for h in holes.values()),
           "holes at the short-edge extremes (<=10 mm from edge)")
 
-    # 3. v0.4.0 floor plan ------------------------------------------------
+    # 3. v0.5.0 floor plan ------------------------------------------------
+    # The Nano is FLIPPED versus v0.4.0 (ADR-029): mini-USB faces EAST, so
+    # the analog column is the NORTH row (U1) and the digital column the
+    # SOUTH row (U2). That is what allows keys-north / LEDs-south. There is
+    # no USB-corridor keepout any more (ADR-030, user spec).
     pl = CFG["placements"]
     cx = (geom["x0"] + geom["x1"]) / 2
     cy = (geom["y0"] + geom["y1"]) / 2
-    # Nano: 15-pin rows, U1 pin1 west / U2 pin1 east, field centred on cx
     field_w = 2.54 * 14
-    check(abs(pl["U1"][0] - (cx - field_w / 2)) < 0.01
-          and abs(pl["U2"][0] - (cx + field_w / 2)) < 0.01,
-          f"Nano pin field centred on x={cx} (USB end faces the west edge)")
-    check(abs((pl["U1"][1] - cy) + (pl["U2"][1] - cy)) < 0.01,
-          f"Nano socket rows symmetric about y={cy}")
-    # keys header: CENTERED on the south edge (user spec v0.4.0)
-    keys_centre = pl["J2"][0] + 2.54 * 7 / 2
+    # U1 pin1 (D13) at the EAST end, U2 pin1 (TX1) at the WEST end
+    check(abs(pl["U1"][0] - (cx + field_w / 2)) < 0.01
+          and abs(pl["U2"][0] - (cx - field_w / 2)) < 0.01,
+          f"Nano pin field centred on x={cx}, FLIPPED (USB faces east)")
+    check(pl["U1"][2] == 270 and pl["U2"][2] == 90,
+          "Nano rows rotated for the flip (U1 rot=270, U2 rot=90)")
+    check(pl["U1"][1] < cy < pl["U2"][1]
+          and abs((pl["U1"][1] - cy) + (pl["U2"][1] - cy)) < 0.01,
+          f"analog row NORTH / digital row SOUTH, symmetric about y={cy}")
+    # keys header: CENTERED on the NORTH edge, pin 1 (KEY1) at the EAST so
+    # KEY1..KEY7 land under A0..A6 without crossings
+    keys_centre = pl["J2"][0] - 2.54 * 7 / 2
     check(abs(keys_centre - cx) < 0.01,
           f"keys header centred on x={cx} (pin centre {keys_centre})")
-    check(pl["J2"][1] >= geom["y1"] - 5.0, "keys header on the SOUTH edge")
-    check(all(pl[f"D{i}"][1] <= geom["y0"] + 2.5 for i in range(3, 13)),
-          "LED bar on the NORTH service edge")
+    check(pl["J2"][1] <= geom["y0"] + 5.0, "keys header on the NORTH edge")
+    check(pl["J2"][2] == 270, "keys header pin 1 (KEY1) at the EAST end")
+    # LED bar: SOUTH edge, CENTERED on cx, ascending west→east
+    check(all(pl[f"D{i}"][1] >= geom["y1"] - 2.5 for i in range(3, 13)),
+          "LED bar on the SOUTH service edge")
+    bar_centre = (pl["D3"][0] + pl["D12"][0]) / 2
+    check(abs(bar_centre - cx) < 0.01,
+          f"LED bar centred on x={cx} (got {bar_centre})")
+    check(pl["D3"][0] < pl["D12"][0],
+          "LED bar ascends west→east (LED1 west, matching D2..D11)")
     # power entry + the WHOLE filter live in the WEST block (user spec)
     filt = ["J1", "D1", "D2", "C1", "C2", "C3", "C4", "L1"]
     east_of_west = [r for r in filt if pl[r][0] > cx - 15.0]
     check(not east_of_west,
           f"power entry + filter in the WEST block {east_of_west or ''}")
+    # the two bulk caps sit together (user spec v0.5.0)
+    c1b, c3b = bbox("C1"), bbox("C3")
+    cap_gap = max(c1b[0] - c3b[2], c3b[0] - c1b[2])
+    check(0 <= cap_gap < 3.0 and abs(pl["C1"][1] - pl["C3"][1]) < 0.01,
+          f"C1 and C3 adjacent on one row (gap {cap_gap:.2f} mm)")
     # SENS buttons: EAST block, the PAIR centred on the board mid-line
     check(pl["SW1"][0] > cx + 20.0 and pl["SW2"][0] > cx + 20.0,
           "SENS buttons in the EAST block")
@@ -147,19 +169,6 @@ def main() -> int:
     for sw, hdr in (("SW1", "J3"), ("SW2", "J4")):
         check(pl[hdr][0] > pl[sw][0] + 8.04,
               f"{hdr} (external {sw} button) sits east of {sw}")
-    # USB corridor: nothing but the anchor holes inside the band west of
-    # the socket field (a cable must reach the mini-USB, 8.5 mm up)
-    corridor_x = pl["U1"][0] - 1.82
-    intruders = []
-    for ref, (x, y, rot, layer) in pl.items():
-        if ref in ("H1", "H3"):
-            continue
-        bx0, by0, bx1, by1 = bbox(ref)
-        if bx0 < corridor_x and by0 < cy + 7.0 and by1 > cy - 7.0:
-            intruders.append(ref)
-    check(not intruders,
-          f"mini-USB west corridor (x<{corridor_x:.2f}, y {cy - 7}..{cy + 7}) "
-          f"free of parts {intruders or ''}")
 
     # 4. copper per net ---------------------------------------------------
     net_numbers = CFG["nets"]["numbers"]
