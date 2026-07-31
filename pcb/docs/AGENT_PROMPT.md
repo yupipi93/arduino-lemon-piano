@@ -136,8 +136,8 @@ socket. Do not "fix" this by reserving space unless the user asks.
    repair) → cloud /drc [HARD GATE: 0 errors AND 0 unconnected AND —
    your goal — 0 warnings] → render suite
    (`renders/<ver>-{normal,dim,realistic,overlay}-{top,bottom}.png`) →
-   schematic + ERC → verify_placement + verify_holes(+vision) +
-   geometry_gate [HARD GATES]. Add `--fab` only on the final, fully
+   schematic + ERC → cloud /export3d (GLB + STEP into `3d/`, NOT a gate) →
+   verify_placement + verify_holes(+vision) + geometry_gate [HARD GATES]. Add `--fab` only on the final, fully
    green run (writes `releases/<ver>/`).
 4. **Iterate until everything is green AND you have LOOKED at the
    renders** (you have vision — DRC cannot see "wrong"). Check: pin

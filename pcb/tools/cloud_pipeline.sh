@@ -16,6 +16,7 @@
 #   /drc    (cloud)  JSON report  -> validation/drc-<ver>.json  [HARD GATE]
 #   /render (cloud)  raytraced    -> renders/<ver>-top.png / -bottom.png
 #   ERC + verify_placement + verify_holes + geometry_gate       [HARD GATES]
+#   /export3d (cloud)  GLB + STEP -> 3d/  (rotatable model; not a gate)
 #   /fab    (cloud, only with --fab and all gates green)
 set -euo pipefail
 
@@ -128,6 +129,31 @@ mkdir -p /tmp/.config/kicad/9.0
 kicad-cli sch erc --output arduino-lemon-piano/pcb/validation/erc-'"$VER"'.txt \
   --exit-code-violations arduino-lemon-piano/pcb/kicad/lemon-piano.kicad_sch' \
   && echo "  ERC clean" || { echo "ERC VIOLATIONS"; exit 1; }
+
+echo "== [$VER] cloud /export3d (rotatable GLB + STEP) =="
+# The service ships the kicad-packages3d library, so component bodies always
+# resolve there — a local export from the slim Docker image would silently
+# drop them (see eda-pcb-designer export3d docs). Outputs are regenerable and
+# multi-MB, so pcb/3d/ is gitignored.
+mkdir -p "$PROJ/3d"
+if curl -sf -F "pcb=@$PCB" "$API/export3d?format=both&version=$VER" \
+     -o "/tmp/3d-$VER.zip"; then
+  python3 - "/tmp/3d-$VER.zip" "$PROJ/3d" "$VER" <<'EOF3D'
+import os, shutil, sys, zipfile
+zf, outdir, ver = sys.argv[1:4]
+with zipfile.ZipFile(zf) as z:
+    for n in z.namelist():
+        ext = n.rsplit(".", 1)[-1]
+        dest = os.path.join(outdir, f"lemon-piano-{ver}.{ext}")
+        with z.open(n) as src, open(dest, "wb") as dst:
+            shutil.copyfileobj(src, dst)
+        print(f"  saved {os.path.basename(dest)} "
+              f"({os.path.getsize(dest) / 1e6:.1f} MB)")
+EOF3D
+  echo "  view it: drag the .glb onto https://3dviewer.net, or: f3d $PROJ/3d/lemon-piano-$VER.glb"
+else
+  echo "  [WARN] /export3d failed — skipping the 3D models (not a release gate)"
+fi
 
 echo "== [$VER] vision inputs (transparent-bg bare renders, LL §22) =="
 curl -sf -F "pcb=@$PCB" "$API/render?side=both&style=bare&background=transparent" \

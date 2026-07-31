@@ -2,6 +2,26 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-31 (pcb/) — rotatable 3D models in the pipeline
+
+- The pipeline now emits a **rotatable 3D model** of the board on every run,
+  via the new `POST /export3d` endpoint in eda-pcb-designer 0.4.0:
+  `pcb/3d/lemon-piano-<ver>.glb` (browsers / `f3d`) and `.step` (CAD). The
+  cloud does it because the service image ships the `kicad-packages3d` body
+  library that the slim local Docker image deliberately omits — a local export
+  would silently drop every component body.
+- `pcb/3d/` is gitignored: multi-MB, fully regenerable artefacts.
+- `pcb/tools/export_3d.sh` does the same offline, fetching just the ~15 bodies
+  this board needs (~1.4 MB, cached). Its only fidelity gap: the orange LED
+  body does not exist upstream, so D9/D10 come out red locally and orange from
+  the cloud.
+- README gains a "Look at the board in 3D" section: <https://3dviewer.net>
+  (drag-and-drop, renders in-browser, nothing installed), `sudo apt install
+  f3d`, and the KiCad-9 PPA route — noting that Ubuntu's own repos carry only
+  KiCad 7, which cannot open this v9 board.
+- Not a release gate: if `/export3d` fails the pipeline warns and carries on,
+  because a viewing aid must never block electrically-verified outputs.
+
 ## 2026-07-31 (pcb/) — v0.6.0: J5, aux speaker output in parallel with the buzzer
 
 - **New 2-pin header J5 (`SPK`)** on the same two nodes as the buzzer — pad 1

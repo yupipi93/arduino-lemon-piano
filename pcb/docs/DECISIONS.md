@@ -497,14 +497,27 @@ never wrong — only its renders were incomplete. Hence a PATCH bump per the
 repo's version rule, not a MINOR.
 
 **Audit done at the same time.** All 44 model paths the board references
-were checked against upstream kicad-packages3D. Three others are absent
-upstream but resolve on the render host anyway, so they render correctly and
-need no action: `L_Radial_D8.7mm_P5.00mm_Fastron_07HCP.step` (L1) and
-`LED_D3.0mm_Orange.step` (D9, D10 — shipped in the service image per
-ADR-021). D1 was the only genuinely broken reference. Useful lesson: a
-missing 3D body is invisible to every automated gate this project has, so
-the render-inspection step (workflow gate 4) is the only thing that can
-catch it — look at the bodies, not just the copper and the labels.
+were checked against upstream kicad-packages3D. D1 was the only genuinely
+broken reference; the only other model absent upstream is
+`LED_D3.0mm_Orange.step` (D9, D10), which the render service supplies from
+its own image (ADR-021) and which therefore renders correctly.
+
+> **Correction (2026-07-31).** This audit first also reported
+> `L_Radial_D8.7mm_P5.00mm_Fastron_07HCP.step` (L1) as absent upstream. That
+> was **wrong** — a bug in the audit, not in the board. It queried the GitLab
+> tree API without pagination, and `Inductor_THT.3dshapes` holds more than the
+> 100 entries one page returns, so the choke simply fell off the end of the
+> list. Fetching that exact path succeeds. Lesson for the next audit: a
+> paginated API that silently truncates will manufacture false negatives —
+> verify an "absent" result by requesting the file itself.
+
+Useful lesson from the defect proper: a missing 3D body is invisible to every
+automated gate this project has, so the render-inspection step (workflow gate
+4) was the only thing that could catch it — look at the bodies, not just the
+copper and the labels. Since eda-pcb-designer 0.4.0 that is no longer true:
+its `export3d` stage compares the board's model paths against what is on disk
+and reports unresolved bodies, so this class of defect is now caught
+mechanically.
 
 ## ADR-034 — v0.6.0: J5, a 2-pin auxiliary output in parallel with the buzzer
 
