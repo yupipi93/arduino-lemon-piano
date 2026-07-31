@@ -1,0 +1,14 @@
+{
+  // VS Code offers to install these when the workspace is opened
+  // (Extensions view -> "Recommended"), so the 3D models the pipeline
+  // writes to pcb/3d/ are viewable without leaving the editor.
+  "recommendations": [
+    // CAD Viewer — double-click pcb/3d/lemon-piano-<ver>.glb (or the .step)
+    // to rotate the board in a VS Code tab. Handles both formats the
+    // pipeline emits; bundles occt-import-js.wasm (OpenCascade) so STEP is
+    // a real geometry kernel. Free, read-only. See pcb/README.md
+    // "Look at the board in 3D" for the web and native alternatives.
+    "thingraph.cad-viewer"
+  ],
+  "unwantedRecommendations": []
+}

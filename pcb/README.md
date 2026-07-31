@@ -93,6 +93,25 @@ they are regenerable and several MB):
 | `lemon-piano-<ver>.glb` | looking at it: browsers, `f3d`, Windows/macOS 3D viewers |
 | `lemon-piano-<ver>.step` | CAD — FreeCAD / Fusion, enclosure fit checks |
 
+**In VS Code — one click.** This repo ships a
+[`.vscode/extensions.json`](../.vscode/extensions.json) recommending
+[`thingraph.cad-viewer`](https://marketplace.visualstudio.com/items?itemName=thingraph.cad-viewer),
+so VS Code offers to install it the first time you open the project
+(Extensions view → *Recommended*). Or explicitly:
+
+```bash
+code --install-extension thingraph.cad-viewer
+```
+
+Then **double-click `pcb/3d/lemon-piano-v0.6.0.glb`** — or the `.step` — and it
+opens in a tab you can drag to rotate. It is the only extension that handles
+both formats the pipeline emits, and it bundles `occt-import-js.wasm`
+(OpenCascade), so STEP is a real geometry kernel. Free, read-only, ~24 MB.
+
+> Don't reach for **glTF Tools** (`cesium.gltf-vscode`) instead just because it
+> has 100× the installs: it validates and converts glTF/GLB but registers no
+> viewer for `.glb`, so you'd have to import to `.gltf` first to see anything.
+
 **Web, nothing to install** — open <https://3dviewer.net> and drag the `.glb`
 in. Drag rotates, scroll zooms. It renders in your browser, so the file is not
 uploaded to a server.

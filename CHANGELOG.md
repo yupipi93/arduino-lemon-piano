@@ -21,6 +21,14 @@ Append-only log of significant changes. Newest first.
   KiCad 7, which cannot open this v9 board.
 - Not a release gate: if `/export3d` fails the pipeline warns and carries on,
   because a viewing aid must never block electrically-verified outputs.
+- **`.vscode/extensions.json`** recommends `thingraph.cad-viewer`, so VS Code
+  offers to install it on first open and the `.glb`/`.step` open in a rotatable
+  tab on double-click. Chosen over the 100×-more-popular `cesium.gltf-vscode`
+  ("glTF Tools") because that one registers no viewer for `.glb` — it is a
+  format validator/converter, so you would have to import to `.gltf` first.
+  Verified from the extension manifests, not the marketplace descriptions
+  (CAD Viewer's page contradicts itself on STEP; its bundled
+  `occt-import-js.wasm` settles it).
 
 ## 2026-07-31 (pcb/) — v0.6.0: J5, aux speaker output in parallel with the buzzer
 

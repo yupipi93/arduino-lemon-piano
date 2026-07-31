@@ -78,3 +78,9 @@ dk pcb export step "${COMMON[@]}" -o "/out/lemon-piano-$VER.step" "$REL" | tail 
 echo
 echo "Done — files in pcb/3d/:"
 ls -lh "$OUT"/lemon-piano-"$VER".* | awk '{print "  ", $9, $5}'
+echo
+echo "View them:"
+echo "  VS Code  double-click the .glb (or .step) — needs the extension this repo"
+echo "           recommends: code --install-extension thingraph.cad-viewer"
+echo "  web      drag the .glb onto https://3dviewer.net (renders in-browser)"
+echo "  native   sudo apt install f3d   then   f3d $OUT/lemon-piano-$VER.glb"
