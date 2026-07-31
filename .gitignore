@@ -30,5 +30,10 @@ __pycache__/
 **/emulation/runs/
 pcb/kicad/*.bak6
 
-# Regenerable 3D exports (pcb/tools/export_3d.sh) — multi-MB binaries
-pcb/3d/
+# 3D exports: the finished models ARE tracked (pcb/3d/*.glb, *.step) so anyone
+# cloning gets a rotatable board without a KiCad toolchain. Only the fetched
+# upstream component-body cache stays out: those are verbatim third-party
+# files from the KiCad 3D library, re-downloaded in seconds by
+# pcb/tools/export_3d.sh, and vendoring someone else's library is a separate
+# decision from shipping our own output.
+pcb/3d/models/

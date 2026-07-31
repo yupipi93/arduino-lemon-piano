@@ -10,7 +10,13 @@ Append-only log of significant changes. Newest first.
   cloud does it because the service image ships the `kicad-packages3d` body
   library that the slim local Docker image deliberately omits — a local export
   would silently drop every component body.
-- `pcb/3d/` is gitignored: multi-MB, fully regenerable artefacts.
+- `pcb/3d/*.glb` and `*.step` are **committed** (2026-07-31), so cloning the
+  repo is enough to look at the board — no KiCad, no Docker, no pipeline run.
+  Cost, stated plainly: ~16 MB of binaries per version, permanent in git
+  history. Only `pcb/3d/models/` stays untracked (fetched third-party KiCad
+  body files, re-downloadable in seconds). They do not preview on github.com:
+  GitHub renders only `.stl` inline and only up to 10 MB, and this board's STL
+  is 34 MB — measured, not assumed.
 - `pcb/tools/export_3d.sh` does the same offline, fetching just the ~15 bodies
   this board needs (~1.4 MB, cached). Its only fidelity gap: the orange LED
   body does not exist upstream, so D9/D10 come out red locally and orange from

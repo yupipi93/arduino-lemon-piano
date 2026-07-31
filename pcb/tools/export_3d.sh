@@ -9,8 +9,9 @@
 # STEP files this board actually references (~1.3 MB, cached in pcb/3d/models/)
 # and points KICAD9_3DMODEL_DIR at them.
 #
-# Outputs land in pcb/3d/ which is .gitignored — they are regenerable, and a
-# 7 MB binary per version has no business in git history.
+# Outputs land in pcb/3d/ and ARE committed, so a clone gives you a rotatable
+# board with no KiCad toolchain. Only models/ (the fetched upstream body cache)
+# is gitignored — third-party files, re-downloaded in seconds.
 set -euo pipefail
 
 PARENT="$(cd "$(dirname "$0")/../../.." && pwd)"
