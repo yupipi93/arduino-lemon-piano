@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Build the Lemon Piano V5.5 schematic via kicad-sch-api.
 
-Mirrors the PCB exactly (docs/NETLIST.md): 44 electrical components
+Mirrors the PCB exactly (docs/NETLIST.md): 45 electrical components
 (mounting holes H1..H4 are mechanical-only and stay out of the schematic,
-MT1 convention) + 3 PWR_FLAGs = 47 symbols. Flat single sheet, local
+MT1 convention) + 3 PWR_FLAGs = 48 symbols. Flat single sheet, local
 labels. Net names come out as "/<NAME>" matching the board.
 
 Runs inside the eda-pcb-designer Docker image:
@@ -172,6 +172,12 @@ def build() -> None:
                        value="passive_buzzer", position=g(30, 80),
                        footprint="Buzzer_Beeper:Buzzer_12x9.5RM7.6")
     auto_label(sch, "BUZ1", {"1": ("BUZZER", "left"), "2": ("GND", "left")})
+
+    # aux speaker output, in PARALLEL with BUZ1 (ADR-034): same two nets
+    sch.components.add(lib_id="Connector_Generic:Conn_01x02",
+                       reference="J5", value="SPK_OUT",
+                       position=g(15, 80), footprint=HDR2_FP)
+    auto_label(sch, "J5", {"1": ("BUZZER", "left"), "2": ("GND", "left")})
 
     sch.components.add(lib_id="Switch:SW_Push", reference="SW1", value="SENS+",
                        position=g(30, 95),

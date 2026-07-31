@@ -505,3 +505,35 @@ ADR-021). D1 was the only genuinely broken reference. Useful lesson: a
 missing 3D body is invisible to every automated gate this project has, so
 the render-inspection step (workflow gate 4) is the only thing that can
 catch it — look at the bodies, not just the copper and the labels.
+
+## ADR-034 — v0.6.0: J5, a 2-pin auxiliary output in parallel with the buzzer
+
+User request: two pins for an external speaker. Implemented exactly like the
+SENS external-button headers (ADR-026): a `PinHeader_1x02` on the **same two
+nodes** as BUZ1 — pad 1 on `/BUZZER` (the D13 drive line), pad 2 on `/GND` —
+placed immediately west of the buzzer it parallels (5.18 mm courtyard gap),
+silk `SPK`. Nothing is switched or cut: the on-board buzzer keeps working and
+whatever is plugged into J5 sees exactly the same signal.
+
+**Load limit — the reason this header is not a speaker driver.** The buzzer
+is a *passive* piezo driven straight off the pin, with "no series resistor
+needed" (`versions/v0-buzzer/HARDWARE.md` BOM). A piezo is a high-impedance,
+essentially capacitive load, so a few mA does the job. A bare **8 Ω dynamic
+voice coil is not**: at 5 V it would ask for roughly 600 mA, against the
+ATmega328P's 40 mA absolute-maximum (20 mA recommended) per pin. Plugging one
+straight into J5 would damage D13.
+
+So J5 is rated for what D13 can actually drive:
+
+- another passive piezo / buzzer element — fine, that is the same load;
+- a **powered or amplified speaker module** (PAM8403, LM386 board, active PC
+  speakers) — fine, their inputs are high-impedance;
+- a bare 4–8 Ω speaker — **only through an amplifier**, never direct.
+
+No series resistor or amplifier was added to the board: the sources
+(`versions/v5.5-power-filter/`, `versions/v5-led-bar/HARDWARE.md`,
+`build_v5_5()`) define a directly-driven passive buzzer, and AGENT_PROMPT's
+rule is to never invent parts or values that no source specifies. Adding a
+driver stage is a circuit change for the `versions/` tree to make first, not
+something to improvise at the PCB layer. Documented in README assembly notes
+so the limit travels with the board.

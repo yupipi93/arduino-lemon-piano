@@ -102,6 +102,17 @@ components:
       "J4.1": {func: pin, net: /SENS_MINUS}
       "J4.2": {func: gnd, net: /GND}
 
+  # Auxiliary speaker output, wired in PARALLEL with the buzzer (v0.6.0,
+  # ADR-034): pad 1 = the D13 drive line, pad 2 = GND. Same two nodes as
+  # BUZ1, so whatever is plugged in sees exactly what the buzzer sees.
+  SPK_OUT:
+    refs: [J5]
+    mount_side: top
+    source: "user spec 2026-07-31 — 2-pin aux output for an external speaker"
+    pins:
+      "J5.1": {func: "+", net: /BUZZER}
+      "J5.2": {func: "-", net: /GND}
+
   # ────────────────────────────────────────────────────────────────────
   # Power-entry filter (v5.5 HARDWARE.md filter table)
   # ────────────────────────────────────────────────────────────────────

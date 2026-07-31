@@ -9,11 +9,11 @@ margin.
 
 | | |
 |---|---|
-| Realistic (3D bodies) | ![realistic top](renders/v0.5.1-realistic-top.png) |
-| Photo overlay (real Nano photo, dimensioned) | ![overlay top](renders/v0.5.1-overlay-top.png) |
-| Normal (bare copper/silk) | ![normal top](renders/v0.5.1-normal-top.png) |
-| DIM plot (front) | ![dim top](renders/v0.5.1-dim-top.png) |
-| Bottom (realistic) | ![realistic bottom](renders/v0.5.1-realistic-bottom.png) |
+| Realistic (3D bodies) | ![realistic top](renders/v0.6.0-realistic-top.png) |
+| Photo overlay (real Nano photo, dimensioned) | ![overlay top](renders/v0.6.0-overlay-top.png) |
+| Normal (bare copper/silk) | ![normal top](renders/v0.6.0-normal-top.png) |
+| DIM plot (front) | ![dim top](renders/v0.6.0-dim-top.png) |
+| Bottom (realistic) | ![realistic bottom](renders/v0.6.0-realistic-bottom.png) |
 
 Per version the pipeline archives four styles per side under `renders/`
 (`<ver>-{normal,dim,realistic,overlay}-{top,bottom}.png`), all produced
@@ -32,16 +32,16 @@ reference, both layers.
 | Keys | 7 lemon lines (A0–A6, 220 Ω pull-ups on B.Cu) + GND clip → labelled 1×8 header **centred** on the **NORTH** edge, pin 1 = KEY1 at the east so silk reads `KEYS G 7 6 5 4 3 2 1` west→east (pin centre exactly x=150) |
 | Display | 10 × 3 mm LEDs (D2–D11): 3 green → 3 yellow → 2 orange → 2 red, **SOUTH** edge, **centred on x=150**, ascending west→east (ADR-029/021), 220 Ω each on B.Cu |
 | Controls | SENS+ (D12) / SENS− (A7 + 10 k pull-up) buttons in the EAST block, the **pair centred on the y=120 mid-line**, each with a **parallel 2-pin header** (J3/J4) for an external panel button (ADR-026) |
-| Sound | passive buzzer on D13, NE corner — ~20 mm from its pin now that the flip moved D13 to the east end |
+| Sound | passive buzzer on D13, NE corner — ~20 mm from its pin now that the flip moved D13 to the east end. **`SPK`** (J5) is a 2-pin aux output wired in parallel with it (ADR-034) |
 | Power | `5V IN` **2-pin header** → P6KE6.8A TVS → 1N5817 → 470 µF‖100 nF → 100 µH → 470 µF‖100 nF → +5 V rail (≈4.7 V, fc ≈ 730 Hz). Whole filter in the WEST block as a compact 3-row group with **C1 ‖ C3 adjacent** (ADR-025/031) |
 | GND | full B.Cu zone, solid connect on every GND pad, auto island-healing |
 | Mounting | 4 × M2 (Ø2.5 drill / Ø5.0 pad+vias): two per short edge at x=95/205, y=105/135 — mirror-symmetric about x=150 and y=120 |
-| Status (v0.5.1) | DRC **0/0/0** · ERC 0/0 · verify_placement / verify_holes / geometry_gate ALL PASS |
-| Release | [`releases/v0.5.1/lemon-piano-v0.5.1-fab.zip`](releases/v0.5.1/) — gerbers, drill, BOM, positions |
+| Status (v0.6.0) | DRC **0/0/0** · ERC 0/0 · verify_placement / verify_holes / geometry_gate ALL PASS |
+| Release | [`releases/v0.6.0/lemon-piano-v0.6.0-fab.zip`](releases/v0.6.0/) — gerbers, drill, BOM, positions |
 
 **Implementing a change?** Paste [docs/AGENT_PROMPT.md](docs/AGENT_PROMPT.md)
 into a fresh agent session together with the change request — it encodes
-the full workflow, gates and pitfalls learned across v0.0.1→v0.5.1.
+the full workflow, gates and pitfalls learned across v0.0.1→v0.6.0.
 
 Netlist ground truth: [docs/NETLIST.md](docs/NETLIST.md) ·
 decisions: [docs/DECISIONS.md](docs/DECISIONS.md) ·
@@ -60,10 +60,10 @@ post-pass:
 
 ```bash
 # one full iteration: build → /place → /route → post → /drc → /render → gates
-./pcb/tools/cloud_pipeline.sh v0.5.1
+./pcb/tools/cloud_pipeline.sh v0.6.0
 
 # release (adds cloud /fab, writes releases/<ver>/):
-./pcb/tools/cloud_pipeline.sh v0.5.1 --fab
+./pcb/tools/cloud_pipeline.sh v0.6.0 --fab
 
 # render variants (any style, hosted API):
 URL=https://pcb-designer.scv.multitecua.com
@@ -97,6 +97,14 @@ iteration's DRC report and renders are archived under `validation/` and
 - `EXT+` (J3) and `EXT−` (J4) are wired in parallel with the SENS+/SENS−
   buttons. Leave them empty for on-board-only use, or wire a panel button
   across each pair — no jumper to move, and both buttons keep working.
+- **`SPK` (J5) is the aux sound output**, in parallel with the buzzer: pin 1
+  is the raw D13 drive, pin 2 is GND. The on-board buzzer keeps sounding
+  either way. **Mind the load** — D13 drives a *passive piezo* directly, so
+  J5 suits another piezo element or an **amplified** speaker module
+  (PAM8403 / LM386 board / powered PC speakers, all high-impedance inputs).
+  A bare 4–8 Ω speaker would draw ~600 mA against the ATmega328P's 40 mA
+  absolute maximum per pin and **would damage D13** — drive one only through
+  an amplifier (ADR-034).
 - **Flashing needs the Nano out of its socket.** The mini-USB faces EAST and
   no cable clearance is reserved (ADR-030, deliberate): the connector shell
   reaches x≈173.3 and the SENS+ button starts at 173.48. Flash the module

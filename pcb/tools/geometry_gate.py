@@ -169,6 +169,11 @@ def main() -> int:
     for sw, hdr in (("SW1", "J3"), ("SW2", "J4")):
         check(pl[hdr][0] > pl[sw][0] + 8.04,
               f"{hdr} (external {sw} button) sits east of {sw}")
+    # aux speaker header sits next to the buzzer it parallels (ADR-034)
+    jb, bb = bbox("J5"), bbox("BUZ1")
+    gap = max(jb[0] - bb[2], bb[0] - jb[2], jb[1] - bb[3], bb[1] - jb[3])
+    check(0 < gap < 8.0, f"J5 (aux speaker out) adjacent to BUZ1 "
+                         f"(gap {gap:.2f} mm)")
 
     # 4. copper per net ---------------------------------------------------
     net_numbers = CFG["nets"]["numbers"]

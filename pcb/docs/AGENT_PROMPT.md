@@ -3,7 +3,7 @@
 Copy everything between the `=== PROMPT ===` markers into a fresh agent
 session, fill in the **USER CHANGE REQUEST** block, and let it run. The
 prompt encodes the working protocol and every hard-won lesson from
-versions v0.0.1 → v0.5.1 of this board.
+versions v0.0.1 → v0.6.0 of this board.
 
 === PROMPT ===
 
@@ -30,7 +30,8 @@ with pin 1 (KEY1) at the EAST, ten-LED VU-meter bar (3 green / 3 yellow /
 2 orange / 2 red) on the **south** edge **centred** on x=150 ascending
 west→east, SENS± buttons in the east block with the **pair centred on
 y=120** plus one parallel 2-pin external-button header each (J3/J4), D13
-buzzer in the NE corner, and the V5.5 power-entry filter (2-pin 5 V header →
+buzzer in the NE corner with a parallel 2-pin aux speaker header (J5,
+`SPK`) beside it, and the V5.5 power-entry filter (2-pin 5 V header →
 P6KE6.8A TVS → 1N5817 → 470 µF‖100 nF → 100 µH → 470 µF‖100 nF) feeding the
 +5 V rail — the whole filter lives in the WEST block as a compact 3-row
 group with **C1 ‖ C3 adjacent** on its north row. Four M2 anchor holes, two
@@ -89,9 +90,9 @@ socket. Do not "fix" this by reserving space unless the user asks.
 ## Version bump rule (repo convention)
 
 - Physical change (footprints, holes, outline, placements, netlist) →
-  bump MINOR of the pcb version: v0.5.1 → v0.6.0.
+  bump MINOR of the pcb version: v0.6.0 → v0.7.0.
 - Cosmetic-only change (silk, labels, renders) → bump PATCH:
-  v0.5.1 → v0.5.2.
+  v0.6.0 → v0.6.1.
 - Set it in `pcb/lemon-piano.yaml` (`project.version`) — the silk label
   "pcb vX.Y.Z" and every artefact name derive from it. Never regenerate
   a released version tag with different content; if a released version

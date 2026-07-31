@@ -66,6 +66,8 @@ FOOTPRINTS: dict[str, tuple[str, str, str]] = {
     # button so an external panel button can be plugged in
     "J3": ("Connector_PinHeader_2.54mm", "PinHeader_1x02_P2.54mm_Vertical", "SENS+_EXT"),
     "J4": ("Connector_PinHeader_2.54mm", "PinHeader_1x02_P2.54mm_Vertical", "SENS-_EXT"),
+    # v0.6.0 (ADR-034): aux speaker output, wired in parallel with the buzzer
+    "J5": ("Connector_PinHeader_2.54mm", "PinHeader_1x02_P2.54mm_Vertical", "SPK_OUT"),
     "D1": ("Diode_THT", "D_DO-15_P5.08mm_Vertical_KathodeUp", "P6KE6.8A"),
     "D2": ("Diode_THT", "D_DO-41_SOD81_P5.08mm_Vertical_AnodeUp", "1N5817"),
     "C1": ("Capacitor_THT", "CP_Radial_D8.0mm_P3.50mm", "470uF/16V"),
@@ -142,6 +144,7 @@ PAD_NETS: dict[tuple[str, str], str] = {
     ("J1", "1"): "VIN", ("J1", "2"): "GND",
     ("J3", "1"): "SENS_PLUS", ("J3", "2"): "GND",
     ("J4", "1"): "SENS_MINUS", ("J4", "2"): "GND",
+    ("J5", "1"): "BUZZER", ("J5", "2"): "GND",
     ("J2", "1"): "KEY1", ("J2", "2"): "KEY2", ("J2", "3"): "KEY3",
     ("J2", "4"): "KEY4", ("J2", "5"): "KEY5", ("J2", "6"): "KEY6",
     ("J2", "7"): "KEY7", ("J2", "8"): "GND",
@@ -192,6 +195,7 @@ EXPECTED_PADS = [
     ("J1", "1", 102.3, 134.5), ("J1", "2", 104.84, 134.5),
     ("J3", "1", 186.0, 117.97), ("J3", "2", 188.54, 117.97),
     ("J4", "1", 186.0, 126.51), ("J4", "2", 188.54, 126.51),
+    ("J5", "1", 176.0, 104.0), ("J5", "2", 178.54, 104.0),
     ("D1", "1", 109.2, 134.5), ("D1", "2", 114.28, 134.5),
     ("D2", "1", 110.0, 119.0), ("D2", "2", 104.92, 119.0),
     ("C1", "1", 108.0, 106.0), ("C1", "2", 111.5, 106.0),
@@ -318,6 +322,7 @@ def build(cfg: dict) -> str:
                                 "J2": (162.91, 103.0, 0),
                                 "J3": (192.5, 117.97, 0),
                                 "J4": (192.5, 126.51, 0),
+                                "J5": (182.5, 104.0, 0),
                                 "D1": (111.74, 131.1, 0),
                                 "D2": (107.0, 115.5, 0),
                                 "C1": (109.66, 101.2, 0),
@@ -438,6 +443,7 @@ def build(cfg: dict) -> str:
     # SENS buttons + their parallel external-button headers (ADR-026)
     text("SENS+", 178.2, 110.0, h=0.8)
     text("SENS-", 178.2, 130.0, h=0.8)
+    text("SPK", 177.27, 107.6, h=0.8)   # aux speaker out, parallel to BUZ1
     text("EXT+", 187.3, 114.6, h=0.8)
     text("EXT-", 187.3, 130.5, h=0.8)
     # LED bar end markers (bar now ascends west→east, ADR-029)

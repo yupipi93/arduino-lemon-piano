@@ -2,6 +2,29 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-07-31 (pcb/) — v0.6.0: J5, aux speaker output in parallel with the buzzer
+
+- **New 2-pin header J5 (`SPK`)** on the same two nodes as the buzzer — pad 1
+  on `/BUZZER` (the D13 drive line), pad 2 on `/GND` — placed immediately west
+  of BUZ1 (5.18 mm courtyard gap). Same pattern as the SENS external-button
+  headers: nothing is switched or cut, the on-board buzzer keeps working and
+  whatever is plugged into J5 sees exactly the same signal.
+- **Load limit, documented on the board's README and in ADR-034.** D13 drives
+  a *passive piezo* directly ("no series resistor needed",
+  `versions/v0-buzzer/HARDWARE.md`), which is a high-impedance load. A bare
+  4–8 Ω voice coil at 5 V would ask ~600 mA against the ATmega328P's 40 mA
+  absolute maximum per pin and would damage the pin. J5 therefore suits
+  another piezo or an **amplified** speaker module; a raw speaker needs an
+  amplifier. No driver stage was added to the PCB — the `versions/` tree
+  defines a directly-driven passive buzzer, and inventing parts the sources
+  do not specify is against the project's rules.
+- Fixed a pre-existing documentation error spotted while editing NETLIST.md:
+  the U1/U2 rows in the component table had their descriptions swapped (U1 is
+  the *analog* column, U2 the *digital* one — the pad→net tables and the
+  ground truth were always right).
+- `geometry_gate` gains a check that J5 stays adjacent to the buzzer it
+  parallels. verify_placement now covers 74 pad↔net↔function pairs.
+
 ## 2026-07-30 (pcb/) — v0.5.1: D1's missing 3D body (Kathode/Cathode filename split)
 
 Cosmetic-only fix, user-reported ("¿por qué D1 no está renderizado?").

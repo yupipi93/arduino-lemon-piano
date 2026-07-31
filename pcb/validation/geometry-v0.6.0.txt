@@ -1,0 +1,30 @@
+  [PASS] Edge.Cuts rectangle present
+  [PASS] outline 120.0 x 40.0 mm at (90.0,100.0)
+  [PASS] outline is exactly 120 x 40 mm
+  [PASS] exactly 4 mounting holes (found 4)
+  [PASS] H1/H2 mirror-symmetric about x=150.0
+  [PASS] H3/H4 mirror-symmetric about x=150.0
+  [PASS] H1/H3 mirror-symmetric about y=120.0
+  [PASS] H2/H4 mirror-symmetric about y=120.0
+  [PASS] holes at the short-edge extremes (<=10 mm from edge)
+  [PASS] Nano pin field centred on x=150.0, FLIPPED (USB faces east)
+  [PASS] Nano rows rotated for the flip (U1 rot=270, U2 rot=90)
+  [PASS] analog row NORTH / digital row SOUTH, symmetric about y=120.0
+  [PASS] keys header centred on x=150.0 (pin centre 150.0)
+  [PASS] keys header on the NORTH edge
+  [PASS] keys header pin 1 (KEY1) at the EAST end
+  [PASS] LED bar on the SOUTH service edge
+  [PASS] LED bar centred on x=150.0 (got 150.0)
+  [PASS] LED bar ascends west→east (LED1 west, matching D2..D11)
+  [PASS] power entry + filter in the WEST block 
+  [PASS] C1 and C3 adjacent on one row (gap 1.24 mm)
+  [PASS] SENS buttons in the EAST block
+  [PASS] SENS button pair centred on y=120.0 (got 120.0)
+  [PASS] J3 (external SW1 button) sits east of SW1
+  [PASS] J4 (external SW2 button) sits east of SW2
+  [PASS] J5 (aux speaker out) adjacent to BUZ1 (gap 5.18 mm)
+  [PASS] GND zone present and filled on B.Cu
+  [PASS] every net has copper (34 nets; missing: none)
+  [PASS] no courtyard overlaps from YAML extents 
+
+GEOMETRY GATE: ALL PASS

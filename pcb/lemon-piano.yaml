@@ -37,7 +37,7 @@
 project:
   name: lemon-piano
   full_name: "Lemon Piano V5.5 Board"
-  version: v0.5.1
+  version: v0.6.0
   vendor: "Lemon Piano"
   kicad_project_dir: pcb/kicad
   kicad_pcb_file: lemon-piano.kicad_pcb
@@ -105,6 +105,7 @@ placements:
   J3: [186.0, 117.97, 90, F.Cu]    # SENS+ external button (parallel to SW1)
   J4: [186.0, 126.51, 90, F.Cu]    # SENS− external button (parallel to SW2)
   BUZ1: [188.0, 106.78, 0, F.Cu]   # passive buzzer, pad1(+)=D13 net
+  J5: [176.0, 104.0, 90, F.Cu]     # AUX speaker out, parallel to BUZ1 (ADR-034)
 
   # ── LED bar D3..D12 = LED1..LED10, SOUTH strip, CENTRED on x=150 ──────
   # (D2..D11 now ascend west→east along the south row, so a non-crossing fan
@@ -145,6 +146,7 @@ placements:
   R18: [142.38, 115.6, 90, B.Cu]   # SENS− pull-up / A7
 
 pin_counts:
+  J5: 2
   H1: 1
   H2: 1
   H3: 1
@@ -195,6 +197,7 @@ pin_counts:
   R18: 2
 
 pad_half:
+  J5: [0.85, 0.85]
   H1: [2.77, 2.77]
   H2: [2.77, 2.77]
   H3: [2.77, 2.77]
@@ -255,6 +258,7 @@ body_extent:
   J1:   { half: [1.79, 3.07],  offset: [0.0, 1.27] }
   J3:   { half: [1.79, 3.07],  offset: [0.0, 1.27] }
   J4:   { half: [1.79, 3.07],  offset: [0.0, 1.27] }
+  J5:   { half: [1.79, 3.07],  offset: [0.0, 1.27] }
   D1:   { half: [4.32, 2.08],  offset: [2.84, 0.0] }
   D2:   { half: [4.14, 1.81],  offset: [2.33, 0.0] }
   C1:   { half: [4.38, 4.28],  offset: [1.66, 0.0] }
@@ -287,6 +291,7 @@ th_footprints:
   - J1
   - J3
   - J4
+  - J5
   - D1
   - D2
   - C1
@@ -310,6 +315,7 @@ pin_local_positions:
   J1:   [[0.0, 0.0], [0.0, 2.54]]
   J3:   [[0.0, 0.0], [0.0, 2.54]]
   J4:   [[0.0, 0.0], [0.0, 2.54]]
+  J5:   [[0.0, 0.0], [0.0, 2.54]]
   D1:   [[0.0, 0.0], [5.08, 0.0]]
   D2:   [[0.0, 0.0], [5.08, 0.0]]
   C1:   [[0.0, 0.0], [3.5, 0.0]]
