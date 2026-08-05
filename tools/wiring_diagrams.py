@@ -52,9 +52,15 @@ def _legend_box(gnd_y, w=W, h=330):
 
 # ── shared skeleton: rails + ATmega328P board ────────────────────────────────
 def _board(title, subtitle, board, h=H, gnd_y=RAIL_GND_Y, w=W,
-           bx=NANO_X, by=NANO_Y):
+           bx=NANO_X, by=NANO_Y, v5_x0=RAIL_X0, v5_x1=None):
+    """v5_x0/v5_x1 trim the +5 V rail's span. Default = full width, like every
+    revision up to V5.5. V6 shortens it on purpose: the filtered rail must NOT
+    reach the power-source block west of the filter, nor the audio amplifier
+    east of it — those two hang off the *unfiltered* 5 V, and a rail that
+    stopped short is the honest way to draw that."""
     s = Schematic(w, h, title=title, subtitle=subtitle)
-    s.add_rail(Rail("5V", y=RAIL_5V_Y, x0=RAIL_X0, x1=w - 110, color=C["v5"], label="+5 V"))
+    s.add_rail(Rail("5V", y=RAIL_5V_Y, x0=v5_x0, x1=v5_x1 or (w - 110),
+                    color=C["v5"], label="+5 V"))
     s.add_rail(Rail("GND", y=gnd_y, x0=RAIL_X0, x1=w - 110, color=C["gnd"], label="GND"))
     s.add(lib.arduino_nano("U1", bx, by, board=board))
     s.connect("nano5v", C["v5"], P("U1", "5V"), R("5V"))
@@ -63,14 +69,19 @@ def _board(title, subtitle, board, h=H, gnd_y=RAIL_GND_Y, w=W,
 
 
 # ── keyboard, 2019 wiring (player holds GND, pins biased HIGH) ───────────────
-def keyboard_2019(s, fruit="banana"):
+def keyboard_2019(s, fruit="banana", dx=0):
     """Each analog pin is pulled UP to +5 V through 220 Ω and reads ~1023 idle;
     the fruit sits directly on the pin, so touching it drags the pin down
     through the player's body to the hand-held GND clip (`analogRead <= 1019`).
 
     Layout: one horizontal run per key (fruit → pin, straight east) and the
-    pull-up comb hanging above it in a staircase, so no run has to detour."""
-    s.add(lib.clip_box("CLIP", 130, 1130, w=430, title="hand-held GND clip",
+    pull-up comb hanging above it in a staircase, so no run has to detour.
+
+    `dx` shifts the whole keyboard east. V6 needs it: the battery + power-bank
+    module take the top-left corner that used to be the filter's, so the filter
+    and the board it feeds both move east by the same amount and the left→right
+    power flow stays intact. dx=0 reproduces V1..V5.5 byte-for-byte."""
+    s.add(lib.clip_box("CLIP", 130 + dx, 1130, w=430, title="hand-held GND clip",
                        sub=f"one hand on the clip, one on the {fruit} = the player"))
     s.connect("clipgnd", C["gnd"], P("CLIP", "out"), R("GND"))
 
@@ -79,14 +90,14 @@ def keyboard_2019(s, fruit="banana"):
     PULLUP_Y = 420                                   # comb band, just under the +5 V rail
     for row, ai in enumerate(order):
         ky = key_ys[row]
-        s.add(lib.lemon_key(f"K{ai}", KEY_X, ky, ai + 1, f"A{ai}"))
-        rx = 470 + row * 100                        # own channel per key in the pull-up comb
+        s.add(lib.lemon_key(f"K{ai}", KEY_X + dx, ky, ai + 1, f"A{ai}"))
+        rx = 470 + dx + row * 100                   # own channel per key in the pull-up comb
         s.add(lib.resistor(f"RK{ai}", rx, PULLUP_Y, orient="V", length=50))
         # ONE node: the pin, the fruit clip and the pull-up's low side.
         s.connect(f"kn{ai}", C["key"], P("U1", f"A{ai}"), P(f"K{ai}", "clip"), P(f"RK{ai}", "b"))
         s.connect(f"kp{ai}", C["v5"], P(f"RK{ai}", "a"), R("5V"))
 
-    s.decorations.append(deco.dashed_arrow(KEY_X + 780, key_ys[-1] + 90, KEY_X + 360,
+    s.decorations.append(deco.dashed_arrow(KEY_X + dx + 780, key_ys[-1] + 90, KEY_X + dx + 360,
                                            key_ys[-1] + 90, C["key"],
                                            label=f"GND clip → body → {fruit} → the pin drops"))
     return s
@@ -574,6 +585,200 @@ def build_v5_5():
     return s, "v5.5-power-filter", "wiring-v5.5.png"
 
 
+# ── V6 — battery power + LM386 speaker stage ─────────────────────────────────
+W_V6, H_V6, GND_V6 = 5060, 2260, 1400
+DX_V6 = 820                 # V5.5 content shifts east; the cell + module take the corner
+V5_X0_V6, V5_X1_V6 = 1250, 3760   # the FILTERED rail spans only its own consumers
+
+
+def build_v6():
+    """V5.5 + a battery power source + an amplified speaker.
+
+    Two things are deliberately NOT on the filtered rail, and that is the whole
+    point of the drawing:
+
+    * the amplifier is fed from the UNFILTERED 5 V (`vbus`), straight off the
+      module. An LM386 driving 4 Ω pulls audio-rate current in the hundreds of
+      mA; if that current flowed through L1/C3 it would modulate the rail —
+      i.e. AVcc, i.e. the ADC reference the 3-4-count touch margin is measured
+      against. The filter's job is to keep the keyboard's reference quiet, so
+      the loudest load in the build must sit on its dirty side.
+    * D13 cannot drive a 4 Ω coil (PCB ADR-034). It drives a divider, so the
+      amp sees ~450 mV instead of a 5 V square, and the amp drives the coil."""
+    s = _board("Lemon Piano V6 — battery power + amplified speaker",
+               "V5.5's board and filter, unchanged — plus a 1S LiPo on an IP5356 "
+               "power-bank module (portable OR wall-fed, same connector) and an "
+               "LM386 stage that turns the D13 piezo line into a real speaker. "
+               "The amp hangs off the UNFILTERED 5 V on purpose.",
+               "ATmega328P · Nano only (A6 = key 7, A7 = a button)",
+               w=W_V6, h=H_V6, gnd_y=GND_V6, bx=NANO_X + DX_V6, by=NANO_Y,
+               v5_x0=V5_X0_V6, v5_x1=V5_X1_V6)
+    keyboard_2019(s, fruit="lemon", dx=DX_V6)
+
+    # ── NEW: the power source — cell → power-bank module → the board's 5 V in ─
+    s.add(lib.battery("BAT", 170, 118, label="LiPo 3.7 V",
+                      sub="10 000 mAh · 1260110"))
+    s.add(lib.power_bank_module("IP1", 800, 190, chip="IP5356",
+                                label="power-bank driver module",
+                                sub="USB-A out → the board · USB-C = charge in"))
+    s.connect("batp", C["relay"], P("BAT", "pos"), P("IP1", "batp"))
+    s.connect("batn", C["gnd"], P("BAT", "neg"), P("IP1", "batn"))
+
+    # ── V5.5's power-entry filter, shifted east by DX_V6, otherwise identical ─
+    # The series row (Schottky, choke) sits 70 px lower than in V5.5: `vbus` has
+    # to reach the amplifier at the far east, and y≈140 is the only straight lane
+    # for it. Leaving the Schottky there forced the router up into the subtitle.
+    s.add(lib.diode("DTVS", 560 + DX_V6, 250, orient="V", flip=True,
+                    label="P6KE6.8A", sub="TVS clamp"))
+    # No `sub` captions on the series row: dropped 70 px, they would land on the
+    # shunt row's values. The ratings are in the legend and in V5.5's own diagram.
+    # The ceramics also move 50 px further from their electrolytic so the "470 µF"
+    # caption clears the disc.
+    s.add(lib.diode("DS", 700 + DX_V6, 210, orient="H", label="1N5817"))
+    s.add(lib.capacitor("CF1", 850 + DX_V6, 250, orient="V", polarized=True, label="470 µF"))
+    s.add(lib.capacitor("CF2", 1000 + DX_V6, 250, orient="V", label="100 nF"))
+    s.add(lib.inductor("LF1", 1090 + DX_V6, 210, orient="H", label="100 µH"))
+    s.add(lib.capacitor("CF3", 1210 + DX_V6, 250, orient="V", polarized=True, label="470 µF"))
+    s.add(lib.capacitor("CF4", 1360 + DX_V6, 250, orient="V", label="100 nF"))
+
+    # ONE node: the module's 5 V, the board's input header, and the amp supply.
+    s.connect("vbus", C["ctrl"], P("IP1", "vout"), P("DTVS", "cathode"),
+              P("DS", "anode"), P("AMP", "vcc"))
+    s.connect("vraw", C["ctrl"], P("DS", "cathode"), P("CF1", "a"), P("CF2", "a"),
+              P("LF1", "a"))
+    s.connect("vfilt", C["v5"], P("LF1", "b"), P("CF3", "a"), P("CF4", "a"), R("5V"))
+    s.connect("pgnd", C["gnd"], P("IP1", "gnd"), P("DTVS", "anode"), P("CF1", "b"),
+              P("CF2", "b"), P("CF3", "b"), P("CF4", "b"), R("GND"))
+
+    # ── V5's game board, shifted east ────────────────────────────────────────
+    pins = ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11"]
+    x0, dx, ybar = 1700 + DX_V6, 100, 950
+    for i, pin in enumerate(pins):
+        cx = x0 + i * dx
+        cid = f"L{i}"
+        s.add(lib.led(cid, cx, ybar, (45, 185, 75), str(i + 1), pin, anode="N", cathode="S"))
+        s.add(lib.resistor(f"{cid}R", cx, ybar + 90, orient="V"))
+        s.connect(f"a{i}", C["led"], P("U1", pin), P(cid, "anode"))
+        s.connect(f"c{i}", C["gnd"], P(cid, "cathode"), P(f"{cid}R", "a"))
+        s.connect(f"g{i}", C["gnd"], P(f"{cid}R", "b"), R("GND"))
+
+    s.add(lib.buzzer("BUZ", 1560 + DX_V6, 420, label="passive buzzer",
+                     pin_label="D13 · keep or omit"))
+    s.connect("buzgnd", C["gnd"], P("BUZ", "gnd"), R("GND"))
+
+    _button_to_gnd(s, "SUP", 2350 + DX_V6, 420, "D12", "SENS +", "more sensitive",
+                   C["margin"], (60, 170, 90))
+
+    s.add(lib.push_button("SDN", 2850 + DX_V6, 420, "SENS −", "less sensitive",
+                          cap=(200, 60, 60)))
+    s.add(lib.resistor("SDNPU", 2750 + DX_V6, 250, orient="V", label="10k"))
+    s.connect("sdnsig", C["margin"], P("U1", "A7"), P("SDN", "pin"), P("SDNPU", "b"))
+    s.connect("sdnpu", C["v5"], P("SDNPU", "a"), R("5V"))
+    s.connect("sdngnd", C["gnd"], P("SDN", "v5"), R("GND"))
+
+    # ── NEW: the audio stage — divider → coupling cap → LM386 → speaker ──────
+    s.add(lib.resistor("R19", 3900, 500, orient="H", label="10k"))
+    s.add(lib.resistor("R20", 3990, 610, orient="V", label="1k"))
+    s.add(lib.capacitor("C5", 4060, 500, orient="H", label="1 µF", sub="DC block"))
+    s.add(lib.amp_module("AMP", 4300, 880, chip="LM386",
+                         label="LM386 amp module",
+                         sub="unfiltered 5 V"))
+    s.add(lib.speaker("SPK", 4780, 880, label="speaker", sub="4 Ω · 3 W"))
+
+    # D13 drives the piezo AND the divider — one node, exactly like PCB J5.
+    s.connect("buzsig", C["buzz"], P("U1", "D13"), P("BUZ", "sig"), P("R19", "a"))
+    s.connect("attn", C["buzz"], P("R19", "b"), P("R20", "a"), P("C5", "a"))
+    s.connect("attng", C["gnd"], P("R20", "b"), R("GND"))
+    s.connect("ampin", C["buzz"], P("C5", "b"), P("AMP", "sig"))
+    s.connect("ampgnd", C["gnd"], P("AMP", "gnd"), R("GND"))
+    s.connect("spk", C["buzz"], P("AMP", "out"), P("SPK", "p"))
+    s.connect("spkret", C["gnd"], P("SPK", "n"), R("GND"))
+
+    # The three ways this board can be powered, written where the power block is.
+    s.decorations.append(deco.panel(
+        170, 470, 520, 600, "The three power modes", accent=C["ctrl"], rows=[
+            ("h", "1 · Portable — on the cell"),
+            "Unplug everything, press ON on the module.",
+            "The board then floats WITH the player, so the",
+            "common-mode path the series filter cannot",
+            "touch disappears. Quietest of the three.",
+            "",
+            ("h", "2 · Wall-fed — same connector"),
+            "Move the two-wire pigtail from the module's",
+            "USB-A to a USB wall charger. Electrically this",
+            "is V5.5 exactly; the cell is not involved.",
+            "",
+            ("h", "3 · Playing while charging"),
+            "USB-C into the module, keep taking 5 V off",
+            "USB-A. Only works if this module does TRUE",
+            "pass-through — many alternate between",
+            "charging and output, which drops the rail and",
+            "reboots the Nano. MEASURE before relying on",
+            "it. It is also the noisiest mode: mains is back",
+            "in the loop, so modes 1 and 2 stay preferable.",
+            "",
+            ("h", "Star ground — build note"),
+            ("The amp GND and the speaker return carry", (170, 60, 60)),
+            ("hundreds of mA at audio rate. Land them on", (170, 60, 60)),
+            ("the MODULE's G, never through the board's", (170, 60, 60)),
+            ("ground: shared copper with the key returns", (170, 60, 60)),
+            ("puts the music straight onto the sense node.", (170, 60, 60)),
+        ]))
+
+    entries = [
+        (C["relay"], "Battery source (NEW)",
+         ["1S LiPo 3.7 V / 10 000 mAh → IP5356 B+ / B−",
+          "0.03C at the piano's 200 mA worst case · days of runtime"]),
+        (C["ctrl"], "Unfiltered 5 V — `vbus` (NEW)",
+         ["module USB-A out → TVS/Schottky (the board) AND → LM386 V+",
+          "the amp's audio-rate current NEVER crosses the filter"]),
+        (C["v5"], "Filtered +5 V rail",
+         ["stops short on purpose: Nano, key pull-ups and the A7 pull-up only",
+          "≈ 4.7 V · this node is AVcc, the ADC reference"]),
+        (C["key"], "Lemon keys (7)", ["A0..A6 · 220 Ω pull-up to the filtered rail",
+                                      "idle ≈ 1022 · a touch drags the pin DOWN 3-4 counts"]),
+        (C["led"], "Bar of 10 green LEDs",
+         ["ONE ASCENDING RUN: LED n on pin n+1 (D2..D11) · 220 Ω each"]),
+        (C["margin"], "Sensitivity buttons",
+         ["SENS + (D12, to GND) · SENS − (A7, to GND + 10 kΩ pull-up)"]),
+        (C["buzz"], "Audio: D13 → LM386 → speaker (NEW)",
+         ["D13 → 10 kΩ / 1 kΩ divider (≈ ÷11) → 1 µF → amp IN → 4 Ω 3 W",
+          "the on-board piezo stays in parallel on the same node (PCB J5)"]),
+    ]
+    notes = [("Why a battery at all: the filter is a SERIES filter, so it cannot touch the "
+              "common-mode path — the player's body is capacitively coupled to the mains "
+              "while the board is referenced to earth through the charger. On battery the "
+              "whole board floats WITH the player and that difference cancels in the ADC. "
+              "It also removes the charger's Y-cap leakage, which today flows through the "
+              "player's hand and straight into the sense node.", C["muted"]),
+             ("Why the amp is on the DIRTY side: an LM386 into 4 Ω draws hundreds of mA at "
+              "audio rate. Through L1/C3 that current would modulate the rail — which is "
+              "AVcc, measured against a 15-20 mV touch margin. Tap it before the TVS, and "
+              "run its ground back to the MODULE, not through the board's ground: the "
+              "speaker return must not share copper with the key returns (star ground).",
+              C["muted"]),
+             ("Why the divider: D13 is a 5 V square wave and the LM386's input expects "
+              "millivolts. 10 kΩ / 1 kΩ gives ~450 mV pp (0.45 mA off the pin — nothing) "
+              "and the module's gain pot does the rest. The 1 µF blocks D13's 2.5 V DC "
+              "average; most LM386 boards already have a coupling cap, this one makes the "
+              "circuit independent of which board you got. NEVER wire a 4 Ω coil to D13 "
+              "directly — that is PCB ADR-034.", C["muted"]),
+             ("Charge input: USB-C on the module, drawn but not wired — nothing on the "
+              "board connects to it. Take the board's 5 V from the module's USB-A with a "
+              "TWO-WIRE pigtail only (D+/D− absent → no QC/PD handshake → it stays at "
+              "5 V). A port that negotiated 9 V would burn the P6KE6.8A in continuous "
+              "conduction and then kill the ATmega.", C["muted"]),
+             ("Open risk, to be measured before building: the piano idles at 25-35 mA "
+              "(free play = all ten LEDs dark) and IP5356-class modules cut the output "
+              "below ~45-75 mA. If it self-shuts in the silences, the fixes are the "
+              "module's low-current mode, a keep-alive LED in firmware, or a 100 Ω bleeder "
+              "on `vbus`. Also check it starts into the 940 µF of C1+C3 without hiccuping "
+              "— if it does not, drop C1 to 220 µF (fc is set by C3, not C1).", C["muted"])]
+    s.decorations.append(deco.legend(entries=entries, notes=notes,
+                                     **_legend_box(GND_V6, w=W_V6, h=620)))
+    return s, "v6-battery-amp", "wiring-v6.png"
+
+
 # version key -> builder (add a row per hardware revision)
 TARGETS = {
     "v0": build_v0,
@@ -585,6 +790,7 @@ TARGETS = {
     "v4.5": lambda: build_v4(True),
     "v5": build_v5,
     "v5.5": build_v5_5,
+    "v6": build_v6,
 }
 
 

@@ -2,6 +2,47 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-08-05 — V6 proposal: battery power + amplified speaker (diagram only)
+
+- **`versions/v6-battery-amp/`** — a **diagram-only proposal**, explicitly not a
+  complete version directory: no `firmware/`, no `emulation/`, no `HARDWARE.md`,
+  not in the version index tables, never built or measured. Its README lists
+  exactly what is missing. The newest real board is still V5.5.
+- **`build_v6()`** in `tools/wiring_diagrams.py` — 66 nets, DRC 0 violations.
+  V5.5's board and filter unchanged, plus (a) a 1S LiPo 3.7 V / 10 000 mAh on an
+  IP5356 power-bank driver module feeding the existing 2-pin `5V IN` header, and
+  (b) an LM386 module + 4 Ω 3 W speaker in parallel with the buzzer on
+  `/BUZZER`. **The PCB does not change**: ADR-025 already sized `5V IN` for a
+  chopped USB-A pigtail and ADR-034 already put `SPK` (J5) across the buzzer, so
+  moving the pigtail between the module's USB-A and a wall charger *is* the mode
+  switch.
+- **The amplifier hangs off the unfiltered 5 V (`vbus`), not the rail** — the
+  one decision worth remembering. The CLC pi has fc ≈ 730 Hz, so at 1 kHz it
+  only attenuates ~5 dB: audio-band current pulled *through* the filter would
+  land almost unattenuated on the rail, which is AVcc, the reference the 3-4
+  count (15-20 mV) touch margin is measured against. So the amp taps the module
+  before the TVS and shares no series element with the keyboard. Consequently
+  the drawing's `+5 V` rail **stops short** of the audio block (new `v5_x0` /
+  `v5_x1` args on `_board`) rather than spanning the canvas — it is not there.
+- D13 drives a 10 kΩ / 1 kΩ divider (≈ ÷11, 0.45 mA off the pin) and a 1 µF DC
+  block, never the coil: a bare 4-8 Ω speaker on D13 would destroy the pin
+  (PCB ADR-034). The on-board piezo stays in parallel on the same node.
+- The README argues the case a battery makes beyond portability: the V5.5 filter
+  is a **series** filter and cannot touch the common-mode path, so on battery the
+  board floats *with* the player and that 50 Hz difference cancels in the ADC —
+  plus the charger's Y-cap leakage stops flowing through the player's hand. It
+  also records the five open risks to measure first, the worst being low-load
+  auto-shutdown (the piano idles at 25-35 mA; IP5356-class modules cut out below
+  ~45-75 mA, i.e. it would switch off during the silences).
+- `keyboard_2019()` gains `dx=0` and `_board()` gains `v5_x0`/`v5_x1`, both
+  backward-compatible: re-rendering V1-V5.5 leaves every committed PNG untouched.
+  (V5.5's PNG does differ from its committed bytes on this machine, but the
+  *pristine* engine and builder reproduce that same 113 885-pixel delta — it is
+  pre-existing font-rendering drift, not this change, so it was left alone.)
+- Engine side (`../eda-wirewright`): four new component factories — `battery`,
+  `power_bank_module`, `amp_module`, `speaker` — plus `deco.panel` for the
+  "three power modes" box, with tests. See its CHANGELOG.
+
 ## 2026-07-31 (pcb/) — rotatable 3D models in the pipeline
 
 - The pipeline now emits a **rotatable 3D model** of the board on every run,
