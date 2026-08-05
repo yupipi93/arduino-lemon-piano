@@ -1,9 +1,8 @@
 # V6 — battery power + amplified speaker
 
-> **STATUS: PROPOSAL UNDER MEASUREMENT. Not a complete version directory, not
-> built.** This folder holds the wiring contract's render plus the
-> [`bench/`](bench/) instruments and protocol for qualifying the power source.
-> It deliberately does **not** yet have `firmware/`, `emulation/` or
+> **STATUS: DIAGRAM-ONLY PROPOSAL. Not a complete version directory, not built,
+> not measured.** This folder holds the wiring contract's render and nothing
+> else. It deliberately does **not** yet have `firmware/`, `emulation/` or
 > `HARDWARE.md` — see [What is missing](#what-is-missing).
 > The newest *real* board is still [V5.5](../v5.5-power-filter/).
 
@@ -67,15 +66,6 @@ merely as quiet.**
 | **Inrush into 940 µF** | C1 + C3 look like a short to a boost whose short-circuit protection reacts in < 50 µs | drop C1 to 220 µF — `fc` is set by C3, not C1 |
 | **No battery telemetry** | A0-A7 and D2-D13 are *all* used; there is no free pin | the module's own 2-digit display is the gauge |
 | **Pouch vs THT leads** | the solder side is a field of cut leads; a LiPo pouch pressed against it is a puncture risk | rigid spacer or a separate compartment (the 4 × M2 holes are there) |
-
-## Bench protocol — start here
-
-The power source gets measured **before** it touches a board.
-[`bench/`](bench/) holds two Nano-based instruments (`psu-probe`,
-`touch-noise`) and the T0-T7 protocol with pass/fail criteria, written for the
-current state: cell on the module, KWS-X1 on hand, no PCB yet. T2 (the low-load
-cut-off) and T7 (battery vs mains noise) are the two that decide whether V6 is
-worth building.
 
 ## Regenerating the diagram
 

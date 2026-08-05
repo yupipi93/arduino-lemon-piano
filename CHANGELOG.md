@@ -2,43 +2,6 @@
 
 Append-only log of significant changes. Newest first.
 
-## 2026-08-05 (later) — V6 bench instruments: qualify the power source first
-
-- **`versions/v6-battery-amp/bench/`** — two Nano-based PlatformIO instruments
-  and a T0-T7 protocol with pass/fail criteria, written for the state the build
-  is actually in: the LiPo is on the IP5356 (micro-USB variant), a KWS-X1 is on
-  hand, and there is **no PCB yet**. Both compile green.
-- **`bench/psu-probe/`** — the Nano *is* the voltmeter, because there is no DMM
-  in the parts bin. It reads AVcc against the ATmega's internal 1.1 V bandgap
-  (the same node the piano's ADC uses as its reference, so it is the number that
-  matters and it needs no external parts), the cell on A1 (a 1S LiPo tops out at
-  4.2 V < AVcc, so it connects directly), and counts dropouts through an EEPROM
-  boot counter — which distinguishes a source that HICCUPS (count climbs) from
-  one that LATCHES off (board goes dark and stays dark).
-- **`bench/touch-noise/`** — the V5.5 bench validation recipe reduced to ONE
-  channel so it runs before the PCB exists, closing the gap V5.5 has carried
-  since it was designed. 220 Ω pull-up on A0; D13 flashes once per sample that
-  deviates ≥ 4 counts, i.e. once per event the game could not tell from a
-  finger. **It reads out PC-free on purpose**: attaching a PC ties its earthy
-  ground to the circuit and re-creates the very common-mode path being measured,
-  so the valid run counts flashes instead of reading serial.
-- The load bank is 1/4 W 1 % resistors already in stock: 470 Ω units give 10.6 mA
-  steps at 53 mW each (fine, for hunting the cut-off) and 220 Ω units 22.7 mA at
-  114 mW (coarse, for piano-sized loads) — both well inside rating at 5 V. The
-  best load is the Nano itself: at ~25-35 mA it *is* the piano's idle current, so
-  the headline test is "does the module stay on with nothing but the Nano?"
-- The output tap is `cbl-usba-m-pelado-30cm` (USB-A male → two bare wires),
-  already in stock and already the safe configuration: V+ and GND only, no
-  D+/D−, so no QC/PD handshake is possible and the port stays at 5 V.
-- **Two honest gaps recorded rather than papered over.** (1) The KWS-X1 is
-  USB-C↔USB-C and every module output is USB-A, so it cannot sit in the USB-A
-  path without a ~2 € adapter — not blocking, because 1 % resistors make the
-  load current known and `psu-probe` measures the voltage; the meter is only
-  needed for the ripple page and mAh totalising. (2) **T4 (inrush into 940 µF)
-  is blocked**: no 470 µF electrolytic, no 100 µH ≥ 1 A choke and no TVS in the
-  parts bin. Shopping list included; `semi-ss14` can stand in for the 1N5817
-  (rail lands at ≈4.55 V instead of 4.7 V — harmless, the ADC is ratiometric).
-
 ## 2026-08-05 — V6 proposal: battery power + amplified speaker (diagram only)
 
 - **`versions/v6-battery-amp/`** — a **diagram-only proposal**, explicitly not a
