@@ -2,6 +2,63 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-06 — PCB v0.7.0: Nano turned back to USB-WEST for enclosure cable access (LEDs north, keys south)
+
+- **User request** (annotated screenshot of the v0.6.0 render): flip the
+  Arduino so the mini-USB points the other way, away from the SENS buttons, so
+  the cable can be plugged into the PC **with the Nano seated** once the
+  enclosure exists; D2 and L1 moved to leave room for the cable; and, because
+  the flip changes which pins face which edge, the LEDs go to the top and the
+  key connector to the bottom.
+- **What changed on the board** (`pcb/lemon-piano.yaml`, `pcb/tools/build_board.py`,
+  `pcb/tools/geometry_gate.py`):
+  - `U1`/`U2` trade places (ADR-035): U1 analog = SOUTH row, pin 1 D13 west
+    (rot 90); U2 digital = NORTH row, pin 1 TX1 east (rot 270). D12/D13 flank
+    the USB at x=132.22. Pin legends, refs and the B.SilkS title moved with it.
+  - **LED bar → NORTH edge**, centred, **LED1 at the EAST** (D3 170.7 … D12
+    129.3, rot 270 so anodes point south). **Keys header → SOUTH edge**,
+    centred, **KEY1 at the WEST** (`KEYS 1 2 3 4 5 6 7 G`). Both follow the pin
+    order for a non-crossing fan (ADR-036) — the mock-up had pasted the v0.6.0
+    blocks unchanged; honouring that literally would have meant a 45-crossing
+    via crossbar under the digital row. **Consequence: the VU meter fills
+    right→left with the USB on the left.** Reversing it is a YAML change plus
+    a re-route.
+  - **USB-cable corridor reinstated** (x < 130.4, y 113..127 part-free on
+    F.Cu — the ADR-024 band; supersedes ADR-030). `geometry_gate` checks it
+    against real courtyard boxes. The v0.5.0–v0.6.0 "lift the Nano to flash
+    it" cost is gone.
+  - **Filter folded around the corridor** (ADR-037): C1 ‖ C3 stay adjacent on
+    the north row; D2 → (107.0, 129.2) rot 180, J1 → D1 at y=136.0, L1 in its
+    own column at (120.0, 134.5). Four parts do not fit one 27 mm row and L1
+    cannot stack over D1 in the 13 mm strip, hence the column. `/VRAW` and
+    `/+5V` now run ≈ 30 mm north–south side by side (accepted, same reasoning
+    as ADR-031).
+  - Both geometric-0805 groups inverted their pad numbers again (the ADR-029
+    trap): builder assertions moved to KEY pad y=125.4 / cathode pad y=101.97,
+    `ground-truth/components.yaml` re-derived from the built board.
+- **Verification**: cloud `/drc` **0 errors / 0 warnings / 0 unconnected**;
+  ERC 0/0; `verify_placement` 74 OK; `verify_holes` geometric + vision PASS
+  (max LOO 0.022 mm); `geometry_gate` 30/30 incl. the new corridor check; an
+  independent logical pass over the routed `.kicad_pcb` (pin→net map, both
+  fans monotonic, zero pads in the corridor, copper on all 34 nets, legend
+  order); all eight renders inspected (overlay photo lands USB-west, every
+  part has a 3D body); `build_board` byte-identical across two runs. First
+  pipeline run stopped at `verify_placement` exactly as AGENT_PROMPT step 2
+  predicts (0805 pad inversion); no board change was needed to fix it.
+- **Release**: `pcb/releases/v0.7.0/lemon-piano-v0.7.0-fab.zip` (14 files),
+  produced by `/fab` on the very board the gates passed on (not a `--fab`
+  re-route, so the release matches the committed `.kicad_pcb`). 3D models
+  `pcb/3d/lemon-piano-v0.7.0.{glb,step}` committed. Renders under
+  `pcb/renders/v0.7.0-*`, `renders/INDEX.md` regenerated.
+- **Docs**: ADR-035/036/037 in `pcb/docs/DECISIONS.md`; `NETLIST.md` board
+  frame + pin map (USB-east map kept as history); `DESIGN_STATE.md`;
+  `pcb/README.md` (assembly notes: cable corridor, G pin now east, VU
+  direction); `AGENT_PROMPT.md` board facts; `overlays/modules.yaml` and
+  `ground-truth/holes.yaml` comments/version.
+- **Toolchain note**: the local `eda-pcb-designer:latest` Docker image was
+  absent on this machine and was rebuilt from the sibling repo (`docker build`,
+  ≈5 GB) — no toolkit code changed.
+
 ## 2026-09-06 — V5.5: add the amplified speaker that was missing from the diagram
 
 - **`build_v5_5()`** in `tools/wiring_diagrams.py` — the V5.5 wiring diagram was

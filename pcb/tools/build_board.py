@@ -126,10 +126,10 @@ FOOTPRINTS["R18"] = ("Resistor_SMD",
 # survives every re-orientation untouched; only the YAML placements move.
 # ADR-015: the real Nano has D12/D13 at the mini-USB end and TX1/VIN at the
 # ICSP end (verified on the official 2008 V2.2 board photo + clones).
-# v0.5.0 (ADR-029) mounts it FLIPPED, mini-USB facing EAST, so U1 (the
-# analog column: D13,3V3,AREF,A0..A7,5V,RST,GND,VIN) is the NORTH row with
-# pin 1 at the east, and U2 (the digital column: TX1,RX0,RST,GND,D2..D12)
-# is the SOUTH row with pin 1 at the west.
+# v0.7.0 (ADR-035) mounts it with the mini-USB facing WEST again, so U1 (the
+# analog column: D13,3V3,AREF,A0..A7,5V,RST,GND,VIN) is the SOUTH row with
+# pin 1 at the west, and U2 (the digital column: TX1,RX0,RST,GND,D2..D12)
+# is the NORTH row with pin 1 at the east.
 PAD_NETS: dict[tuple[str, str], str] = {
     ("U2", "4"): "GND",
     ("U2", "5"): "LED1", ("U2", "6"): "LED2", ("U2", "7"): "LED3",
@@ -166,16 +166,17 @@ for _i in range(10):                       # LED pads: 1=cathode, 2=anode
     PAD_NETS[(f"D{_i + 3}", "2")] = f"LED{_i + 1}"
 
 # vertical 0805s: (north-pad net, south-pad net) — north = smaller y.
-# v0.5.0: BOTH groups flip versus v0.4.0, because the Nano flip moved the
-# analog row to the NORTH and the LED bar to the SOUTH. The pull-ups now sit
-# just south of the analog row (pin side = NORTH pad) and the LED resistors
-# just north of the bar (cathode = SOUTH pad).
+# v0.7.0 (ADR-035): BOTH groups flip back versus v0.5.0/v0.6.0, because the
+# Nano turned 180° again — the analog row is the SOUTH row and the LED bar
+# sits on the NORTH edge. The pull-ups now sit just NORTH of the analog row
+# (pin side = SOUTH pad, rail = NORTH pad) and the LED resistors just SOUTH
+# of the bar (cathode = NORTH pad, GND = SOUTH pad).
 GEOMETRIC_NETS: dict[str, tuple[str, str]] = {}
-for _i in range(1, 8):                     # pull-up: pin side north, +5V south
-    GEOMETRIC_NETS[f"R{_i}"] = (f"KEY{_i}", "+5V")
-GEOMETRIC_NETS["R18"] = ("SENS_MINUS", "+5V")
-for _i in range(8, 18):                    # LED series: GND north, cathode south
-    GEOMETRIC_NETS[f"R{_i}"] = ("GND", f"LED{_i - 7}_K")
+for _i in range(1, 8):                     # pull-up: +5V north, pin side south
+    GEOMETRIC_NETS[f"R{_i}"] = ("+5V", f"KEY{_i}")
+GEOMETRIC_NETS["R18"] = ("+5V", "SENS_MINUS")
+for _i in range(8, 18):                    # LED series: cathode north, GND south
+    GEOMETRIC_NETS[f"R{_i}"] = (f"LED{_i - 7}_K", "GND")
 
 # Every GND pad merges solid with the B.Cu zone (zone_connect 2,
 # LESSONS_LEARNED §1). v0.0.2 DRC proved the SMD GND pads of R8..R17
@@ -186,25 +187,26 @@ for _i in range(8, 18):                    # LED series: GND north, cathode sout
 # part (pad 2 = anode/VIN lands WEST of pad 1 so the filter chain flows
 # west→east along the south strip) — the assertion locks that convention.
 EXPECTED_PADS = [
-    # Nano FLIPPED (ADR-029): U1 = analog column on the NORTH row with pin 1
-    # (D13) EAST; U2 = digital column on the SOUTH row with pin 1 (TX1) WEST.
-    ("U1", "1", 167.78, 112.38), ("U1", "15", 132.22, 112.38),
-    ("U2", "1", 132.22, 127.62), ("U2", "15", 167.78, 127.62),
-    # keys header on the NORTH edge, pin 1 (KEY1) EAST under A0
-    ("J2", "1", 158.89, 103.0), ("J2", "8", 141.11, 103.0),
-    ("J1", "1", 102.3, 134.5), ("J1", "2", 104.84, 134.5),
+    # Nano USB-WEST (ADR-035): U1 = analog column on the SOUTH row with pin 1
+    # (D13) WEST; U2 = digital column on the NORTH row with pin 1 (TX1) EAST.
+    ("U1", "1", 132.22, 127.62), ("U1", "15", 167.78, 127.62),
+    ("U2", "1", 167.78, 112.38), ("U2", "15", 132.22, 112.38),
+    # keys header on the SOUTH edge, pin 1 (KEY1) WEST under A0
+    ("J2", "1", 141.11, 137.0), ("J2", "8", 158.89, 137.0),
+    ("J1", "1", 102.3, 136.0), ("J1", "2", 104.84, 136.0),
     ("J3", "1", 186.0, 117.97), ("J3", "2", 188.54, 117.97),
     ("J4", "1", 186.0, 126.51), ("J4", "2", 188.54, 126.51),
     ("J5", "1", 176.0, 104.0), ("J5", "2", 178.54, 104.0),
-    ("D1", "1", 109.2, 134.5), ("D1", "2", 114.28, 134.5),
-    ("D2", "1", 110.0, 119.0), ("D2", "2", 104.92, 119.0),
+    ("D1", "1", 109.2, 136.0), ("D1", "2", 114.28, 136.0),
+    ("D2", "1", 107.0, 129.2), ("D2", "2", 101.92, 129.2),
     ("C1", "1", 108.0, 106.0), ("C1", "2", 111.5, 106.0),
     ("C3", "1", 118.0, 106.0), ("C3", "2", 121.5, 106.0),
-    ("L1", "1", 115.5, 119.0), ("L1", "2", 120.5, 119.0),
+    ("L1", "1", 120.0, 134.5), ("L1", "2", 125.0, 134.5),
     ("BUZ1", "1", 188.0, 106.78), ("BUZ1", "2", 195.6, 106.78),
-    # LED bar on the SOUTH edge: cathode pad = origin, anode 2.54 NORTH
-    ("D3", "1", 129.3, 138.35), ("D3", "2", 129.3, 135.81),
-    ("D12", "1", 170.7, 138.35), ("D12", "2", 170.7, 135.81),
+    # LED bar on the NORTH edge, LED1 EAST: cathode pad = origin, anode
+    # 2.54 SOUTH (toward the D2..D11 pins)
+    ("D3", "1", 170.7, 101.65), ("D3", "2", 170.7, 104.19),
+    ("D12", "1", 129.3, 101.65), ("D12", "2", 129.3, 104.19),
     ("H1", "1", 95.0, 105.0), ("H2", "1", 205.0, 105.0),
     ("H3", "1", 95.0, 135.0), ("H4", "1", 205.0, 135.0),
 ]
@@ -220,11 +222,11 @@ HIDE_REF = {f"D{i}" for i in range(3, 13)}
 
 # bottom-side / hole refs: (x, y, rot) for the Reference field
 REF_POS = {
-    # pull-up refs sit SOUTH of their resistors now (the analog row is north)
-    **{f"R{i}": (160.16 - 2.54 * (i - 1), 118.6, 90) for i in range(1, 8)},
-    "R18": (142.38, 118.6, 90),
-    # LED-resistor refs sit SOUTH of theirs, 0.85 mm off the south edge
-    **{f"R{i + 7}": (131.6 + 4.6 * (i - 1), 139.15, 0) for i in range(1, 11)},
+    # pull-up refs sit NORTH of their resistors (the analog row is south now)
+    **{f"R{i}": (139.84 + 2.54 * (i - 1), 121.4, 90) for i in range(1, 8)},
+    "R18": (157.62, 121.4, 90),
+    # LED-resistor refs sit NORTH of theirs, 0.85 mm off the north edge
+    **{f"R{i + 7}": (173.0 - 4.6 * (i - 1), 100.85, 0) for i in range(1, 11)},
     "C2": (109.75, 109.0, 0),
     "C4": (119.25, 109.0, 0),
     "H1": (95.0, 101.5, 0),
@@ -315,19 +317,19 @@ def build(cfg: dict) -> str:
 
     # reposition the visible refs into free silk pockets (v0.0.4: positions
     # tuned until /drc reports zero silk_overlap)
-    for ref, (tx, ty, trot) in {"U1": (130.22, 112.38, 90),
-                                "U2": (130.22, 127.62, 90),
+    for ref, (tx, ty, trot) in {"U1": (130.22, 127.62, 90),
+                                "U2": (130.22, 112.38, 90),
                                 "BUZ1": (191.8, 104.08, 0),
-                                "J1": (103.57, 128.5, 0),
-                                "J2": (162.91, 103.0, 0),
+                                "J1": (103.57, 132.3, 0),
+                                "J2": (162.91, 137.0, 0),
                                 "J3": (192.5, 117.97, 0),
                                 "J4": (192.5, 126.51, 0),
                                 "J5": (182.5, 104.0, 0),
-                                "D1": (111.74, 131.1, 0),
-                                "D2": (107.0, 115.5, 0),
+                                "D1": (111.74, 132.6, 0),
+                                "D2": (107.0, 126.6, 0),
                                 "C1": (109.66, 101.2, 0),
                                 "C3": (119.66, 101.2, 0),
-                                "L1": (125.5, 119.0, 90)}.items():
+                                "L1": (128.3, 134.5, 90)}.items():
         fp = board.FindFootprintByReference(ref)
         r = fp.Reference()
         r.SetPosition(V(tx, ty))
@@ -360,21 +362,22 @@ def build(cfg: dict) -> str:
     if abs(pair_cy - board_cy) > 0.01:
         raise SystemExit(f"SENS button pair centre {pair_cy} != {board_cy}")
     # geometric resistors: the KEY pad must be the one nearer its A-pin row,
-    # which after the v0.5.0 flip is the NORTH pad (analog row at y=112.38)
+    # which after the v0.7.0 flip is the SOUTH pad (analog row at y=127.62,
+    # resistors at y=124.4)
     for i in range(1, 8):
         fp = board.FindFootprintByReference(f"R{i}")
         for pad in fp.Pads():
             if pad.GetNetname() == f"/KEY{i}":
-                if abs(pad.GetPosition().y / 1e6 - 114.6) > 0.05:
-                    raise SystemExit(f"R{i} KEY pad not at y=114.6")
+                if abs(pad.GetPosition().y / 1e6 - 125.4) > 0.05:
+                    raise SystemExit(f"R{i} KEY pad not at y=125.4")
     # LED series resistors: the cathode pad must be the one nearer the bar,
-    # i.e. the SOUTH pad (bar cathodes at y=138.35, resistors at y=137.03)
+    # i.e. the NORTH pad (bar cathodes at y=101.65, resistors at y=102.97)
     for i in range(8, 18):
         fp = board.FindFootprintByReference(f"R{i}")
         for pad in fp.Pads():
             if pad.GetNetname() == f"/LED{i - 7}_K":
-                if abs(pad.GetPosition().y / 1e6 - 138.03) > 0.05:
-                    raise SystemExit(f"R{i} cathode pad not at y=138.03")
+                if abs(pad.GetPosition().y / 1e6 - 101.97) > 0.05:
+                    raise SystemExit(f"R{i} cathode pad not at y=101.97")
 
     # ── board outline ────────────────────────────────────────────────────
     rect = pcbnew.PCB_SHAPE(board)
@@ -417,41 +420,43 @@ def build(cfg: dict) -> str:
     text(f"pcb {version}", 187.0, 135.5, h=0.8)
 
     # ── pin legends, MT1 style (h 0.8 / w 0.65, rotated 90) ─────────────
-    # NORTH row (U1, analog, pin1 D13 EAST): legend above the pins
-    for i, lab in enumerate(["D13", "3V3", "AREF", "A0", "A1", "A2", "A3",
-                             "A4", "A5", "A6", "A7", "5V", "RST", "GND",
-                             "VIN"]):
-        text(lab, 167.78 - 2.54 * i, 109.16, h=0.8, w=0.65, rot=90, thick=0.12)
-    # SOUTH row (U2, digital, pin1 TX1 WEST): legend below the pins
+    # NORTH row (U2, digital, pin1 TX1 EAST): legend above the pins
     for i, lab in enumerate(["TX1", "RX0", "RST", "GND", "D2", "D3", "D4",
                              "D5", "D6", "D7", "D8", "D9", "D10", "D11",
                              "D12"]):
+        text(lab, 167.78 - 2.54 * i, 109.16, h=0.8, w=0.65, rot=90, thick=0.12)
+    # SOUTH row (U1, analog, pin1 D13 WEST): legend below the pins
+    for i, lab in enumerate(["D13", "3V3", "AREF", "A0", "A1", "A2", "A3",
+                             "A4", "A5", "A6", "A7", "5V", "RST", "GND",
+                             "VIN"]):
         text(lab, 132.22 + 2.54 * i, 130.49, h=0.8, w=0.65, rot=90, thick=0.12)
-    # LED refs (dense 4.6 mm pitch strip → label on the back)
+    # LED refs (dense 4.6 mm pitch strip → label on the back). LED1 (D3) is
+    # at the EAST end now (ADR-036).
     for k in range(10):
-        text(f"D{k + 3}", 129.3 + 4.6 * k, 134.15, layer=pcbnew.B_SilkS,
+        text(f"D{k + 3}", 170.7 - 4.6 * k, 105.85, layer=pcbnew.B_SilkS,
              h=0.8, w=0.65, thick=0.12)
-    # keys header labels: pin 1 = KEY1 at the EAST, so west→east reads
-    # G 7 6 5 4 3 2 1. "KEYS" sits WEST of the header.
+    # keys header labels: pin 1 = KEY1 at the WEST, so west→east reads
+    # 1 2 3 4 5 6 7 G. "KEYS" sits WEST of the header.
     for i, lab in enumerate(["1", "2", "3", "4", "5", "6", "7", "G"]):
-        text(lab, 158.89 - 2.54 * i, 100.75, h=0.8)
-    text("KEYS", 136.5, 100.75, h=0.8)
+        text(lab, 141.11 + 2.54 * i, 139.25, h=0.8)
+    text("KEYS", 136.5, 139.25, h=0.8)
     # 5 V input header (ADR-025): polarity above the pads, name below
-    text("+", 102.3, 131.7, h=1.0, thick=0.15)
-    text("-", 104.84, 131.7, h=1.0, thick=0.15)
-    text("5V IN", 103.57, 138.0, h=0.8)
+    text("+", 102.3, 133.6, h=1.0, thick=0.15)
+    text("-", 104.84, 133.6, h=1.0, thick=0.15)
+    text("5V IN", 103.57, 138.9, h=0.8)
     # SENS buttons + their parallel external-button headers (ADR-026)
     text("SENS+", 178.2, 110.0, h=0.8)
     text("SENS-", 178.2, 130.0, h=0.8)
     text("SPK", 177.27, 107.6, h=0.8)   # aux speaker out, parallel to BUZ1
     text("EXT+", 187.3, 114.6, h=0.8)
     text("EXT-", 187.3, 130.5, h=0.8)
-    # LED bar end markers (bar now ascends west→east, ADR-029)
-    text("1", 129.3, 133.0, h=0.8)
-    text("10", 170.7, 133.0, h=0.8)
-    # back-side title: the strip under the Nano body is free on B.SilkS
-    text("Lemon Piano V5.5", 150.0, 122.5, layer=pcbnew.B_SilkS, h=1.0)
-    text(f"pcb {version}", 150.0, 124.5, layer=pcbnew.B_SilkS, h=1.0)
+    # LED bar end markers (LED1 EAST, LED10 WEST — ADR-036)
+    text("1", 170.7, 107.0, h=0.8)
+    text("10", 129.3, 107.0, h=0.8)
+    # back-side title: the B.SilkS strip north of centre is free now that
+    # the pull-ups moved south of it
+    text("Lemon Piano V5.5", 150.0, 115.5, layer=pcbnew.B_SilkS, h=1.0)
+    text(f"pcb {version}", 150.0, 117.5, layer=pcbnew.B_SilkS, h=1.0)
 
     # ── save + text post-passes ──────────────────────────────────────────
     out_dir = PROJ / "kicad"

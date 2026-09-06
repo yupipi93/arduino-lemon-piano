@@ -1,18 +1,27 @@
 # DESIGN_STATE.md — Lemon Piano V5.5 Board
 
-**Current version: v0.6.0 — the Nano is FLIPPED (mini-USB faces EAST), which
-puts the analog column on the north row and the digital column on the south
-row: lemon-key header on the NORTH edge (centred, KEY1 east), ten-LED bar on
-the SOUTH edge (centred on x=150, ascending west→east), power-entry filter
-refactored into a compact 3-row west block with C1 ‖ C3 adjacent, and no
-USB-cable keepout. v0.5.1 restored D1's missing 3D body (ADR-033); v0.6.0
-adds J5, a 2-pin aux speaker output in parallel with the buzzer (ADR-034).**
-(2026-07-30)
+**Current version: v0.7.0 — the Nano is turned back to mini-USB WEST
+(ADR-035), so the digital column is the north row and the analog column the
+south row: ten-LED bar on the NORTH edge (centred on x=150, **LED1 at the
+east** under D2 — ADR-036), lemon-key header on the SOUTH edge (centred,
+**KEY1 west** under A0), the USB-cable corridor (x < 130.4, y 113..127)
+reinstated and part-free so the cable leaves the enclosure on the left with
+the module seated, and the power-entry filter folded around it — C1 ‖ C3
+still adjacent on the north row, D2 + L1 moved down into the south strip with
+J1 → D1 (ADR-037). Everything east of the socket (SENS±, J3/J4, BUZ1, J5) is
+unchanged from v0.6.0.** (2026-09-06)
 
-> **Flashing note (ADR-030, deliberate):** the mini-USB faces east with no
-> cable clearance reserved — the shell reaches x≈173.3 and SW1's courtyard
-> starts at 173.48. Flash the Nano before seating it, or lift it out of the
-> socket. This is the accepted cost of keys-north + LEDs-south.
+> **Flashing note (v0.7.0):** the ADR-030 cost is gone. The mini-USB faces
+> west into a part-free corridor, so a cable plugs in with the Nano seated and
+> clears the SENS buttons by construction. (v0.5.0–v0.6.0 needed the module
+> lifted out of its socket to take a cable.)
+
+> **VU-meter direction (ADR-036, user should know):** with the USB to the
+> left, the bar fills **right→left** — LED1 (green) is at the east end, LED10
+> (red) at the west. That is what a non-crossing fan under the descending
+> D2..D11 row gives; the user's mock-up pasted the v0.6.0 bar (green left)
+> without re-deriving it. Reversing it is a ten-line YAML change plus a
+> re-route at the cost of a 45-crossing via crossbar.
 
 > v0.1.0 ERRATUM (ADR-015): the Nano socket rows were 180°-rotated
 > (TX1/VIN assumed at the USB end; the real board has D12/D13 there).
@@ -22,31 +31,33 @@ adds J5, a 2-pin aux speaker output in parallel with the buzzer (ADR-034).**
 
 | Block | State |
 |---|---|
-| Nano socket (U1/U2, 2×15) | ✅ CENTRED (pin field x 132.22–167.78) and FLIPPED: **USB-east**, U1 = analog NORTH row (pin1 D13 east, rot 270), U2 = digital SOUTH row (pin1 TX1 west, rot 90). All 23 used pins netted, 7 NC by design |
-| Power-entry filter (J1→D1→D2→C1‖C2→L1→C3‖C4) | ✅ compact 3-row WEST block (ADR-031): **C1 ‖ C3 adjacent** at y=106, D2→L1 at y=119 (pads 5.5 mm apart), J1→D1 at y=134.5, ceramics on B.Cu at y=112.5 |
-| 5 V entry (J1) | ✅ 2-pin 2.54 mm header, SW corner, `+ −` silk (ADR-025) |
-| Keyboard (R1–R7 pull-ups + J2 header) | ✅ header CENTRED on the **NORTH** edge (pin centre exactly x=150), pin 1 = KEY1 at the EAST under A0; pull-ups on B.Cu just south of the analog row |
-| LED bar (D3–D12 + R8–R17) | ✅ **SOUTH** strip, CENTRED on x=150, ascending west→east (LED1 west under D2, LED10 east under D11), series R on B.Cu |
-| UI (BUZ1 D13, SW1 SENS+ D12, SW2 SENS− A7 + R18) | ✅ buttons in the EAST block, pair centred on y=120; buzzer NE corner, ~20 mm from D13 |
-| Aux speaker out (J5 ∥ BUZ1) | ✅ 2-pin header on /BUZZER + /GND, 5.18 mm west of the buzzer, silk `SPK`. **Piezo or amplified module only** — a bare 4–8 Ω speaker would destroy D13 (ADR-034) |
-| External-button headers (J3 ∥ SW1, J4 ∥ SW2) | ✅ 2-pin headers on the same nets as their button, directly east of it (ADR-026) |
-| GND | ✅ B.Cu zone, solid connect on all GND pads; now refilled after split-net repair too (ADR-032) |
+| Nano socket (U1/U2, 2×15) | ✅ CENTRED (pin field x 132.22–167.78), **USB-west**: U1 = analog SOUTH row (pin1 D13 west, rot 90), U2 = digital NORTH row (pin1 TX1 east, rot 270). D12/D13 flank the USB at x=132.22. All 23 used pins netted, 7 NC by design |
+| USB-cable corridor | ✅ x < 130.4, y 113..127 part-free on F.Cu (ADR-035 reinstates the ADR-024 band; supersedes ADR-030) — `geometry_gate` checks it against real courtyard boxes |
+| Power-entry filter (J1→D1→D2→C1‖C2→L1→C3‖C4) | ✅ WEST block folded around the corridor (ADR-037): **C1 ‖ C3 adjacent** at y=106; **D2 at (107.0, 129.2)** row A; **J1 → D1 at y=136.0** row B; **L1 at (120.0, 134.5)** in its own east column; ceramics on B.Cu at y=112.5 |
+| 5 V entry (J1) | ✅ 2-pin 2.54 mm header, SW corner, `+ −` silk above and `5V IN` below (ADR-025) |
+| Keyboard (R1–R7 pull-ups + J2 header) | ✅ header CENTRED on the **SOUTH** edge (pin centre exactly x=150), pin 1 = KEY1 at the **WEST** under A0; silk `KEYS 1 2 3 4 5 6 7 G`; pull-ups on B.Cu at y=124.4 just north of the analog row |
+| LED bar (D3–D12 + R8–R17) | ✅ **NORTH** strip, CENTRED on x=150, **LED1 EAST → LED10 WEST** (D3 at 170.7 … D12 at 129.3, matching D2..D11 which descend west→east), rot 270 so anodes point south at the row; series R on B.Cu at y=102.97 |
+| UI (BUZ1 D13, SW1 SENS+ D12, SW2 SENS− A7 + R18) | ✅ unchanged east block, pair centred on y=120; buzzer NE corner. D13/D12 are at the west end again, so `/BUZZER` ≈ 60 mm and `/SENS_PLUS` ≈ 43 mm (both accepted before: ADR-027/029) |
+| Aux speaker out (J5 ∥ BUZ1) | ✅ unchanged (ADR-034). **Piezo or amplified module only** |
+| External-button headers (J3 ∥ SW1, J4 ∥ SW2) | ✅ unchanged (ADR-026) |
+| GND | ✅ B.Cu zone, solid connect on all GND pads; refilled after the width pass (no split-net repair was needed this run) |
 | Mounting (H1–H4, M2) | ✅ (95,105) / (205,105) / (95,135) / (205,135), symmetric about x=150 and y=120 |
 | Schematic | ✅ mirrors PCB (48 symbols incl. 3 PWR_FLAGs), ERC 0/0. Unchanged by the flip — the pin→net map is electrical, only placements moved |
-| Fab package | ✅ `pcb/releases/v0.6.0/lemon-piano-v0.6.0-fab.zip` (14 files) |
+| Fab package | ✅ `pcb/releases/v0.7.0/lemon-piano-v0.7.0-fab.zip` (14 files), generated by `/fab` from the exact board every gate passed on |
 
-## Verification snapshot (v0.6.0)
+## Verification snapshot (v0.7.0)
 
 | Gate | Result |
 |---|---|
-| Cloud `/drc` | **0 errors, 0 warnings, 0 unconnected** (`validation/drc-v0.6.0.json`; `included_severities` = error + warning, `schematic_parity` empty) |
-| ERC | 0 errors, 0 warnings (`validation/erc-v0.6.0.txt`) |
-| `verify_placement` (C1 chirality, C2 flip, C3 pad↔net↔function, C4 net intent) | **74 OK / 0 FAIL** — including the re-derived pad numbers for both flipped 0805 groups |
-| `verify_holes` (geometric + VISION) | PASS |
-| `geometry_gate` (28 checks: outline, hole symmetry, flip orientation, keys north + KEY1-east, LED bar south + centred + west→east, filter-in-west, C1/C3 adjacency, button-pair centring, EXT headers east, copper per net, courtyards, J5-adjacent-to-BUZ1) | ALL PASS |
-| Render inspection (top+bottom, 4 styles) | PASS — every part now shows a 3D body, D1 included (ADR-033) |
-| post_route widths | 116 segments at target, 8 short pad-entry stubs capped (all ≥0.2 mm, worst-case current ≈200 mA); no split net this run, 1 zone refill |
-| Idempotency | build_board byte-identical across runs (`1c193d04fd3c`) |
+| Cloud `/drc` | **0 errors, 0 warnings, 0 unconnected** (`validation/drc-v0.7.0.json`; `included_severities` = error + warning, `schematic_parity` empty) |
+| ERC | 0 errors, 0 warnings (`validation/erc-v0.7.0.txt`) |
+| `verify_placement` (C1 chirality, C2 flip, C3 pad↔net↔function, C4 net intent) | **74 OK / 0 FAIL** — after re-deriving both flipped 0805 groups' pad numbers from the built board (first run failed exactly there, as AGENT_PROMPT predicts) |
+| `verify_holes` (geometric + VISION) | PASS — vision ran on both sides, max leave-one-out error 0.022 mm |
+| `geometry_gate` (30 checks: outline, hole symmetry, USB-west orientation, LEDs north + centred + LED1 east, keys south + centred + KEY1 west, **corridor part-free**, filter-in-west, C1/C3 adjacency, button-pair centring, EXT headers east, J5-adjacent-to-BUZ1, copper per net, courtyards) | ALL PASS |
+| Extra logical pass (independent script over the routed `.kicad_pcb`) | PASS — every Nano pin's net matches NETLIST.md, D12/D13 at x=132.22 (USB end), LED fan and keys fan both monotonic (no crossings), zero F.Cu pads in the corridor, all 34 nets have copper, both pin-legend rows read in true pin order |
+| Render inspection (top+bottom, 4 styles) | PASS — overlay photo lands **USB-west** unrotated (PIL_rot 0), every part shows a 3D body (D1 included), LED colours 10→1 = red red orange orange yellow yellow yellow green green green west→east |
+| post_route widths | 116 segments at target, 15 short pad-entry stubs capped (all ≥ 0.2 mm, worst case ≈ 200 mA); 1 dangling `/BUZZER` spur removed; no split net; 1 zone refill. 131 segments, 1 via |
+| Idempotency | `build_board` byte-identical across two runs on a scratch copy (same hash as the pipeline build, `f310a63ac543`) |
 
 ## Iteration history
 
@@ -65,8 +76,10 @@ adds J5, a 2-pin aux speaker output in parallel with the buzzer (ADR-034).**
 | v0.4.0 | 120 × 40 mm frame + floor-plan remake (ADR-024): Nano centred, keys centred south, filter folded around a USB corridor, D2 at rot=180; 2-pin 5 V header (ADR-025); parallel EXT headers J3/J4 (ADR-026); buzzer NE (ADR-027); title in the corridor (ADR-028) | **0 / 0 / 0** | released (superseded by v0.5.0) |
 | v0.5.0 (run 1) | Nano FLIPPED to USB-east (ADR-029), keys north, LED bar south + centred, USB keepout dropped (ADR-030), filter refactored with C1 ‖ C3 adjacent (ADR-031) | 2 / 0 / 0 | **FAILED the DRC gate** — two `/+5V` bus bridges laid on filled ground |
 | v0.5.0 (run 2) | post_route now refills the GND zone after split-net repair (ADR-032) | **0 / 0 / 0** | released |
-| v0.5.1 | D1's 3D body restored: its footprint asks for `..._KathodeUp.step`, upstream ships `..._CathodeUp.step` (ADR-033). Cosmetic only — fab outputs never affected | **0 / 0 / 0** | released |
-| v0.6.0 | J5: 2-pin aux speaker output in parallel with the buzzer (ADR-034); NETLIST U1/U2 description swap fixed | **0 / 0 / 0** | **RELEASED** |
+| v0.5.1 | D1's 3D body restored (ADR-033). Cosmetic only | **0 / 0 / 0** | released |
+| v0.6.0 | J5: 2-pin aux speaker output in parallel with the buzzer (ADR-034) | **0 / 0 / 0** | released |
+| v0.7.0 (run 1) | Nano turned back to **USB-west** for enclosure cable access (ADR-035, supersedes ADR-029/030): LEDs north with LED1 east, keys south with KEY1 west (ADR-036), USB corridor reinstated, D2 + L1 moved to the south strip (ADR-037) | **0 / 0 / 0** | DRC/ERC/renders/3D green; **stopped at `verify_placement`** — both 0805 groups' pad numbers inverted with the flip (expected, AGENT_PROMPT step 2) |
+| v0.7.0 (gates re-run) | `ground-truth/components.yaml` pad numbers re-derived from the built board (no board change); verify_placement 74/0, verify_holes + vision PASS, geometry_gate 30/30; `/fab` on that same board | **0 / 0 / 0** | **RELEASED** |
 
 (One v0.1.0 route attempt produced a GND-zone island — caught by the
 DRC gate, fixed by the automatic island healing, re-run clean. Kept in
@@ -76,28 +89,34 @@ DRC gate, fixed by the automatic island healing, re-run clean. Kept in
 
 ```bash
 # full iteration (build → /place → /route → post → /drc → /render → gates):
-./pcb/tools/cloud_pipeline.sh v0.6.0
+./pcb/tools/cloud_pipeline.sh v0.7.0
 # release (adds /fab):
-./pcb/tools/cloud_pipeline.sh v0.6.0 --fab
+./pcb/tools/cloud_pipeline.sh v0.7.0 --fab
 ```
+
+Note on v0.7.0's release: the fab package was produced by calling `/fab`
+directly on the board that had just passed every gate, rather than by a
+`--fab` re-run of the whole pipeline. Freerouting is stochastic, so a
+re-run would have routed a *different* board and needed the full gate set
+again; fabbing the verified artefact keeps the release byte-consistent with
+the committed `.kicad_pcb` (the v0.5.0 lesson in AGENT_PROMPT).
 
 ## Open items
 
 - Bench-validate the filter on the physical board (the V5.5 repo's own
   pending check — switch-flipping session with the V5 bench sampler).
-- **Flashing ergonomics** (ADR-030): the Nano must come out of its socket to
-  take a USB cable. If that becomes annoying in practice, the fix is either
-  a right-angle USB adapter or moving the SENS buttons ~4 mm east, which
-  would collide with J3/J4 and need the east block re-planned.
-- The 7 capped stubs (ADR-008) are ≥0.2 mm and current-safe.
-- **J5 drives what D13 drives**, i.e. a high-impedance piezo. Wiring a bare
-  4–8 Ω speaker to it would damage the pin (ADR-034). If a real loudspeaker
-  is ever wanted on the board itself, that is a `versions/` circuit change
-  first (a transistor or a small amp stage), not a PCB-layer tweak.
-- C1 and C3 sit adjacent by user request, so the unfiltered VRAW and
-  filtered +5 V nodes run ~10 mm apart (ADR-031 explains why that is
-  acceptable for this filter's job). If the board ever needs real HF
-  isolation, reorder the north row to C1—L1—C3.
-- The south-east quadrant is now occupied by the title block; the largest
-  remaining free area is the strip west of the socket (x 124–130, full
-  height) plus the region under the Nano body on both layers.
+- **VU-meter direction** (ADR-036): the bar fills right→left with the USB on
+  the left. If the user prefers green-left, reverse D3..D12 / R8..R17 /
+  the B.SilkS LED refs in the YAML and re-route (expect ~10 vias and a
+  carved B.Cu plane under the north row).
+- The mini-USB plug's overmold is ~11 mm wide; the corridor reserves ±7 mm
+  about y=120 on F.Cu. Tracks do cross it (that is by design), so a
+  right-angle plug is fine but nothing tall may ever be placed there again.
+- The 15 capped stubs (ADR-008) are ≥ 0.2 mm and current-safe.
+- **J5 drives what D13 drives**, i.e. a high-impedance piezo (ADR-034).
+- `/VRAW` and `/+5V` now run ≈ 30 mm north–south side by side through the
+  west block (ADR-037). Acceptable for a conducted-transient filter; the
+  C1—L1—C3 series order of ADR-031's note remains the fix if HF isolation
+  is ever needed.
+- Largest free areas: the region under the Nano body on both layers and the
+  east half of the south strip (x 128–139, y 129–140) beside L1.

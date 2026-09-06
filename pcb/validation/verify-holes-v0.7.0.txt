@@ -1,0 +1,11 @@
+anchor holes: screw M2 drill Ø2.5 pad Ø5.0
+  [PASS] H1: posición y Ø correctos (Δpos=0.000 mm)
+  [PASS] H2: posición y Ø correctos (Δpos=0.000 mm)
+  [PASS] H3: posición y Ø correctos (Δpos=0.000 mm)
+  [PASS] H4: posición y Ø correctos (Δpos=0.000 mm)
+  [PASS] H1-H2 separación X=110.00 mm (esperado 110.0)
+  [PASS] H3-H4 separación X=110.00 mm (esperado 110.0)
+  [PASS] H1-H3 separación Y=30.00 mm (esperado 30.0)
+  [PASS] H2-H4 separación Y=30.00 mm (esperado 30.0)
+  [vision] {'status': 'ran', 'pass': True, 'sides': {'top': {'ppm': 7.236, 'max_loo_err_mm': 0.0222}, 'bottom': {'ppm': 7.236, 'max_loo_err_mm': 0.0222}}}
+  => PASS

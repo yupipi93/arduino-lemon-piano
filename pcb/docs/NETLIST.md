@@ -22,11 +22,12 @@ V5.5 power-entry filter: 5 V in → P6KE6.8A TVS shunt → 1N5817 series Schottk
 → 470 µF ‖ 100 nF → 100 µH power choke → 470 µF ‖ 100 nF → the +5 V rail
 (also AVcc = ADC reference — that is the whole point of the filter).
 
-The Nano is **socketed**: two 1×15 2.54 mm female rows (U1/U2). Since v0.5.0
-the mini-USB end faces the **EAST** board edge (ADR-029). USB power still
-stays behind the 1N5817 so it cannot back-feed the filter (`HARDWARE.md`
-powering rule 2), but the connector now points into the button block — see
-the flashing note in ADR-030.
+The Nano is **socketed**: two 1×15 2.54 mm female rows (U1/U2). Since v0.7.0
+the mini-USB end faces the **WEST** board edge again (ADR-035, undoing the
+v0.5.0 flip): the cable leaves the enclosure on the left, clear of the button
+block, and a part-free corridor (x < 130.4, y 113..127) lets it be plugged in
+with the module seated. USB power still stays behind the 1N5817 so it cannot
+back-feed the filter (`HARDWARE.md` powering rule 2).
 
 **v0.4.0 circuit deltas** (user spec 2026-07-30, ADR-024…027) — the V5.5
 circuit itself is unchanged; only the board interface grew:
@@ -69,22 +70,49 @@ circuit itself is unchanged; only the board interface grew:
 | SW2 | SENS − push button (A7, to GND, R18 pull-up) | idem | idem |
 | H1–H4 | M2 mounting hole | `MountingHole:MountingHole_2.5mm_Pad_Via` | board spec v0.3.0 (2 per short edge, ADR-020) |
 
-## Board frame (v0.5.0)
+## Board frame (v0.7.0)
 
 120 × 40 mm, KiCad frame x 90..210 / y 100..140, centre (150, 120). The
 Nano pin field is centred on the board (x 132.22..167.78, rows y 112.38 /
-127.62) and **flipped so the mini-USB faces EAST**; that is what puts the
-analog column on the north row and the digital column on the south row.
-Consequently the keys header sits on the NORTH edge (centred, pin centre
-exactly x = 150) and the LED bar on the SOUTH edge (centred on x = 150).
-The whole power-entry filter occupies the west block as a compact 3-row
-group; there is no USB-cable keepout any more (ADR-030).
+127.62) with the **mini-USB facing WEST** (ADR-035); that puts the digital
+column on the north row and the analog column on the south row.
+Consequently the LED bar sits on the NORTH edge (centred on x = 150, LED1 at
+the east under D2) and the keys header on the SOUTH edge (centred, pin centre
+exactly x = 150, KEY1 at the west under A0). The power-entry filter occupies
+the west block folded around the USB-cable corridor (x < 130.4, y 113..127,
+part-free on F.Cu): C1 ‖ C3 on the north row, D2 / J1 → D1 / L1 in the south
+strip (ADR-037).
 
-## Nano socket pin map (physical, USB end = EAST) — v0.5.0, ADR-029
+## Nano socket pin map (physical, USB end = WEST) — v0.7.0, ADR-035
 
 The Nano's own pinout is fixed (ADR-015: D12/D13 flank the mini-USB,
-TX1/VIN sit at the ICSP end). Flipping the module 180° in-plane therefore
-swaps BOTH which row carries which column AND the west→east pin order:
+TX1/VIN sit at the ICSP end). v0.7.0 turns the module 180° in-plane back to
+USB-west (v0.5.0/v0.6.0 were USB-east), which swaps BOTH which row carries
+which column AND the west→east pin order:
+
+```
+U2 (NORTH row, y=112.38), pin1 → pin15 runs EAST → WEST:
+   TX1 RX0 RST GND D2 D3 D4 D5 D6 D7 D8 D9 D10 D11 D12
+   x:  167.78 …………………………………………………………………… 132.22
+        [ mini-USB faces x=90 west edge ]
+U1 (SOUTH row, y=127.62), pin1 → pin15 runs WEST → EAST:
+   D13 3V3 AREF A0 A1 A2 A3 A4 A5 A6 A7 5V RST GND VIN
+   x:  132.22 …………………………………………………………………… 167.78
+```
+
+Digitals land on the NORTH row **descending** west→east (D2 at 157.62 …
+D11 at 134.76) → LED bar on the NORTH edge with **LED1 at the EAST** under
+D2 and LED10 at the west under D11, so the fan does not cross (ADR-036).
+Analogs land on the SOUTH row **ascending** west→east (A0 at 139.84 … A6 at
+155.08) → keys header on the SOUTH edge with **J2 pin 1 (KEY1) at the WEST**
+under A0 (x 141.11 vs 139.84). D13 and D12 sit at the WEST end flanking the
+USB, so `/BUZZER` (D13 → BUZ1 in the NE corner) is long again, as in v0.4.0
+and accepted in ADR-027, and so is `/SENS_PLUS` (D12 → SW1).
+
+## Historical pin map (USB end = EAST) — v0.5.0 … v0.6.0, ADR-029
+
+Flipping the module 180° in-plane swapped BOTH which row carried which
+column AND the west→east pin order:
 
 ```
 U1 (NORTH row, y=107.38+5 → 112.38), pin1 → pin15 runs EAST → WEST:

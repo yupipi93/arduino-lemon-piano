@@ -3,7 +3,7 @@
 Copy everything between the `=== PROMPT ===` markers into a fresh agent
 session, fill in the **USER CHANGE REQUEST** block, and let it run. The
 prompt encodes the working protocol and every hard-won lesson from
-versions v0.0.1 → v0.6.0 of this board.
+versions v0.0.1 → v0.7.0 of this board.
 
 === PROMPT ===
 
@@ -23,35 +23,41 @@ going. Stop only for a hard blocker you cannot resolve.
 
 A 120 × 40 mm 2-layer KiCad-9 board (frame x 90..210, y 100..140, centre
 150/120) that replaces the arduino-lemon-piano V5.5 breadboard: socketed
-Arduino Nano **centred on the board and FLIPPED so the mini-USB faces EAST**
-(2×15 rows, pin field x 132.22..167.78, rows y 112.38/127.62), 7 lemon-key
-lines + GND clip on a labelled **north**-edge header **centred** on x=150
-with pin 1 (KEY1) at the EAST, ten-LED VU-meter bar (3 green / 3 yellow /
-2 orange / 2 red) on the **south** edge **centred** on x=150 ascending
-west→east, SENS± buttons in the east block with the **pair centred on
-y=120** plus one parallel 2-pin external-button header each (J3/J4), D13
-buzzer in the NE corner with a parallel 2-pin aux speaker header (J5,
-`SPK`) beside it, and the V5.5 power-entry filter (2-pin 5 V header →
+Arduino Nano **centred on the board with the mini-USB facing WEST** (since
+v0.7.0, ADR-035; 2×15 rows, pin field x 132.22..167.78, rows y
+112.38/127.62), 7 lemon-key lines + GND clip on a labelled **south**-edge
+header **centred** on x=150 with pin 1 (KEY1) at the WEST, ten-LED VU-meter
+bar (3 green / 3 yellow / 2 orange / 2 red) on the **north** edge **centred**
+on x=150 with **LED1 at the EAST** (it follows D2..D11, which descend
+west→east — ADR-036), SENS± buttons in the east block with the **pair
+centred on y=120** plus one parallel 2-pin external-button header each
+(J3/J4), D13 buzzer in the NE corner with a parallel 2-pin aux speaker header
+(J5, `SPK`) beside it, and the V5.5 power-entry filter (2-pin 5 V header →
 P6KE6.8A TVS → 1N5817 → 470 µF‖100 nF → 100 µH → 470 µF‖100 nF) feeding the
-+5 V rail — the whole filter lives in the WEST block as a compact 3-row
-group with **C1 ‖ C3 adjacent** on its north row. Four M2 anchor holes, two
-per short edge (x=95/205, y=105/135).
++5 V rail — the filter lives in the WEST block **folded around the USB-cable
+corridor**: C1 ‖ C3 adjacent on the north row, D2 / J1 → D1 / L1 in the
+south strip (ADR-037). Four M2 anchor holes, two per short edge (x=95/205,
+y=105/135).
 
 **Orientation is the highest-leverage fact on this board.** The Nano's own
 pinout is fixed (ADR-015: D12/D13 flank the USB, TX1/VIN at the ICSP end),
 so which board edge carries the analogs vs the digitals is decided ONLY by
-the module's rotation. Since v0.5.0 (ADR-029) the USB faces EAST, which
-means: analogs on the NORTH row descending west→east (A0 at 160.16 … A6 at
-144.92) → keys header north with KEY1 EAST; digitals on the SOUTH row
-ascending west→east → LED bar south ascending west→east. If a request asks
-to move the keys header or the LED bar to the other edge, it is really
-asking to flip the Nano — say so, and flip BOTH the socket placements and
-every dependent map in one change.
+the module's rotation. Since v0.7.0 (ADR-035) the USB faces WEST, which
+means: digitals on the NORTH row descending west→east (D2 at 157.62 … D11 at
+134.76) → LED bar north with LED1 EAST; analogs on the SOUTH row ascending
+west→east (A0 at 139.84 … A6 at 155.08) → keys header south with KEY1 WEST.
+(v0.5.0–v0.6.0 were the mirror image: USB east, keys north KEY1 east, LEDs
+south LED1 west.) If a request asks to move the keys header or the LED bar
+to the other edge, it is really asking to flip the Nano — say so, and flip
+BOTH the socket placements and every dependent map in one change. And when
+the pins reverse, the bar/header ORDER reverses with them: a mock-up that
+pastes the old block onto the new edge has not re-derived it (ADR-036).
 
-**There is NO USB-cable keepout** (ADR-030, explicit user decision). The USB
-shell reaches ~x=173.3 and SW1's courtyard starts at 173.48, so a plugged
-cable fouls the SENS buttons: flashing means lifting the Nano out of its
-socket. Do not "fix" this by reserving space unless the user asks.
+**There IS a USB-cable corridor again** (ADR-035, explicit user decision for
+the enclosure — it supersedes ADR-030's "don't care"): x < 130.4, y 113..127
+must hold no F.Cu part, so the cable plugs in with the Nano seated and leaves
+the board on the left. `geometry_gate` enforces it against real courtyards.
+Tracks may cross it; parts may not. Do not put anything back there.
 
 ## Where everything lives (two sibling repos, fixed protocol)
 
@@ -117,10 +123,11 @@ socket. Do not "fix" this by reserving space unless the user asks.
    (`/usr/share/kicad/footprints`) — verify with pcbnew before using,
    and dump real courtyards for floor-planning (never guess extents).
 2. **Floor-plan against REAL courtyard boxes** (pcbnew dump), keeping:
-   keys header NORTH under A0..A6 and centred (KEY1 east); LED bar SOUTH
-   and centred, ascending west→east; the filter in the west block with
-   C1 ‖ C3 adjacent; the SENS button pair centred on y=120 with its EXT
-   header east of each button; anchor zones (x<100, x>200) component-free;
+   keys header SOUTH under A0..A6 and centred (KEY1 west); LED bar NORTH
+   and centred with LED1 east; the USB corridor (x<130.4, y 113..127)
+   part-free on F.Cu; the filter in the west block with C1 ‖ C3 adjacent;
+   the SENS button pair centred on y=120 with its EXT header east of each
+   button; anchor zones (x<100, x>200) component-free;
    silk text ≥ 0.8 mm height everywhere. Before running the pipeline, check
    the plan numerically — the standalone bbox math in `tools/geometry_gate.py`
    (`bbox()` is module-level, importable) will list overlaps and gaps for a
@@ -128,7 +135,7 @@ socket. Do not "fix" this by reserving space unless the user asks.
    **If you move either 0805 resistor group, its pad NUMBERS may invert**:
    the builder nets them GEOMETRICALLY (north/south by position), so build
    first, read the pad→net pairs back off the `.kicad_pcb`, and only then
-   fix `ground-truth/components.yaml`. Both groups inverted in v0.5.0.
+   fix `ground-truth/components.yaml`. Both groups inverted in v0.5.0 and inverted back in v0.7.0.
 3. **Run the pipeline** (from `arduino-lemon-piano/`):
    `./pcb/tools/cloud_pipeline.sh vX.Y.Z` — it does: build_board
    (Docker, byte-stable) → cloud /place → cloud /route → post_route
@@ -143,9 +150,10 @@ socket. Do not "fix" this by reserving space unless the user asks.
    renders** (you have vision — DRC cannot see "wrong"). Check: pin
    legends match the REAL Nano (D12/D13 at the USB end, TX1/VIN at the
    ICSP end — v0.1.0 shipped 180° wrong, see ADR-015), LED color order,
-   labels, the overlay photo sitting on the socket field **USB-east**
-   (since ADR-029 — the photo crop is natively USB-west, so the engine must
-   be rotating it 180°; if it looks USB-west, the overlay data is stale).
+   labels, the overlay photo sitting on the socket field **USB-west**
+   (since ADR-035 — the photo crop is natively USB-west and anchor U1 is at
+   rot 90, so the engine applies PIL_rot 0; if it looks USB-east, the
+   overlay data or the U1 rotation is stale).
    **Also check every part actually has a 3D body in the `realistic` render.**
    `kicad-cli pcb render` skips models it cannot resolve SILENTLY — no
    warning, no DRC item, no build error — so a missing body is invisible to

@@ -24,11 +24,12 @@ modules:
     # PIL_rot = -pcb_rotation + image_rotation (MT1-calibrated convention,
     # LESSONS_LEARNED §26 — do NOT "fix" the sign in code).
     #
-    # v0.5.0: the Nano is FLIPPED (ADR-029) and anchor U1 is now at
-    # rot=270, so the SAME image_rotation=90 yields
-    # PIL_rot = -270 + 90 = -180 ≡ 180 — which rotates the native
-    # USB-west crop to the USB-EAST pose the board now needs. The value is
-    # unchanged on purpose; it is the anchor rotation that moved.
+    # v0.7.0: the Nano faces USB-WEST again (ADR-035) and anchor U1 is
+    # back at rot=90, so the SAME image_rotation=90 yields
+    # PIL_rot = -90 + 90 = 0 — the native USB-west crop lands unrotated,
+    # which is exactly the pose the board needs. (v0.5.0/v0.6.0 had U1 at
+    # rot=270 → PIL_rot = 180 → USB-east.) The value is unchanged on
+    # purpose; it is the anchor rotation that moved, both times.
     real_size_mm: [45.97, 18.05]    # native [w,h] at 57.95 px/mm
     image_rotation_deg: 90
     # bbox_center of U1+U2 = pin-field centre. The crop's centre sits

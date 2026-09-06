@@ -550,3 +550,110 @@ rule is to never invent parts or values that no source specifies. Adding a
 driver stage is a circuit change for the `versions/` tree to make first, not
 something to improvise at the PCB layer. Documented in README assembly notes
 so the limit travels with the board.
+
+## ADR-035 — v0.7.0: the Nano turns back to USB-WEST for enclosure cable access (supersedes ADR-029 and ADR-030)
+
+User request (2026-09-06, from an annotated screenshot of the v0.6.0 render):
+flip the Arduino so the USB points the *other* way, away from the buttons, so
+that once the enclosure exists the cable can be plugged into the PC **with the
+Nano seated**; D2 and L1 nudged aside to leave room for the cable; and,
+because the flip changes which pins face which edge, the LEDs moved to the
+top and the key connector to the bottom.
+
+This is ADR-029 run in reverse, and the same "one change, not three" logic
+applies: the Nano's pinout is fixed (ADR-015), so USB-west *means* digital
+column north / analog column south, which *means* LED bar north / keys header
+south. What changes:
+
+- `U1` (analog) becomes the **SOUTH** row, pin 1 (D13) at the **WEST**
+  (rot=90, origin x=132.22); `U2` (digital) becomes the **NORTH** row, pin 1
+  (TX1) at the **EAST** (rot=270, origin x=167.78). The two YAML entries trade
+  places again; D12/D13 flank the mini-USB at the west end exactly as the real
+  module has them.
+- The **USB-cable corridor of ADR-024 is reinstated**: x < 130.4 (socket
+  courtyard west edge), y 113..127 (±7 mm about the USB centreline) holds no
+  F.Cu part, checked by `geometry_gate` against real courtyard boxes. This
+  reverses ADR-030 ("don't care about USB connector space"): the user now
+  explicitly does care, for the enclosure, and the ergonomic cost recorded
+  there — lifting the Nano out of its socket to flash it — disappears.
+- The pin-order consequences (LED1 east, KEY1 west) are ADR-036; the filter
+  re-fold is ADR-037.
+- Trace-length costs, all previously accepted for exactly this orientation:
+  `/BUZZER` ≈ 60 mm (ADR-027), `/SENS_PLUS` ≈ 43 mm (ADR-029 noted the same
+  figure for v0.4.0), `/+5V` ≈ 40 mm choke → Nano 5 V pin (ADR-024 item 5).
+- Both geometric-0805 groups **invert their pad numbers again** (the ADR-029
+  trap): the pull-ups now sit north of a SOUTH analog row (pin node = south
+  pad), the LED resistors south of a NORTH bar (cathode = north pad). The
+  builder's assertions move with them (KEY pad at y=125.4, cathode pad at
+  y=101.97) and `ground-truth/components.yaml` is re-derived from the built
+  board, not guessed.
+- Overlay: `image_rotation_deg` stays 90. With anchor U1 back at rot=90 the
+  engine's `PIL_rot = −90 + 90 = 0`, i.e. the native USB-west photo crop lands
+  unrotated — the value is unchanged on purpose (LESSONS_LEARNED §26), only
+  the anchor moved, as in ADR-016/ADR-029.
+
+## ADR-036 — LED bar and keys header follow the PIN order (LED1 east, KEY1 west), not the screenshot's pasted glyph order
+
+The user's mock-up is a crop-and-paste of the v0.6.0 render: the LED bar at
+the top still reads green→red west→east with `1` at the left and `10` at the
+right, and the keys header at the bottom still reads `G 7 6 5 4 3 2 1` (the
+`KEY` of `KEYS` is cropped off, leaving the `S`). Those are the v0.6.0 blocks
+moved to the other edge, not re-derived for the new pin order. With USB-west,
+D2..D11 **descend** west→east along the north row (D2 at 157.62 … D11 at
+134.76) and A0..A6 **ascend** west→east along the south row (139.84 … 155.08).
+
+Honouring the pasted order literally would put LED1 (fed by D2 at x=157.62)
+at x=129.3 and LED10 (D11 at 134.76) at x=170.7: every one of the ten anode
+traces crosses every other — 45 crossings inside the 8 mm strip between the
+bar and the north row — which forces roughly ten vias down through the B.Cu
+ground plane right under the digital row. The keys header would need the same
+full reversal (KEY1 east, A0 west).
+
+**Decision: follow the pins.** LED1 (D3) sits at the EAST end (170.7) and
+LED10 (D12) at the west (129.3), rot=270 so each anode points south at its
+pin; the keys header has pin 1 (KEY1) at the WEST (J2 at 141.11, rot=90), so
+its silk reads `KEYS 1 2 3 4 5 6 7 G` west→east and the GND clip pin `G` is
+now at the EAST end next to key 7. Every fan leg is a short, monotonic drop
+with no layer change. This is the rule the project has applied at every
+orientation change so far — ADR-015 (v0.2.0, "LED bar north, E→W"), ADR-024
+item 4, ADR-029 — so it is precedent, not a new preference. The user's own
+wording ("since flipping the Arduino changes the pins, I moved the LEDs up
+and the connector down") describes exactly this pin-following logic.
+
+**Consequence the user should know about:** the VU meter now fills
+**east→west** — LED1 (green) is at the right and LED10 (red) at the left when
+the board is viewed with the USB to the left. If a left→right fill matters
+more than routing cleanliness, it is a small YAML change (reverse the
+D3..D12 x-coordinates, the R8..R17 x-coordinates and the B.SilkS LED refs)
+followed by a re-route; the crossbar *will* route, at the cost of the vias and
+a carved ground plane described above.
+
+## ADR-037 — Filter folded around the reinstated corridor: C1 ‖ C3 stay north, D2 + L1 move to the south strip
+
+User: *"recoloqué un poco el diodo 2 y la bobina 1 para dejar espacio al
+cable"*. In v0.6.0 (ADR-031) D2 and L1 formed the west block's middle row at
+y=119 — precisely where the mini-USB plug now sits. The mock-up shows both of
+them low in the south-west with C1/C3 still together at the top.
+
+New west block (all coordinates footprint-origin, courtyards from the same
+pcbnew dump ADR-024 used):
+
+| Row | Parts | Position | Courtyard | Note |
+|---|---|---|---|---|
+| north | **C1 ‖ C3** | (108, 106) / (118, 106) | y 101.72..110.28 | unchanged, 1.24 mm apart (ADR-031 kept) |
+| corridor | — | x < 130.4, y 113..127 | — | part-free on F.Cu (ADR-035) |
+| south A | **D2** | (107.0, 129.2) rot 180 | x 100.53..108.81, y 127.39..131.01 | 0.39 mm below the corridor; pad 2 (A, VIN) west as before |
+| south B | **J1 → D1** | (102.3, 136.0) / (109.2, 136.0) | y 134.21..138.08 | moved 1.5 mm south of v0.6.0 to fit the `+ −` / `5V IN` silk between D2 and the header |
+| east column | **L1** | (120.0, 134.5) | x 117.88..127.12, y 129.88..139.12 | own column: 32.3 mm of courtyard does not fit one 27 mm row, and 9.24 + 4.16 mm (L1 over D1) does not fit the 13 mm strip |
+
+`geometry_gate` confirms no courtyard overlaps and the L1 column stays west
+of the socket courtyard (130.4) and south of the corridor.
+
+Electrical consequence: `/VRAW` (D2.K → C1+ / C2 / L1.1) and `/+5V` (L1.2 →
+C3+ / C4 → Nano 5 V) each run ≈ 30 mm north–south between the caps on the
+north row and the choke on the south strip, side by side through the west
+block. Tracks may cross the corridor (only *parts* are excluded from it), so
+this costs no board area. ADR-031 already accepted VRAW/+5V proximity for this
+filter's job — conducted µs–ms mains transients, not MHz isolation — and the
+B.Cu ground plane sits under both runs; accepted again. If HF isolation is
+ever wanted, the fix remains the C1—L1—C3 series order noted in ADR-031.
