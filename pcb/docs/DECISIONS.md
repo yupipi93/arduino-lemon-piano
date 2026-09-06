@@ -657,3 +657,46 @@ this costs no board area. ADR-031 already accepted VRAW/+5V proximity for this
 filter's job — conducted µs–ms mains transients, not MHz isolation — and the
 B.Cu ground plane sits under both runs; accepted again. If HF isolation is
 ever wanted, the fix remains the C1—L1—C3 series order noted in ADR-031.
+
+
+## ADR-038 — v0.7.1: "Created with ♥ by Multitec." maker's mark on the top-left silk
+
+User request: a large "Created with ♥ by Multitec." on the top-left, as big as
+fits the free space, and allowed to use the anchor zone. **Cosmetic only** —
+no footprint, pad, net, hole or outline changes — so it is a PATCH bump
+(v0.7.0 → v0.7.1) per the repo's version rule, and the placements, netlist,
+schematic and all three physical gates are byte-for-byte the v0.7.0 board;
+only F.SilkS grew.
+
+Where it goes. The USB-west flip (ADR-035) emptied the west block's middle:
+below the C1/C3 caps (courtyards end y=110.28), above D2 (starts y=127.39),
+left of the socket (west edge x=130.4), and across the left anchor (x<100).
+`geometry_gate`'s own bbox math measures that free rectangle as ~39 × 16 mm
+(x 90.6..129.6, y 111..127). The mark fills it as two left-justified lines
+from x=91 at **3.5 mm** height, 0.40 mm stroke:
+
+```
+Created with ♥
+by Multitec.
+```
+
+Line 1 is the width limiter (`Created with` + the heart ≈ 37 mm); line 2
+("by Multitec.") is ~31 mm. Both clear every pad by >3 mm and the board edge
+by ~1 mm.
+
+The heart is a DRAWN POLYGON, not a character. KiCad 9's stroke font
+(Newstroke) has no glyph for U+2665 — a literal "♥" renders as a tofu box
+(□), verified by plotting F.Silkscreen with kicad-cli 9.0.9. So the heart is
+a filled `gr_poly` on F.SilkS, generated from the classic cardioid-ish
+parametric (x=16sin³t, y=13cos t−5cos2t−2cos3t−cos4t, 96 points) scaled to
+the text height and placed in the gap after "Created with". The y is negated
+because KiCad's +Y is down: the math cusp (min y) must land at the bottom as
+the heart's point. **Lesson for the next symbol on silk: test the glyph with
+`kicad-cli pcb export svg --layers F.Silkscreen` before trusting it; draw it
+if the font lacks it.**
+
+The left anchor divider (the thin vertical silk line at x=100) is broken
+around the text band (drawn as two segments, y 100.35..113.5 and
+124.0..139.65) so the line does not run through the letters. The right
+divider (x=200) stays full. Silk-over-silk is not a DRC rule, so this is
+purely aesthetic; the break is the clean way to honour "use the anchor too".

@@ -9,11 +9,11 @@ margin.
 
 | | |
 |---|---|
-| Realistic (3D bodies) | ![realistic top](renders/v0.7.0-realistic-top.png) |
-| Photo overlay (real Nano photo, dimensioned) | ![overlay top](renders/v0.7.0-overlay-top.png) |
-| Normal (bare copper/silk) | ![normal top](renders/v0.7.0-normal-top.png) |
-| DIM plot (front) | ![dim top](renders/v0.7.0-dim-top.png) |
-| Bottom (realistic) | ![realistic bottom](renders/v0.7.0-realistic-bottom.png) |
+| Realistic (3D bodies) | ![realistic top](renders/v0.7.1-realistic-top.png) |
+| Photo overlay (real Nano photo, dimensioned) | ![overlay top](renders/v0.7.1-overlay-top.png) |
+| Normal (bare copper/silk) | ![normal top](renders/v0.7.1-normal-top.png) |
+| DIM plot (front) | ![dim top](renders/v0.7.1-dim-top.png) |
+| Bottom (realistic) | ![realistic bottom](renders/v0.7.1-realistic-bottom.png) |
 
 Per version the pipeline archives four styles per side under `renders/`
 (`<ver>-{normal,dim,realistic,overlay}-{top,bottom}.png`), all produced
@@ -36,12 +36,13 @@ reference, both layers.
 | Power | `5V IN` **2-pin header** → P6KE6.8A TVS → 1N5817 → 470 µF‖100 nF → 100 µH → 470 µF‖100 nF → +5 V rail (≈4.7 V, fc ≈ 730 Hz). Whole filter in the WEST block folded around the USB corridor: **C1 ‖ C3 adjacent** on the north row, D2 / J1 → D1 / L1 in the south strip (ADR-025/031/037) |
 | GND | full B.Cu zone, solid connect on every GND pad, auto island-healing |
 | Mounting | 4 × M2 (Ø2.5 drill / Ø5.0 pad+vias): two per short edge at x=95/205, y=105/135 — mirror-symmetric about x=150 and y=120 |
-| Status (v0.7.0) | DRC **0/0/0** · ERC 0/0 · verify_placement 74/0 · verify_holes (+vision) · geometry_gate 30/30 ALL PASS |
-| Release | [`releases/v0.7.0/lemon-piano-v0.7.0-fab.zip`](releases/v0.7.0/) — gerbers, drill, BOM, positions |
+| Silk (v0.7.1) | **"Created with ♥ by Multitec."** maker's mark filling the top-left free rectangle (heart drawn as a filled silk polygon — the stroke font has no ♥ glyph); ADR-038 |
+| Status (v0.7.1) | DRC **0/0/0** · ERC 0/0 · verify_placement 74/0 · verify_holes (+vision) · geometry_gate 30/30 ALL PASS |
+| Release | [`releases/v0.7.1/lemon-piano-v0.7.1-fab.zip`](releases/v0.7.1/) — gerbers, drill, BOM, positions |
 
 **Implementing a change?** Paste [docs/AGENT_PROMPT.md](docs/AGENT_PROMPT.md)
 into a fresh agent session together with the change request — it encodes
-the full workflow, gates and pitfalls learned across v0.0.1→v0.7.0.
+the full workflow, gates and pitfalls learned across v0.0.1→v0.7.1.
 
 Netlist ground truth: [docs/NETLIST.md](docs/NETLIST.md) ·
 decisions: [docs/DECISIONS.md](docs/DECISIONS.md) ·
@@ -60,10 +61,10 @@ post-pass:
 
 ```bash
 # one full iteration: build → /place → /route → post → /drc → /render → gates
-./pcb/tools/cloud_pipeline.sh v0.7.0
+./pcb/tools/cloud_pipeline.sh v0.7.1
 
 # release (adds cloud /fab, writes releases/<ver>/):
-./pcb/tools/cloud_pipeline.sh v0.7.0 --fab
+./pcb/tools/cloud_pipeline.sh v0.7.1 --fab
 
 # render variants (any style, hosted API):
 URL=https://pcb-designer.scv.multitecua.com
@@ -103,7 +104,7 @@ so VS Code offers to install it the first time you open the project
 code --install-extension thingraph.cad-viewer
 ```
 
-Then **double-click `pcb/3d/lemon-piano-v0.7.0.glb`** — or the `.step` — and it
+Then **double-click `pcb/3d/lemon-piano-v0.7.1.glb`** — or the `.step` — and it
 opens in a tab you can drag to rotate. It is the only extension that handles
 both formats the pipeline emits, and it bundles `occt-import-js.wasm`
 (OpenCascade), so STEP is a real geometry kernel. Free, read-only, ~24 MB.
@@ -120,7 +121,7 @@ uploaded to a server.
 
 ```bash
 sudo apt install f3d
-f3d pcb/3d/lemon-piano-v0.7.0.glb
+f3d pcb/3d/lemon-piano-v0.7.1.glb
 ```
 
 Note these are binaries in git (~16 MB per version, and git history keeps

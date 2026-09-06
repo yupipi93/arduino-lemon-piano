@@ -30,6 +30,7 @@ previous file (if different) is snapshotted to `<file>.bak6` first.
 from __future__ import annotations
 
 import hashlib
+import math
 import os
 import re
 import sys
@@ -388,16 +389,24 @@ def build(cfg: dict) -> str:
     rect.SetWidth(MM(0.1))
     board.Add(rect)
 
-    # anchor silk dividers (MT1 style; inset so they don't touch Edge.Cuts)
-    for ax in (cfg["geometry"]["anchors"]["left_x"],
-               cfg["geometry"]["anchors"]["right_x"]):
+    # anchor silk dividers (MT1 style; inset so they don't touch Edge.Cuts).
+    # v0.7.1 (ADR-038): the LEFT divider is broken around the maker's-mark
+    # band (y 113.5..124.0) so the big top-left silk sits in a clean gap
+    # instead of being crossed by the line. The RIGHT divider stays full.
+    def _silk_seg(x, y0, y1, w=0.15):
         ln = pcbnew.PCB_SHAPE(board)
         ln.SetShape(pcbnew.SHAPE_T_SEGMENT)
-        ln.SetStart(V(ax, geom["y0"] + 0.35))
-        ln.SetEnd(V(ax, geom["y1"] - 0.35))
+        ln.SetStart(V(x, y0))
+        ln.SetEnd(V(x, y1))
         ln.SetLayer(pcbnew.F_SilkS)
-        ln.SetWidth(MM(0.15))
+        ln.SetWidth(MM(w))
         board.Add(ln)
+
+    _silk_seg(cfg["geometry"]["anchors"]["right_x"],
+              geom["y0"] + 0.35, geom["y1"] - 0.35)
+    _lx = cfg["geometry"]["anchors"]["left_x"]
+    _silk_seg(_lx, geom["y0"] + 0.35, 113.5)
+    _silk_seg(_lx, 124.0, geom["y1"] - 0.35)
 
     # ── silk texts (regenerated every run from config) ───────────────────
     def text(s: str, x: float, y: float, layer=pcbnew.F_SilkS,
@@ -418,6 +427,62 @@ def build(cfg: dict) -> str:
     # gone (ADR-030) and the west block is now full of filter parts.
     text("LEMON PIANO V5.5", 187.0, 132.5, h=0.8)
     text(f"pcb {version}", 187.0, 135.5, h=0.8)
+
+    # ── v0.7.1: "Created with <heart> by Multitec." maker's mark, top-left ──
+    # The USB-west flip (ADR-035) freed a ~39 x 16 mm rectangle in the west
+    # block: below the C1/C3 caps (courtyards end y=110.28), above D2/L1
+    # (start y=127.39), left of the socket (west edge x=130.4), and spanning
+    # the left anchor the user said to use. This fills it, as large as fits
+    # (ADR-038). KiCad's stroke font has NO U+2665 glyph — it renders as a
+    # tofu box (verified with kicad-cli 9.0.9) — so the heart is drawn as a
+    # FILLED silk polygon, sized and placed to read as the "<heart>" between
+    # the two words.
+    def _credit(s, x, y, h, thick):
+        tt = pcbnew.PCB_TEXT(board)
+        tt.SetText(s)
+        tt.SetPosition(V(x, y))
+        tt.SetLayer(pcbnew.F_SilkS)
+        tt.SetTextSize(pcbnew.VECTOR2I(MM(h), MM(h)))
+        tt.SetTextThickness(MM(thick))
+        tt.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_LEFT)
+        board.Add(tt)
+        return tt
+
+    def _heart(cx, cy, height, n=96, outline=0.1):
+        raw = []
+        for i in range(n):
+            a = 2 * math.pi * i / n
+            hx = 16 * math.sin(a) ** 3
+            hy = (13 * math.cos(a) - 5 * math.cos(2 * a)
+                  - 2 * math.cos(3 * a) - math.cos(4 * a))
+            raw.append((hx, hy))
+        xs = [q[0] for q in raw]
+        ys = [q[1] for q in raw]
+        s = height / (max(ys) - min(ys))       # scale to the requested height
+        xc = (max(xs) + min(xs)) / 2
+        yc = (max(ys) + min(ys)) / 2
+        sh = pcbnew.PCB_SHAPE(board)
+        sh.SetShape(pcbnew.SHAPE_T_POLY)
+        chain = pcbnew.SHAPE_LINE_CHAIN()
+        for hx, hy in raw:                      # -Y: +Y is DOWN in KiCad, so the
+            chain.Append(V(cx + (hx - xc) * s,  # math cusp (min y) lands at the
+                           cy - (hy - yc) * s)) # bottom = the heart's point
+        chain.SetClosed(True)
+        ps = pcbnew.SHAPE_POLY_SET()
+        ps.AddOutline(chain)
+        sh.SetPolyShape(ps)
+        sh.SetLayer(pcbnew.F_SilkS)
+        sh.SetFilled(True)
+        sh.SetWidth(MM(outline))
+        board.Add(sh)
+        return cx + (max(xs) - xc) * s          # right edge x (heart is ~1.1*h wide)
+
+    CR_H, CR_TH, CR_X = 3.5, 0.40, 91.0
+    CR_Y1, CR_Y2 = 115.9, 121.9
+    _t1 = _credit("Created with", CR_X, CR_Y1, CR_H, CR_TH)
+    _r1 = _t1.GetBoundingBox().GetRight() / 1e6           # right edge of line-1 text
+    _heart(_r1 + 0.5 + (1.106 * CR_H) / 2, CR_Y1, CR_H)   # 0.5 mm gap, then the heart
+    _credit("by Multitec.", CR_X, CR_Y2, CR_H, CR_TH)
 
     # ── pin legends, MT1 style (h 0.8 / w 0.65, rotated 90) ─────────────
     # NORTH row (U2, digital, pin1 TX1 EAST): legend above the pins

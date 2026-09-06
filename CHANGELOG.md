@@ -2,6 +2,32 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-06 — PCB v0.7.1: "Created with ♥ by Multitec." maker's mark (cosmetic)
+
+- **Silk-only, PATCH bump** (v0.7.0 → v0.7.1, per the repo's version rule). No
+  footprint, pad, net, hole or outline change: the placements, netlist,
+  schematic and every physical gate are the v0.7.0 board unchanged — only
+  F.SilkS grew (ADR-038).
+- A large **"Created with ♥ by Multitec."** fills the ~39 × 16 mm free
+  rectangle the USB-west flip left in the top-left / west block (below the
+  C1/C3 caps, above D2/L1, left of the socket, across the left anchor the user
+  said to use). Two left-justified lines at 3.5 mm height, 0.40 mm stroke:
+  `Created with ♥` / `by Multitec.`.
+- **The heart is a filled silk polygon, not a character.** KiCad 9's stroke
+  font has no U+2665 glyph — a literal "♥" renders as a tofu box (verified by
+  plotting F.Silkscreen with kicad-cli 9.0.9) — so it is drawn as a `gr_poly`
+  from the classic heart parametric, scaled to the text height, y negated so
+  the point sits at the bottom (KiCad's +Y is down).
+- The **left anchor divider** is broken into two segments around the text band
+  (y 113.5..124.0) so the line does not cross the letters; the right divider
+  stays full.
+- **Verification**: cloud `/drc` 0 errors / 0 warnings / 0 unconnected; ERC
+  0/0; verify_placement 74 OK, verify_holes (+vision) PASS, geometry_gate
+  30/30 — all identical to v0.7.0 because the board is; plus a numeric silk
+  check (heart present, both lines on F.SilkS, zero silk over any pad). Release
+  `pcb/releases/v0.7.1/lemon-piano-v0.7.1-fab.zip`; renders + 3D + INDEX.md
+  regenerated.
+
 ## 2026-09-06 — PCB v0.7.0: Nano turned back to USB-WEST for enclosure cable access (LEDs north, keys south)
 
 - **User request** (annotated screenshot of the v0.6.0 render): flip the

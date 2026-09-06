@@ -3,7 +3,7 @@
 Copy everything between the `=== PROMPT ===` markers into a fresh agent
 session, fill in the **USER CHANGE REQUEST** block, and let it run. The
 prompt encodes the working protocol and every hard-won lesson from
-versions v0.0.1 → v0.7.0 of this board.
+versions v0.0.1 → v0.7.1 of this board.
 
 === PROMPT ===
 
@@ -154,7 +154,7 @@ Tracks may cross it; parts may not. Do not put anything back there.
    (since ADR-035 — the photo crop is natively USB-west and anchor U1 is at
    rot 90, so the engine applies PIL_rot 0; if it looks USB-east, the
    overlay data or the U1 rotation is stale).
-   **Also check every part actually has a 3D body in the `realistic` render.**
+   **A drawn symbol on silk (e.g. the v0.7.1 maker's-mark heart) must be a graphic, not a font glyph: KiCad 9's stroke font has no U+2665 — a literal "♥" renders as a tofu box — so it is a filled `gr_poly`. Test any non-ASCII glyph with `kicad-cli pcb export svg --layers F.Silkscreen` before trusting it. (Note `post_route` rewrites `(fill solid)`→`(fill yes)`; both mean filled — grep for `(gr_poly` and the layer, not the fill token.)** **Also check every part actually has a 3D body in the `realistic` render.**
    `kicad-cli pcb render` skips models it cannot resolve SILENTLY — no
    warning, no DRC item, no build error — so a missing body is invisible to
    every automated gate here and only your eyes can catch it. Tell-tale: the
