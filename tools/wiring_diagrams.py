@@ -498,13 +498,16 @@ def build_v5_5():
     itself is byte-for-byte V5; the new hardware is the supply chain in the
     top-left corner: TVS clamp → series Schottky → 470 µF ‖ 100 nF → 100 µH →
     470 µF ‖ 100 nF → the +5 V rail."""
-    s = _board("Lemon Piano V5.5 — V5 + filtered 5 V supply",
+    s = _board("Lemon Piano V5.5 — V5 + filtered 5 V supply + amplified speaker",
                "Same board as V5 (7 pulled-up keys, ten-LED bar, SENS ± buttons, "
-               "buzzer on D13) — but the 5 V comes in through a transient clamp and "
-               "an LC pi filter, because the touch margin is 3-4 ADC counts and a "
-               "light switch anywhere in the house used to play the piano.",
+               "buzzer on D13), with the 5 V coming in through a transient clamp and "
+               "an LC pi filter (the touch margin is 3-4 ADC counts and a light switch "
+               "anywhere in the house used to play the piano) — plus an LM386 stage "
+               "that turns the D13 piezo line into a real 4 Ω speaker. The amp hangs "
+               "off the UNFILTERED 5 V on purpose, so the filter still only sees the "
+               "keyboard's quiet load.",
                "ATmega328P · Nano only (A6 = key 7, A7 = a button)",
-               h=1960, gnd_y=GND_2019)
+               w=4200, h=2080, gnd_y=GND_2019, v5_x1=2850)
     keyboard_2019(s, fruit="lemon")
 
     # ── the power-entry filter, left to right across the top band ────────────
@@ -521,7 +524,8 @@ def build_v5_5():
     s.add(lib.capacitor("CF3", 1210, 250, orient="V", polarized=True, label="470 µF"))
     s.add(lib.capacitor("CF4", 1310, 250, orient="V", label="100 nF"))
 
-    s.connect("vin", C["ctrl"], P("J1", "vout"), P("DTVS", "cathode"), P("DS", "anode"))
+    s.connect("vin", C["ctrl"], P("J1", "vout"), P("DTVS", "cathode"), P("DS", "anode"),
+              P("AMP", "vcc"))
     s.connect("vraw", C["ctrl"], P("DS", "cathode"), P("CF1", "a"), P("CF2", "a"), P("LF1", "a"))
     s.connect("vfilt", C["v5"], P("LF1", "b"), P("CF3", "a"), P("CF4", "a"), R("5V"))
     s.connect("pgnd", C["gnd"], P("J1", "gnd"), P("DTVS", "anode"), P("CF1", "b"),
@@ -539,7 +543,8 @@ def build_v5_5():
         s.connect(f"c{i}", C["gnd"], P(cid, "cathode"), P(f"{cid}R", "a"))
         s.connect(f"g{i}", C["gnd"], P(f"{cid}R", "b"), R("GND"))
 
-    _buzzer(s, 1560, 420, pin="D13")
+    s.add(lib.buzzer("BUZ", 1560, 420, label="passive buzzer", pin_label="D13"))
+    s.connect("buzgnd", C["gnd"], P("BUZ", "gnd"), R("GND"))
 
     _button_to_gnd(s, "SUP", 2350, 420, "D12", "SENS +", "more sensitive",
                    C["margin"], (60, 170, 90))
@@ -550,19 +555,43 @@ def build_v5_5():
     s.connect("sdnpu", C["v5"], P("SDNPU", "a"), R("5V"))
     s.connect("sdngnd", C["gnd"], P("SDN", "v5"), R("GND"))
 
+    # ── the amplified speaker — D13 → divider → coupling cap → LM386 → 4 Ω ─────
+    # Fed from the UNFILTERED node (`vin`, before the filter), exactly as V6 does:
+    # an LM386 into 4 Ω pulls hundreds of mA at audio rate, and pushing that
+    # current through the choke/caps would modulate the filtered rail — i.e. AVcc,
+    # the ADC reference the 3-4-count touch margin is measured against. D13 drives
+    # a 10 k / 1 k divider (never a bare coil — that would kill the pin), the 1 µF
+    # blocks D13's DC average, and the on-board piezo stays in parallel on D13.
+    s.add(lib.resistor("R19", 3080, 500, orient="H", label="10k"))
+    s.add(lib.resistor("R20", 3170, 610, orient="V", label="1k"))
+    s.add(lib.capacitor("C5", 3240, 500, orient="H", label="1 µF", sub="DC block"))
+    s.add(lib.amp_module("AMP", 3480, 880, chip="LM386",
+                         label="LM386 amp module", sub="unfiltered 5 V"))
+    s.add(lib.speaker("SPK", 3960, 880, label="speaker", sub="4 Ω · 3 W"))
+
+    s.connect("buzsig", C["buzz"], P("U1", "D13"), P("BUZ", "sig"), P("R19", "a"))
+    s.connect("attn", C["buzz"], P("R19", "b"), P("R20", "a"), P("C5", "a"))
+    s.connect("attng", C["gnd"], P("R20", "b"), R("GND"))
+    s.connect("ampin", C["buzz"], P("C5", "b"), P("AMP", "sig"))
+    s.connect("ampgnd", C["gnd"], P("AMP", "gnd"), R("GND"))
+    s.connect("spk", C["buzz"], P("AMP", "out"), P("SPK", "p"))
+    s.connect("spkret", C["gnd"], P("SPK", "n"), R("GND"))
+
     entries = [
         (C["ctrl"], "Power-entry filter (NEW)",
          ["P6KE6.8A TVS across the input · 1N5817 in series",
           "470 µF ‖ 100 nF → 100 µH → 470 µF ‖ 100 nF (fc ≈ 700 Hz)"]),
         (C["key"], "Lemon keys (7)", ["A0..A6 · 220 Ω pull-up to +5 V each",
                                       "idle ≈ 1022 · a touch drags the pin DOWN"]),
-        (C["v5"], "+5 V / GND rails", ["the rail is the FILTERED node — everything",
-                                       "hangs off it exactly as in V5"]),
+        (C["v5"], "+5 V / GND rails", ["the rail is the FILTERED node — Nano, keys,",
+                                       "pull-ups. It STOPS SHORT of the amp (dirty side)"]),
         (C["led"], "Bar of 10 green LEDs",
          ["ONE ASCENDING RUN: LED n on pin n+1 (D2..D11) · 220 Ω each"]),
         (C["margin"], "Sensitivity buttons",
          ["SENS + (D12, to GND) · SENS − (A7, to GND + 10 kΩ pull-up)"]),
-        (C["buzz"], "Buzzer", ["D13 · key notes, victory themes and UI chirps"]),
+        (C["buzz"], "Audio: D13 → LM386 → speaker",
+         ["D13 → 10 kΩ / 1 kΩ divider (≈ ÷11) → 1 µF → amp IN → 4 Ω 3 W",
+          "the on-board piezo stays in parallel on the same D13 node"]),
     ]
     notes = [("Why: the V5 touch margin is 3-4 ADC counts ≈ 15-20 mV (220 Ω pull-up vs "
               "~1 MΩ of body). Any conducted transient bigger than that IS a key press: "
@@ -579,9 +608,18 @@ def build_v5_5():
               "a clip-on ferrite for the common-mode path the filter cannot touch.", C["muted"]),
              ("Still ghosting? The radiated path remains: 10 nF from each key pin to GND "
               "(with 220 Ω that is a 2 µs pole — invisible to a 70 ms note) is the "
-              "documented next step in HARDWARE.md.", C["muted"])]
+              "documented next step in HARDWARE.md.", C["muted"]),
+             ("The speaker: an LM386 into 4 Ω pulls hundreds of mA at audio rate, so it "
+              "taps the UNFILTERED 5 V before the TVS — pushed through the choke, that "
+              "current would modulate AVcc, the very reference the 15-20 mV touch margin "
+              "rides on. D13 drives a 10 k / 1 k divider (~450 mV) into a 1 µF block, "
+              "never the coil directly (that would kill the pin).", C["muted"]),
+             ("Ground caveat vs V6: wall-fed, the amp's ground and the speaker return "
+              "share the board's single GND. V6 solves this with a battery + power-bank "
+              "module whose own G gives the audio a star-ground return, off the key "
+              "returns — the reason V6 adds the battery, not just the amp.", C["muted"])]
     s.decorations.append(deco.legend(entries=entries, notes=notes,
-                                     **_legend_box(GND_2019, h=560)))
+                                     **_legend_box(GND_2019, h=640)))
     return s, "v5.5-power-filter", "wiring-v5.5.png"
 
 

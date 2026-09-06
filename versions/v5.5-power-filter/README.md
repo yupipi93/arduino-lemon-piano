@@ -1,4 +1,4 @@
-# V5.5 — filtered 5 V supply (2026) — newest board
+# V5.5 — filtered 5 V supply + amplified speaker (2026) — newest board
 
 The V5 board plays exactly as before — this version exists because of how it was
 **powered**. Fed raw USB from a PC or a wall wart, flipping a light switch
@@ -16,8 +16,15 @@ clean.
   **P6KE6.8A** TVS across the input, **1N5817** Schottky in series, then a
   **CLC pi filter**: 470 µF ‖ 100 nF → **100 µH** power choke → 470 µF ‖ 100 nF
   (fc ≈ 700 Hz, 2nd order);
-- **off** the board: nothing. The keyboard, LED bar, buttons and buzzer are
-  byte-for-byte V5 — and so is the firmware (only the serial banner changed);
+- also on the board: an **amplified speaker** on the D13 sound line — a
+  10 kΩ / 1 kΩ divider (≈ ÷11) → 1 µF DC block → **LM386** module → **4 Ω 3 W**
+  speaker, with the on-board piezo left in parallel on D13. The amp is fed from
+  the **unfiltered** 5 V (tapped before the TVS): its audio-rate current must not
+  cross the filter, which is also AVcc, the ADC reference the 3–4-count touch
+  margin rides on. That is why the `+5 V` rail in the diagram stops short of the
+  amp block;
+- the keyboard, LED bar and SENS ± buttons — and the firmware — are byte-for-byte
+  V5 (only the serial banner changed);
 - powering rule that comes with it: feed the filter from a **USB wall charger or
   bench supply**, not from a PC loaded with other devices, and don't power the
   board over its mini-USB in normal play (that connector bypasses the filter —
@@ -73,7 +80,7 @@ the whole filter.
 
 | Check | Status |
 |---|---|
-| Diagram renders, 0 DRC violations | ✅ `python3 tools/wiring_diagrams.py v5.5` — 58 nets, 0 hard violations (2026-07-29) |
+| Diagram renders, 0 DRC violations | ✅ `python3 tools/wiring_diagrams.py v5.5` — 64 nets, 0 hard violations (2026-09-06) |
 | Firmware builds (all three envs) | ✅ `pio run` per env, 2026-07-29 (see [CHANGELOG.md](../../CHANGELOG.md)) |
 | Emulation | the filter is analog supply hardware — **not emulatable**; the game circuit is V5's, verified there ([emulation/README.md](emulation/README.md)) |
 | Filter measured on the real board | ⬜ pending — build it and re-run the [V5 bench sampler](../v5-led-bar/HARDWARE.md#why-the-keyboard-is-pulled-up-again-measured-2026-07-27--28) during a switch-flipping session |

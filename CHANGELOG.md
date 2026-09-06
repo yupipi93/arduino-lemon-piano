@@ -2,6 +2,30 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-06 — V5.5: add the amplified speaker that was missing from the diagram
+
+- **`build_v5_5()`** in `tools/wiring_diagrams.py` — the V5.5 wiring diagram was
+  re-rendered (same file, `versions/v5.5-power-filter/images/wiring-v5.5.png`,
+  **not** a new version) to include the **LM386 amplifier + 4 Ω 3 W speaker**
+  that the schematic had left out. 64 nets, DRC 0 violations. The audio stage is
+  wired exactly as in the V6 proposal: `D13 → 10 kΩ / 1 kΩ divider (≈ ÷11) →
+  1 µF DC block → LM386 IN → 4 Ω speaker`, with the on-board piezo still in
+  parallel on D13.
+- **The amp is fed from the *unfiltered* 5 V (`vin`, before the TVS/Schottky)**,
+  never the filtered rail: an LM386 into 4 Ω pulls hundreds of mA at audio rate,
+  and that current crossing the CLC pi would modulate AVcc — the ADC reference
+  the 3–4-count (15–20 mV) touch margin is measured against. Accordingly the
+  `+5 V` rail now **stops short** of the amp (`v5_x1=2850` on `_board`) instead
+  of spanning the canvas, and the canvas widened to 4200×2080 to hold the audio
+  block on the right.
+- `versions/v5.5-power-filter/README.md` — hardware-delta section, title and the
+  verification net count (58 → 64) updated so the doc matches its own diagram.
+- **Known doc debt, deliberately left for a `replantear` pass:** the V6 proposal
+  still lists the LM386 + speaker as *its* delta vs V5.5, and V5.5's
+  `HARDWARE.md` / `CLAUDE.md` / `versions/README.md` still describe V5.5 as
+  "V5 + filter, buzzer unchanged". Reconciling the V5.5↔V6 boundary (e.g. V6 =
+  battery-only) was explicitly out of scope for this change.
+
 ## 2026-08-05 — V6 proposal: battery power + amplified speaker (diagram only)
 
 - **`versions/v6-battery-amp/`** — a **diagram-only proposal**, explicitly not a
