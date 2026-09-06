@@ -14,14 +14,15 @@ STLs here are copies of its gate output, 2026-09-06):
 
 | File | What | Print |
 |---|---|---|
-| `base.stl` | box body, 205.1 × 56.4 × 29.6 mm | upright, 62.57 g, 1 h 46 m |
-| `tapa.stl` | lid, modelled face-down as printed | 26.85 g, 54 m |
+| `base.stl` | box body, 205.1 × 62.4 × 29.6 mm | upright, 66.00 g, 1 h 51 m |
+| `tapa.stl` | lid, modelled face-down as printed | 29.88 g, 59 m |
 | `luna.stl` | the fruit arc, 188 × 94 × 16 mm, wire channels underneath | 37.57 g, 1 h 09 m |
 
 Fit is against **pcb v0.7.1**: 4 × M2 standoffs at 110 × 30 mm, Nano window
 + mini-USB cable channel in the lid, 10-LED slot, buzzer hole, trimmer hole
-over the amp, slotted speaker grille, two threaded 6 mm panel buttons on the
-south (player's) wall wired to `EXT+`/`EXT−` (J3/J4), a notch for the key
+over the amp, slotted speaker grille, two threaded 6 mm panel buttons **centred
+and aligned** on the south (player's) wall (16 mm apart, the PCB sits 13.5 mm
+back from that wall to leave room for their bodies) wired to `EXT+`/`EXT−` (J3/J4), a notch for the key
 ribbon over J2, and the USB-C port of the gadget through the north wall as
 the power inlet. Renders in `renders/`.
 
