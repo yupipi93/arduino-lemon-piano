@@ -84,6 +84,28 @@ const int sfxKeyStuck[] PROGMEM = {
   NOTE_D3, 45, NOTE_D3, 45, NOTE_D3, 90, 0, 0
 };
 
+// ── MENU OPEN / CLOSE / ACCEPT 🔨 reconstruction ───────────────────────────
+// The mode wheel (2026-09-09) needed three cues that are unmistakably NOT the
+// game: a piano with a hidden menu has to say out loud that it has stopped
+// being a piano. They are deliberately built as a matched pair plus a verdict —
+// OPEN rises, CLOSE is the same three notes falling, so "I am in" and "I am
+// out" are learnable in one sitting and can never be confused with each other.
+// Pitched at the top of the range (E6..E7), above every level's key notes bar
+// level 1's top two, and none of them is a Mario quotation: the four level
+// themes already own that vocabulary and a fifth tune there would sound like a
+// fifth level.
+const int sfxMenuOpen[] PROGMEM = {
+  NOTE_E6, 70, NOTE_A6, 70, NOTE_E7, 150, 0, 0
+};
+const int sfxMenuClose[] PROGMEM = {
+  NOTE_E7, 70, NOTE_A6, 70, NOTE_E6, 150, 0, 0
+};
+// ACCEPT is the one that resolves: a bare fifth landing on the octave, so the
+// wheel stopping feels like a door shutting rather than another step.
+const int sfxMenuAccept[] PROGMEM = {
+  NOTE_C6, 70, NOTE_G6, 70, NOTE_C7, 180, 0, 0
+};
+
 // ── LEVEL CLEAR (flagpole fanfare) 🔨 reconstruction ───────────────────────
 // Plays the moment a level's code is completed, before that level's own theme.
 const int sfxLevelClear[] PROGMEM = {

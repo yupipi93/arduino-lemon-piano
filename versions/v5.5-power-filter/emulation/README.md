@@ -5,6 +5,24 @@
 > electrolytics) that the browser AVR cannot host and that are invisible to
 > the firmware. The game circuit below is byte-for-byte the V5 one.
 
+> ### ⛔ The MODE WHEEL cannot be emulated here, and never will be
+>
+> The 2026-09-09 mode wheel lives on the two SENS buttons, and **this circuit
+> has no pins for them**: ten LEDs, the buzzer and key 7 already use all twelve
+> digital lines (see the pin map below). That is not a gap to fill later — it is
+> the same constraint that has kept the sensitivity buttons out of the browser
+> since 2026-07-28.
+>
+> The wheel is tested **on the host** instead, by
+> [`../firmware/test/run.sh`](../firmware/test/run.sh): plain `g++`, no Arduino,
+> no Docker. One binary drives the button state machine through every
+> overlapping timeline; the other compiles the real `src/main.cpp` against a
+> fake board and plays the piano end to end. What the browser still gives that
+> the host test cannot is a human listening to it.
+>
+> The **free-play mode** itself *is* reachable here, through a build flag —
+> `piano-mode.yaml`, below.
+
 Play the V5 lemon piano in your browser: real firmware, emulated ATmega328
 (avr8js), clickable lemons, audible buzzer, and the **ten-green-LED progress
 bar**. Built with the
@@ -206,7 +224,8 @@ circuits (will bite you)".
 |---|---|
 | `lemon-piano.yaml` | Circuit spec (source of truth): components, wiring, secret-code input script, assertions |
 | `lemon-piano.vlx` | Generated project — import this into Velxio and play |
-| `free-play.yaml` | Regression: five non-first-note keys sound but never start the sequence |
+| `free-play.yaml` | Regression: five non-first-note keys sound but never start the sequence (this is the game's "noodle before the code starts", NOT the FREE PLAY mode below) |
+| `piano-mode.yaml` | Regression for the **FREE PLAY mode** (2026-09-09): boots with `-DSTART_IN_FREE_PLAY`, taps one lemon five times over, and asserts five notes, no `OK`/`WRONG`/`WIN`, and the two-ends-lit idle bar. ⬜ **written but never run** — the harness was not installed on the machine that wrote it |
 | `hold-and-repeat.yaml` | Regression: a held key sustains + counts once; a repeat is ignored, not `WRONG` |
 | `all-levels-win.yaml` | The scripted "virtual button" — plays all **four** levels' secret codes back to back and asserts the auto-advance chain through `ALL LEVELS CLEAR` and the wrap to level 1, headlessly (`--mode verify`). Useful for testing any level (including 3/4) without clicking 40 notes by hand — but it's a fixed script, not something you press live. |
 | `autoplayer.yaml` / `autoplayer.vlx` | The **interactive**, live-pressable version — see "Multi-board autoplayer" above. |

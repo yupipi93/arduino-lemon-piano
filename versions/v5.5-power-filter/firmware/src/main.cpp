@@ -1,7 +1,8 @@
-/* LEMON PIANO V5.5 — V5 behind a filtered 5 V supply (same board, same code)
+/* LEMON PIANO V5.5 — filtered supply, four-level game, and a mode wheel
    Author : Yupipi93 (Sergio Conejero), 2019 · V5 rework 2026-07-14
    Board rebuilt 2026-07-28: GND-clip keyboard, two sensitivity buttons, no
    restart and no game-select switch.
+   2026-09-09: FREE PLAY + the MODE WHEEL (see "THE MODE WHEEL" below).
 
    CODE 1 (Mario Main Theme):  6,5,6,7,2,5,2,1,3,4
    CODE 2 (Mario Underworld) :  3,6,1,4,2,5,3,6,1,4
@@ -35,6 +36,25 @@
    themes are reachable; recalibration is the smart-adjust gesture or a reset.
    The previous V5 board is in git history and CHANGELOG.md.
 
+   THE MODE WHEEL (2026-09-09) — the game-select switch comes back, as a
+   gesture. HOLD "−" FOR THREE SECONDS and the piano opens a wheel of five
+   modes: the four levels, and FREE PLAY. "+" and "−" turn it (it wraps both
+   ways), each stop previews itself in sound and light, and BOTH BUTTONS AT
+   ONCE accepts. A long press on either button, or twenty seconds of silence,
+   leaves it having changed nothing.
+
+   FREE PLAY is the fifth item and is NOT a level: it cannot be reached by
+   winning, only chosen here. The seven lemons become do-re-mi-fa-sol-la-si
+   (C5..B5), there is no code to find, no wrong note, and — unlike the game —
+   THE SAME LEMON MAY BE PLAYED OVER AND OVER, which is the whole point of an
+   instrument and exactly what the game's repeat filter forbids.
+
+   Three gestures now share two buttons, so the decision layer was lifted out
+   into include/ui_gestures.h — plain C++ with no Arduino in it, driven through
+   every overlapping timeline by test/ui_gestures_test.cpp on the host. Read
+   that header for the full gesture map and the four collisions it resolves;
+   this file only turns its events into sound and light.
+
    Kept: edge-triggered input, one key at a time (strongest channel wins),
    sustained notes, PROGMEM melodies, the victory light show, and the compile-time
    Velxio emulation shim (see emulation/README.md).
@@ -53,6 +73,9 @@
 #include <Arduino.h>
 #include "notes.h"
 #include "mario_sfx.h"   // every non-key sound + the level 3/4 themes
+#ifndef VELXIO_EMULATION
+#include "ui_gestures.h" // the two buttons, as one host-tested state machine
+#endif
 
 //################################
 //###########  PINS ##############
@@ -198,6 +221,26 @@ const int UI_MID = 4000;
 const int UI_HIGH = 4700;
 
 const int LED_METER_MS = 700;     // how long the bar shows the sensitivity level
+
+// ── The mode wheel (2026-09-09) ─────────────────────────────────────────────
+// Timings for the GESTURES are in include/ui_gestures.h (they are what the host
+// test asserts). What lives here is only how the wheel LOOKS and SOUNDS.
+const uint8_t MENU_PREVIEW_NOTES = 8;    // cap on a preview melody. The level
+                                  // intros run 8-16 notes and playSong stretches
+                                  // each one to 2.3x its written length, so the
+                                  // Castle intro alone would be 4.6 s — long
+                                  // enough that turning the wheel feels broken.
+                                  // Eight notes is ~1.5-2.3 s: still the tune,
+                                  // still recognisable, and interruptible.
+const int MENU_BLINK_ON_MS = 420; // the selected item BLINKS. A steady bar is a
+const int MENU_BLINK_OFF_MS = 180;// score; a blinking bar is a question. The
+                                  // difference has to be visible from a metre
+                                  // away with no legend to read.
+const int MENU_SWEEP_MS = 90;     // free play's runner, per LED
+const int MENU_ENTER_SWEEP_MS = 26;  // the "something happened" sweep on entry
+const int ARM_TICK_LOW = 3300;    // the charge-up chirps while − is held: the
+const int ARM_TICK_HIGH = 4700;   // pitch rises with the meter, so the gesture
+const int ARM_TICK_MS = 18;       // is audible as well as visible
 
 const bool serialEnabled = true;  // debug log at 9600 baud
 
@@ -420,7 +463,13 @@ const uint8_t STARMAN_INTRO_LEN = 10;
 // repeated press of the same key is filtered as flaky contact.
 const uint8_t LEVEL_COUNT = 4;
 
-const int keys[LEVEL_COUNT * KEY_COUNT] = {
+// FREE PLAY is the fifth entry in `keys` and the fifth item on the wheel, but it
+// is NOT a fifth level: nothing advances into it, `handleGuess()` refuses to
+// score in it, and the only way in is to choose it.
+const int FREE_PLAY = LEVEL_COUNT + 1;
+const uint8_t MENU_ITEM_COUNT = LEVEL_COUNT + 1;   // 4 levels + free play
+
+const int keys[(LEVEL_COUNT + 1) * KEY_COUNT] = {
   // level 1 — Overworld (the 2019 set)
   NOTE_E6, NOTE_G6, NOTE_A6, NOTE_B6, NOTE_C7, NOTE_E7, NOTE_G7,
   // level 2 — Underworld (the 2019 set)
@@ -432,6 +481,14 @@ const int keys[LEVEL_COUNT * KEY_COUNT] = {
   // level 4 — Castle theme (moved here from level 3, same day: makes more
   // sense as the last level): a plain C major run, for the hammered figure
   NOTE_C5, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_G5, NOTE_A5, NOTE_C6,
+  // FREE PLAY — one octave of the plain white-key scale: do re mi fa sol la si
+  // (C5..B5), left to right. Deliberately NOT one of the level rows above:
+  // those are puzzle alphabets picked to make ten-note codes work (level 3
+  // carries a C#, level 4 skips B for a top C), and someone who sits down to
+  // play a piano expects the seven notes they were taught at school, in order.
+  // The rule that a level's seven notes must be distinct does not apply here —
+  // nothing is compared against anything — but they are anyway.
+  NOTE_C5, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_G5, NOTE_A5, NOTE_B5,
 };
 
 // Codes, as key numbers 1..7:
@@ -447,7 +504,11 @@ const int sequence_4[SEQUENCE_LENGTH] = {NOTE_G5, NOTE_C5, NOTE_E5, NOTE_C6, NOT
 //################################
 //#########  STATE ###############
 //################################
-int  level = 1;                // 1..LEVEL_COUNT (see the themes above)
+int  level = 1;                // 1..LEVEL_COUNT, or FREE_PLAY (the mode wheel)
+
+// The single question everything else asks: is this an instrument or a game?
+static inline bool freePlay() { return level == FREE_PLAY; }
+
 int  currentStep = 0;          // how many correct notes so far (index into the sequence)
                                // 0 = free play: any key just sounds its note
 unsigned long keyToneMinEndsAt = 0;  // a key note never stops before this millis()
@@ -465,20 +526,18 @@ unsigned long touchedSince[KEY_COUNT];  // when this key started reading touched
 unsigned long lastBaselineTick = 0;
 unsigned long ledMeterUntil = 0;        // bar is showing the level until this ms
 
-struct Button {
-  uint8_t pin;
-  int direction;               // -1 = more sensitive, +1 = less sensitive
-  bool pressed;
-  unsigned long changedAt;
-  unsigned long nextRepeat;
-};
 #ifndef VELXIO_EMULATION
-Button buttons[2] = {
-  {SENS_UP,   -1, false, 0, 0},
-  {SENS_DOWN, +1, false, 0, 0},
-};
-unsigned long bothHeldSince = 0;
-unsigned long endingHeldSince = 0;  // separate timer: same both-buttons-1s
+// The two buttons are no longer read as two independent knobs: three gestures
+// share them now, so one state machine owns the decision (include/ui_gestures.h)
+// and this file only reacts to the events it emits. `buttons[]` and the manual
+// both-held timer it used to need are gone with it.
+UiGestures gestures;
+int  marginBeforeHold = 0;        // the margin at the instant − went down
+bool minusWasDown = false;        // ...and the edge detector that captures it
+unsigned long menuAnimAt = 0;     // last menu animation frame
+bool menuBlinkOn = true;
+uint8_t menuSweepPos = 0;
+unsigned long endingHeldSince = 0;  // separate timer: the same both-buttons-1s
                                      // gesture, but read only by playEndingLoop()
 #endif
 
@@ -497,8 +556,22 @@ void trackBaselines();
 void serviceButtons();
 void nudgeMargin(int direction);
 int  stepSize();
+void enterMenu();
+void serviceMenu();
+void announceMenuItem();
+void acceptMenuItem();
+void cancelMenu();
+void showMenuItem(uint8_t item, bool on);
+void showArmBar(uint8_t pct);
+void soundArmTick(uint8_t pct);
+void playMenuPreview(uint8_t item);
+static bool menuInterrupt();
 #endif
 void showMarginOnBar();
+void showFreePlayIdle();
+void showPitchBar(int key);
+void restoreIdleDisplay();
+void playFreePlayFlourish(bool lights);
 void playTone(int freq, int ms);
 void soundCalStart();
 void soundCalStep();
@@ -520,7 +593,8 @@ bool playSfx(const int *table, bool lightShow = false, bool (*checkAbort)() = nu
 void hushBuzzer();
 void silenceKeyNote();
 void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length,
-              uint16_t ledTotal = 0, uint16_t ledOffset = 0);
+              uint16_t ledTotal = 0, uint16_t ledOffset = 0, bool lights = true,
+              bool (*checkAbort)() = nullptr);
 void wrongTone();
 void startKeyTone(int note);
 void stopKeyTone();
@@ -552,9 +626,19 @@ void setup() {
 #endif
   // A0..A6 need no pinMode for analogRead.
 
+#ifndef VELXIO_EMULATION
+  gestures.begin(MENU_ITEM_COUNT);    // one owner for all three button gestures
+#endif
+#ifdef START_IN_FREE_PLAY
+  // Emulation/bench build only: the browser has no pins left for the buttons,
+  // so the wheel cannot be reached there. This boots straight into the piano so
+  // free play itself can still be regression-tested (emulation/piano-mode.yaml).
+  level = FREE_PLAY;
+#endif
+
   autoCalibrate();                    // measures baselines + noise, sets the margin
   logGame();
-  playLevelIntro();                   // announce level 1 before free play begins
+  playLevelIntro();                   // announce the mode before play begins
 }
 
 
@@ -563,17 +647,25 @@ void setup() {
 //################################
 void loop() {
 #ifndef VELXIO_EMULATION
-  serviceButtons();      // sensitivity knob + the smart-adjust gesture
+  serviceButtons();      // sensitivity knob, smart adjust, and the mode wheel
+
+  // While the wheel is turning the LEMONS ARE DEAD. A preview melody and a
+  // played note share one buzzer, and a piano that answers the fruit while it
+  // is asking you a question is a piano nobody can read. Baselines keep
+  // tracking, so a long browse does not leave the keyboard mis-calibrated.
+  if (gestures.inMenu()) {
+    serviceMenu();
+    trackBaselines();
+    return;
+  }
 #endif
   trackBaselines();      // follow the idle drift while keys are untouched
 
   // The bar belongs to the sensitivity meter for a moment after a button press;
-  // restore the game's progress display when that moment passes.
+  // restore whatever the current mode shows when idle once that moment passes.
   if (ledMeterUntil && (long) (ledMeterUntil - millis()) <= 0) {
     ledMeterUntil = 0;
-    for (uint8_t i = 0; i < LED_COUNT; i++) {
-      digitalWrite(LED_PINS[i], i < currentStep ? HIGH : LOW);
-    }
+    restoreIdleDisplay();
   }
 
   const int keyboardOffset = (level - 1) * KEY_COUNT;
@@ -595,6 +687,7 @@ void loop() {
     stopKeyTone();
     lastReleaseAt = millis();  // starts the locked key's KEY_LOCK_COOLDOWN_MS clock
     activeKey = -1;
+    if (freePlay() && !ledMeterUntil) showFreePlayIdle();
     return;
   }
 
@@ -602,6 +695,23 @@ void loop() {
   if (justPressed >= 0) {
     pressedNote = keys[justPressed + keyboardOffset];
     activeKey = justPressed;
+
+    // ── FREE PLAY: no lock, no guess, no penalty ───────────────────────────
+    // Everything below this block exists to stop flaky fruit contact from
+    // machine-gunning the GAME. An instrument wants the opposite: the same
+    // lemon, again and again, as fast as you like. So free play takes the
+    // short road — sound the note, show the pitch, and stop.
+    if (freePlay()) {
+      startKeyTone(pressedNote);
+      showPitchBar(justPressed);
+      ledMeterUntil = 0;             // the note owns the bar now, not the meter
+      if (serialEnabled) {
+        Serial.print(F("~ key ")); Serial.print(justPressed + 1);
+        Serial.print(F("  ")); Serial.print(pressedNote); Serial.println(F(" Hz"));
+      }
+      return;
+    }
+
     if (justPressed != lastSoundedKey) {
       startKeyTone(pressedNote); // it's a piano — a fresh key sounds its note and
                                  // keeps sounding while the lemon is touched
@@ -654,6 +764,7 @@ void loop() {
 // Evaluate the note the player just pressed against the secret sequence and
 // drive the ten-LED progress bar.
 void handleGuess() {
+  if (freePlay()) return;             // an instrument has nothing to be right about
   const int wonWith = activeKey;      // the key under the finger right now
   const int *sequence = (level == 1) ? sequence_1
                       : (level == 2) ? sequence_2
@@ -684,6 +795,8 @@ void handleGuess() {
       delay(PHRASE_GAP_MS);
       playSfx(sfxLevelClear, true);
       level++;
+      // LEVEL_COUNT, not FREE_PLAY: winning cycles 1->2->3->4->1 and never
+      // lands on the wheel's fifth item. Free play is chosen, never earned.
       if (level > LEVEL_COUNT) {
         log(F("ALL LEVELS CLEAR"));
         delay(PHRASE_GAP_MS);
@@ -1020,42 +1133,235 @@ static bool checkEndingReset() {
   return false;
 }
 
+// Poll the two buttons once per loop() and act on whatever gesture the state
+// machine says that was. Every timing decision — debounce, the ramp, the 3 s
+// charge, the both-press — lives in ui_gestures.h and is asserted by the host
+// test; this function is deliberately nothing but a switch.
 void serviceButtons() {
-  unsigned long now = millis();
+  const unsigned long now = millis();
+  const bool plusDown = sensUpDown();
+  const bool minusDown = sensDownDown();
 
-  // Both buttons held together = learn the margin from the lemon you are holding.
-  if (sensUpDown() && sensDownDown()) {
-    if (bothHeldSince == 0) {
-      bothHeldSince = now;
-    } else if (now - bothHeldSince > RECAL_HOLD_MS) {
-      bothHeldSince = 0;
+  // Snapshot the knob the instant − goes down. If this press turns out to be a
+  // menu-open, the margin is put back to this value: the first second of the
+  // hold legitimately ramps the sensitivity, and someone reaching for the menu
+  // must not discover afterwards that they also desensitised the keyboard by
+  // five counts on the way in. (Releasing early KEEPS the ramp — that press
+  // really was the knob. Only the menu undoes it.)
+  if (minusDown && !minusWasDown) marginBeforeHold = touchMargin;
+  minusWasDown = minusDown;
+
+  switch (gestures.update(plusDown, minusDown, now)) {
+    case UiGestures::EV_NUDGE_MORE:
+      nudgeMargin(-1);
+      break;
+    case UiGestures::EV_NUDGE_LESS:
+      nudgeMargin(+1);
+      break;
+    case UiGestures::EV_SMART_ADJUST:
       learnFromTouch();
-      for (uint8_t b = 0; b < 2; b++) {           // swallow this press
-        buttons[b].pressed = true;
-        buttons[b].nextRepeat = now + REPEAT_DELAY_MS * 4;
-      }
+      break;
+    case UiGestures::EV_ARM_START:
+      log(F("hold − ... keep holding for the mode menu"));
+      ledMeterUntil = 0;              // the bar is the charge meter from here
+      showArmBar(0);
+      soundArmTick(0);
+      break;
+    case UiGestures::EV_ARM_TICK:
+      soundArmTick(gestures.armPercent(now));
+      break;
+    case UiGestures::EV_ARM_CANCEL:
+      // Let go (or reached for the other button) before the three seconds were
+      // up. Nothing happened — say so with the same "that did not work" bump
+      // the end stops use, and hand the bar back to the sensitivity meter.
+      log(F("menu cancelled - nothing changed"));
+      soundLimit();
+      showMarginOnBar();
+      break;
+    case UiGestures::EV_MENU_OPEN:
+      touchMargin = marginBeforeHold; // see the snapshot above
+      enterMenu();
+      break;
+    case UiGestures::EV_MENU_NEXT:
+    case UiGestures::EV_MENU_PREV:
+      announceMenuItem();
+      break;
+    case UiGestures::EV_MENU_ACCEPT:
+      acceptMenuItem();
+      break;
+    case UiGestures::EV_MENU_CANCEL:
+      cancelMenu();
+      break;
+    case UiGestures::EV_NONE:
+    default:
+      break;
+  }
+
+  // The charge meter is redrawn every loop while − is held past one second, so
+  // it climbs smoothly rather than in 500 ms jumps with the ticks.
+  if (gestures.arming()) showArmBar(gestures.armPercent(millis()));
+}
+
+
+//################################
+//########  MODE WHEEL ###########
+//################################
+// Five items: level 1, 2, 3, 4, FREE PLAY. It wraps. It previews. It is opened
+// by holding −, turned with + and −, accepted with both buttons, and left by a
+// long press or by walking away. See the gesture map in include/ui_gestures.h.
+
+// True while ANY button is down — the abort hook that lets a preview melody be
+// cut off the moment the player turns the wheel again. Without it the wheel
+// runs at the speed of the tunes instead of the speed of the hand.
+static bool menuInterrupt() { return sensUpDown() || sensDownDown(); }
+
+// Entry has to be unmistakable: the piano was one thing a second ago and is now
+// another. A fast full sweep of the bar (something no game state does), then a
+// rising three-note cue, then the first item announces itself.
+void enterMenu() {
+  hushBuzzer();                       // a held lemon stops sounding, cleanly
+  ledMeterUntil = 0;
+  gestures.setItem((uint8_t) (level - 1));   // open ON the mode being played, so
+                                             // "open it, accept it" is a no-op
+  log(F("== MODE MENU: + / - to choose, BOTH to accept, long press to leave"));
+  for (uint8_t i = 0; i < LED_COUNT; i++) {  // sweep out...
+    allLedsOff(); digitalWrite(LED_PINS[i], HIGH); delay(MENU_ENTER_SWEEP_MS);
+  }
+  for (int8_t i = LED_COUNT - 1; i >= 0; i--) {  // ...and back
+    allLedsOff(); digitalWrite(LED_PINS[i], HIGH); delay(MENU_ENTER_SWEEP_MS);
+  }
+  allLedsOff();
+  playSfx(sfxMenuOpen);
+  announceMenuItem();
+}
+
+// Say where the wheel is now, in all three languages the piano speaks: serial,
+// light, and — the one that matters with the lid closed — the mode's own tune.
+void announceMenuItem() {
+  const uint8_t it = gestures.item();
+  if (serialEnabled) {
+    Serial.print(F("  > "));
+    if (it == LEVEL_COUNT) Serial.println(F("FREE PLAY (the piano)"));
+    else { Serial.print(F("Level ")); Serial.println(it + 1); }
+  }
+  menuAnimAt = millis();
+  menuBlinkOn = true;
+  menuSweepPos = 0;
+  showMenuItem(it, true);
+  playMenuPreview(it);
+  gestures.noteActivity(millis());  // the music was not idleness
+}
+
+// The preview: the opening of that level's own theme, capped so the wheel never
+// feels slow, and abortable so the next press cuts it off mid-phrase.
+void playMenuPreview(uint8_t item) {
+  if (item == LEVEL_COUNT) {          // free play previews itself: the scale
+    playFreePlayFlourish(true);
+    return;
+  }
+  const uint8_t cap = MENU_PREVIEW_NOTES;
+  switch (item) {
+    case 0: playSong(marioNotes, marioTempo, 0,
+                     MARIO_INTRO_LEN < cap ? MARIO_INTRO_LEN : cap,
+                     0, 0, false, menuInterrupt); break;
+    case 1: playSong(underworldNotes, underworldTempo, 0,
+                     UNDER_INTRO_LEN < cap ? UNDER_INTRO_LEN : cap,
+                     0, 0, false, menuInterrupt); break;
+    case 2: playSong(starmanNotes, starmanTempo, 0,
+                     STARMAN_INTRO_LEN < cap ? STARMAN_INTRO_LEN : cap,
+                     0, 0, false, menuInterrupt); break;
+    default: playSong(castleNotes, castleTempo, 0,
+                     CASTLE_INTRO_LEN < cap ? CASTLE_INTRO_LEN : cap,
+                     0, 0, false, menuInterrupt); break;
+  }
+}
+
+// The wheel stops here. Accepting a level RESTARTS it from zero (a mode you
+// chose deliberately should not drop you into someone else's half-finished
+// progress bar), and accepting free play hands over the instrument.
+void acceptMenuItem() {
+  const uint8_t it = gestures.item();
+  hushBuzzer();
+  playSfx(sfxMenuAccept);
+  level = (int) it + 1;               // item 4 -> level 5 == FREE_PLAY
+  resetBoard();
+  logGame();
+  delay(PHRASE_GAP_MS);
+  playLevelIntro();
+  restoreIdleDisplay();
+}
+
+// Left without choosing: the game is exactly where it was, progress bar and
+// all. The closing cue is the opening one played backwards, so "in" and "out"
+// are one thing to learn instead of two.
+void cancelMenu() {
+  log(F("== menu closed - nothing changed"));
+  playSfx(sfxMenuClose);
+  restoreIdleDisplay();
+}
+
+// Draw one wheel item. Levels are a COUNT (level n = n LEDs from the left, so
+// the number you read is the level you get); free play is the whole bar, which
+// is the one thing seven-and-under can never be.
+void showMenuItem(uint8_t item, bool on) {
+  allLedsOff();
+  if (!on) return;
+  if (item == LEVEL_COUNT) { allLedsOn(); return; }
+  for (uint8_t i = 0; i <= item && i < LED_COUNT; i++) {
+    digitalWrite(LED_PINS[i], HIGH);
+  }
+}
+
+// The menu's heartbeat, called every loop while it is open. Levels blink (a
+// blinking bar is a question, a steady one is a score). Free play RUNS — a
+// single LED bouncing along the bar — because "all ten lit" and "four lit"
+// blink alike from across the room, and motion never reads as a score.
+void serviceMenu() {
+  const unsigned long now = millis();
+  const uint8_t it = gestures.item();
+
+  if (it == LEVEL_COUNT) {
+    if (now - menuAnimAt >= (unsigned long) MENU_SWEEP_MS) {
+      menuAnimAt = now;
+      const uint8_t span = LED_COUNT * 2 - 2;        // 0..9..1, then round again
+      menuSweepPos = (uint8_t) ((menuSweepPos + 1) % span);
+      const uint8_t pos = menuSweepPos < LED_COUNT
+                        ? menuSweepPos
+                        : (uint8_t) (span - menuSweepPos);
+      allLedsOff();
+      digitalWrite(LED_PINS[pos], HIGH);
     }
     return;
   }
-  bothHeldSince = 0;
 
-  for (uint8_t b = 0; b < 2; b++) {
-    Button &btn = buttons[b];
-    bool down = (b == 0) ? sensUpDown() : sensDownDown();
-
-    if (down != btn.pressed) {
-      if (now - btn.changedAt < BUTTON_DEBOUNCE_MS) continue;    // bounce
-      btn.pressed = down;
-      btn.changedAt = now;
-      if (down) {
-        nudgeMargin(btn.direction);
-        btn.nextRepeat = now + REPEAT_DELAY_MS;
-      }
-    } else if (down && now >= btn.nextRepeat) {
-      nudgeMargin(btn.direction);
-      btn.nextRepeat = now + REPEAT_EVERY_MS;
-    }
+  const unsigned long period = menuBlinkOn ? (unsigned long) MENU_BLINK_ON_MS
+                                           : (unsigned long) MENU_BLINK_OFF_MS;
+  if (now - menuAnimAt >= period) {
+    menuAnimAt = now;
+    menuBlinkOn = !menuBlinkOn;
+    showMenuItem(it, menuBlinkOn);
   }
+}
+
+// The charge meter: how much of the three-second hold is done.
+void showArmBar(uint8_t pct) {
+  uint8_t lit = (uint8_t) (((uint16_t) pct * LED_COUNT) / 100);
+  if (lit > LED_COUNT) lit = LED_COUNT;
+  for (uint8_t i = 0; i < LED_COUNT; i++) {
+    digitalWrite(LED_PINS[i], i < lit ? HIGH : LOW);
+  }
+}
+
+// ...and its sound: a chirp per half second, rising with the meter, so the
+// gesture can be completed without looking at the box. Silent while a lemon is
+// sounding, for the same reason the sensitivity tick is (chopping a held note
+// in half to acknowledge a button is worse than saying nothing) — the meter
+// still climbs, so the gesture is never invisible.
+void soundArmTick(uint8_t pct) {
+  if (!UI_SOUNDS || activeKey >= 0) return;
+  const int freq = ARM_TICK_LOW +
+                   (int) (((long) (ARM_TICK_HIGH - ARM_TICK_LOW) * pct) / 100);
+  playTone(freq, ARM_TICK_MS);
 }
 #endif  // !VELXIO_EMULATION
 
@@ -1070,6 +1376,55 @@ void showMarginOnBar() {
     digitalWrite(LED_PINS[i], i < lit ? HIGH : LOW);
   }
   ledMeterUntil = millis() + LED_METER_MS;
+}
+
+// ── What the bar means in FREE PLAY ─────────────────────────────────────────
+// Idle: the two ENDS lit and nothing between them. The game's bar always fills
+// from the left, so a gap in the middle is a shape no game state can produce —
+// one glance says "this is the instrument, there is nothing to win here".
+void showFreePlayIdle() {
+  allLedsOff();
+  digitalWrite(LED_PINS[0], HIGH);
+  digitalWrite(LED_PINS[LED_COUNT - 1], HIGH);
+}
+
+// Sounding: the bar is a PITCH meter. Key 1 lights one LED and key 7 lights all
+// ten, spread proportionally ((key+1)*10/7 = 1,2,3,5,7,8,10) so seven keys use
+// the whole bar and the light climbs with the note — the same trick calibration
+// uses to fill ten LEDs with seven measurements.
+void showPitchBar(int key) {
+  uint8_t lit = (uint8_t) ((((uint16_t) key + 1) * LED_COUNT) / KEY_COUNT);
+  if (lit < 1) lit = 1;
+  if (lit > LED_COUNT) lit = LED_COUNT;
+  for (uint8_t i = 0; i < LED_COUNT; i++) {
+    digitalWrite(LED_PINS[i], i < lit ? HIGH : LOW);
+  }
+}
+
+// Whatever the bar should be showing when nothing is sounding and no meter is
+// up. One place, because there are now two answers and three callers.
+void restoreIdleDisplay() {
+  if (freePlay()) { showFreePlayIdle(); return; }
+  for (uint8_t i = 0; i < LED_COUNT; i++) {
+    digitalWrite(LED_PINS[i], i < currentStep ? HIGH : LOW);
+  }
+}
+
+// FREE PLAY announcing itself: the seven lemons, left to right, as a rising
+// scale with the pitch bar climbing under it. It is the preview on the wheel
+// AND the intro when the mode starts, because the most honest description of
+// "the keys are do re mi fa sol la si" is to play do re mi fa sol la si.
+void playFreePlayFlourish(bool lights) {
+  const int base = (FREE_PLAY - 1) * KEY_COUNT;
+  for (uint8_t i = 0; i < KEY_COUNT; i++) {
+    if (lights) showPitchBar((int) i);
+    playTone(keys[base + i], 85);
+    delay(15);
+#ifndef VELXIO_EMULATION
+    if (menuInterrupt()) return;   // the player already turned the wheel on
+#endif
+  }
+  delay(SFX_TAIL_MS);
 }
 
 
@@ -1088,6 +1443,10 @@ void resetBoard() {
 
 void logGame() {
   if (serialEnabled) {
+    if (freePlay()) {
+      Serial.println(F("FREE PLAY - do re mi fa sol la si, no code, no penalty"));
+      return;
+    }
     Serial.print(F("Level "));
     Serial.println(level);
   }
@@ -1270,6 +1629,12 @@ void playVictory() {
 // once at boot and once every time a level begins (auto-advance or wrap).
 void playLevelIntro() {
   hushBuzzer();               // silence + a beat, safe even if nothing was sounding
+  if (freePlay()) {           // not a level: the scale IS the announcement
+    playFreePlayFlourish(true);
+    delay(SFX_TAIL_MS);
+    showFreePlayIdle();
+    return;
+  }
   switch (level) {
     case 1: playSong(marioNotes, marioTempo, 0, MARIO_INTRO_LEN); break;
     case 2: playSong(underworldNotes, underworldTempo, 0, UNDER_INTRO_LEN); break;
@@ -1316,8 +1681,15 @@ void playEndingLoop() {
 //     than a flash. ledOffset lets a caller span the fill across more than
 //     one playSong() call by telling this call how many of ledTotal's steps
 //     already happened elsewhere. Used by the win theme (playVictory()).
+//   - lights == false (2026-09-09): the bar is left ALONE. The mode wheel is
+//     already using it to show which item you are on, and a preview melody that
+//     flashed over that would hide the very thing it is previewing.
+// checkAbort, if given, is polled after every note and stops the melody early —
+// that is what lets a preview be cut off the instant the wheel turns again,
+// so the menu runs at the speed of the hand rather than the speed of the tunes.
 void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length,
-              uint16_t ledTotal, uint16_t ledOffset) {
+              uint16_t ledTotal, uint16_t ledOffset, bool lights,
+              bool (*checkAbort)()) {
   noTone(BUZZER);  // silence any lingering key tone before bit-banging the pin
   for (uint8_t i = from; i < length; i++) {
     int frequency = (int) pgm_read_word(&notes[i]);
@@ -1326,22 +1698,29 @@ void playSong(const int *notes, const int *tempos, uint8_t from, uint8_t length,
     // note duration: one second / note type (quarter = 1000/4, eighth = 1000/8...)
     int noteDuration = 1000 / tempo;
 
-    if (ledTotal > 0) {
-      uint16_t step = ledOffset + (uint16_t) (i - from) + 1;
-      uint8_t lit = (uint8_t) (((uint32_t) step * LED_COUNT) / ledTotal);
-      if (lit > LED_COUNT) lit = LED_COUNT;
-      for (uint8_t l = 0; l < LED_COUNT; l++) {
-        digitalWrite(LED_PINS[l], l < lit ? HIGH : LOW);
+    if (lights) {
+      if (ledTotal > 0) {
+        uint16_t step = ledOffset + (uint16_t) (i - from) + 1;
+        uint8_t lit = (uint8_t) (((uint32_t) step * LED_COUNT) / ledTotal);
+        if (lit > LED_COUNT) lit = LED_COUNT;
+        for (uint8_t l = 0; l < LED_COUNT; l++) {
+          digitalWrite(LED_PINS[l], l < lit ? HIGH : LOW);
+        }
+      } else if (frequency > 0) {
+        allLedsOn();
       }
-    } else if (frequency > 0) {
-      allLedsOn();
     }
     buzz(BUZZER, frequency, noteDuration);
-    if (ledTotal == 0) allLedsOff();
+    if (lights && ledTotal == 0) allLedsOff();
 
     // a gap of duration + 30% keeps consecutive notes distinct
     delay((unsigned long)(noteDuration * 1.30));
     buzz(BUZZER, 0, noteDuration);  // stop
+
+    if (checkAbort && checkAbort()) {
+      noTone(BUZZER);
+      return;
+    }
   }
 }
 

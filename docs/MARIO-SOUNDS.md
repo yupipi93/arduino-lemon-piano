@@ -23,6 +23,25 @@ copy is [../versions/v5-led-bar/firmware/include/notes.h](../versions/v5-led-bar
 
 ## Sound effects
 
+### Menu open / close / accept 🔨 reconstruction — *not Mario*
+
+The three cues of the **mode wheel** (2026-09-09) are the only sounds in the
+project that are **not** Super Mario Bros, and deliberately so: the four level
+themes already own that vocabulary, and a fifth Mario tune on the wheel would
+sound like a fifth level. They are built as a matched pair plus a verdict.
+
+| Cue | Notes | Why |
+|---|---|---|
+| **Open** | E6 70 ms · A6 70 ms · E7 150 ms | rising: "you are in" |
+| **Close** | E7 70 ms · A6 70 ms · E6 150 ms | the same three, falling: "you are out". One thing to learn instead of two, and the two can never be confused |
+| **Accept** | C6 70 ms · G6 70 ms · C7 180 ms | a bare fifth landing on the octave — it *resolves*, so the wheel stopping feels like a door shutting rather than another step |
+
+Pitched E6–E7, above every level's key notes bar level 1's top two, for the same
+reason as the rest of the UI vocabulary: a state cue must never be mistaken for
+a note. There is also a **charge chirp** while the − button is held (a single
+tone sweeping 3300 → 4700 Hz with the progress meter), which is not a table at
+all — see `soundArmTick()` in the V5.5 firmware.
+
 ### Coin ✅ sourced
 
 The "bling" of a collected coin: a grace note resolving up a perfect fourth.

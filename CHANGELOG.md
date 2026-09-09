@@ -2,6 +2,97 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-09 — V5.5 firmware: FREE PLAY and the MODE WHEEL (no hardware change)
+
+Requested by the owner with the board unplugged: *"diseña todo el software y
+valídalo para que cuando pueda pueda cargarlo en el Arduino"*. Everything below
+is firmware and docs. **V5.5 only** — V5 is untouched and still builds; the two
+firmwares were byte-identical until today and have now deliberately diverged.
+
+**FREE PLAY** — the piano with the game removed, and the fifth item on the wheel.
+
+- The seven lemons become **do re mi fa sol la si** (C5 D5 E5 F5 G5 A5 B5): a
+  fifth row in `keys[]`, so the existing `(level-1)*KEY_COUNT` offset addresses
+  it with no new indexing. Deliberately not one of the level rows — those are
+  puzzle alphabets (level 3 carries a C♯, level 4 skips B) and someone sitting
+  down at a piano expects the notes they were taught at school.
+- **The same lemon may be played over and over.** The game's `lastSoundedKey`
+  lock — which exists because flaky fruit contact used to machine-gun both the
+  buzzer and the guesses — is exactly backwards for an instrument, so free play
+  takes a short path out of the press handler before it. `handleGuess()` returns
+  immediately in free play as well, belt and braces: nothing is ever scored,
+  nothing is ever wrong.
+- The LED bar changes job: a **pitch meter** while a note sounds ((key+1)·10/7,
+  so seven keys use all ten LEDs), and **only its two ends lit** when idle — a
+  shape the game's left-filling bar cannot produce.
+- It is **not a level**. The win path advances `level` against `LEVEL_COUNT`, so
+  the cycle stays 1→2→3→4→1 and never lands here. It can only be chosen.
+
+**THE MODE WHEEL** — the game-select switch V5 removed, back as a gesture.
+
+- **Hold − for 3 s** to open. From 1 s the bar becomes a charge meter and a chirp
+  climbs 3300→4700 Hz with it, so the gesture announces itself before it fires;
+  release early and a bump says "cancelled".
+- **+ / − turn it**, five items, **wrapping both ways**. Each stop previews the
+  opening of its own theme (capped at 8 notes) and shows itself: **level n = n
+  LEDs blinking**, free play = **one LED running**. Blinking is a question,
+  steady is a score, motion is neither. A preview is aborted the instant the
+  wheel turns again, so browsing runs at the speed of the hand.
+- **Both buttons at once accepts**, in either order with any overlap.
+- **Long-press either button, or wait 20 s, to leave** — the game keeps its level
+  and its progress bar. The wheel opens on the mode being played, so opening and
+  immediately accepting is a no-op.
+- Three new non-Mario cues (`sfxMenuOpen`/`Close`/`Accept`) — open rises, close
+  is the same three notes falling. Documented in `docs/MARIO-SOUNDS.md`.
+
+**The overlaps, which is where this kind of thing normally goes wrong.** Three
+gestures now share two buttons. The decision layer was lifted out of `main.cpp`
+into **`firmware/include/ui_gestures.h`** — plain C++, no Arduino — and the four
+collisions are named and resolved at the top of that file:
+
+1. *− is both the knob and the menu key.* The sensitivity ramp is **capped at
+   1 s**; past that the button is arming the menu. And if the hold becomes a
+   menu-open, the margin is **restored to its value when the button went down** —
+   reaching for the menu must not quietly desensitise the keyboard on the way in.
+2. *Accept vs navigate.* In the menu, navigation fires **on release**, so the
+   first of two buttons cannot step the wheel before the second lands. No
+   coincidence window is needed at all.
+3. *Accept vs smart adjust.* Different states; holding − for 3 s never fires
+   smart adjust and holding both never opens the menu.
+4. **The one that nearly shipped:** press +, then − on top of it, then release +.
+   With "when − went down" as the clock, that release opened the menu on the
+   spot — no meter, no warning, a two-finger fidget turning into a mode change.
+   The clock is now *when − became the only button down*. Found by writing the
+   state machine's own doc comment; it has its own test case.
+
+**Verification** — the board is unplugged, so none of this was tested on it:
+
+- `pio run` green on **all five envs** (a new `emulation-freeplay` env joins
+  them): 537 B RAM (26.2 %), 15 450 B flash (50.3 %), up from 487 B / 12 142 B.
+- **`firmware/test/run.sh` — 97 + 56 checks, 0 failed.** Two host binaries, plain
+  `g++`, no Arduino and no Docker: `ui_gestures_test` drives the button state
+  machine through every overlapping timeline (including the 7 ms loop rate the
+  AVR really runs at, and contact bounce), and `piano_sim_test` compiles **the
+  real `src/main.cpp`** against a fake board (`test/arduino/Arduino.h`) and plays
+  it — note mapping, five repeats of one lemon, the wheel reaching every mode and
+  wrapping, cancel changing nothing, accept starting clean, the margin restore,
+  and winning never landing on free play.
+- **Mutation-checked**, because a check that cannot fail proves nothing: breaking
+  the free-play scale, deleting the margin restore, and moving the arming line
+  each turn the suite red, on the assertion that names them.
+- `emulation/piano-mode.yaml` written for free play (`-DSTART_IN_FREE_PLAY`,
+  since the browser has no pins left for the two buttons) — **parses and
+  compile-checks, but has never been run**: the Velxio harness is not installed
+  on this machine. The mode wheel itself is **not emulatable here at all**, by
+  the same pin exhaustion; that is why the host tests exist.
+
+**Docs**: new printable instruction sheet `docs/USER-GUIDE.md` and its Spanish
+translation `docs/GUIA-DE-USO.es.md` (the repo is English; what gets printed is
+read by people who speak Spanish). V5.5's README grows the full gesture map and
+an honest verification table; the root README's "how it plays" section was
+**stale** — it still described the A7 game-select switch and the D7 restart
+button, both gone since 2026-07-28 — and has been rewritten.
+
 ## 2026-09-06 — PCB v0.7.1: "Created with ♥ by Multitec." maker's mark (cosmetic)
 
 - **Silk-only, PATCH bump** (v0.7.0 → v0.7.1, per the repo's version rule). No

@@ -1,4 +1,12 @@
-# V5 — ten-LED progress bar (2026) — newest board
+# V5 — ten-LED progress bar (2026)
+
+> **The newest board is [V5.5](../v5.5-power-filter/)**, which is this board plus
+> a filtered 5 V supply. Its firmware started as a byte-for-byte copy of this one
+> and **diverged on 2026-09-09**, when it gained FREE PLAY and the MODE WHEEL.
+> This version is unchanged and still builds: it is the four-level game exactly
+> as it stood on 2026-07-29. Want the piano mode? Flash V5.5 — the game hardware
+> is identical, so it runs on this board too.
+
 
 No relays, no pump, no red LED, no fail counter: a row of **ten green LEDs** is
 the entire feedback surface. Each correct note lights the next LED, a wrong note

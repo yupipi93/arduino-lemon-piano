@@ -28,20 +28,25 @@ wiring diagram and docs, and each is expected to build. There is no archive.
 | 4 | [**V4** — water pump](versions/v4-water-pump/) | clip flips to **+5 V** (sensing inverted), Nano, 2nd relay channel + **water pump**, RESTART button | ✅ verify green |
 | 5 | [**V4.5** — margin buttons](versions/v4.5-margin-buttons/) | **− relay pair + water pump** · + MARGIN +/− buttons (D10/D11) to tune touch sensitivity live | ✅ verify green |
 | 6 | [**V5** — LED bar](versions/v5-led-bar/) | *rebuilt 2026-07-28*: keyboard back to **220 Ω pull-ups + GND clip** · + **ten green LEDs** · + 2 live-sensitivity buttons · − game-select, − restart | ✅ verify green |
-| 7 | [**V5.5** — power filter](versions/v5.5-power-filter/) ⭐ newest | + **filtered 5 V input** (TVS + Schottky + CLC pi, fc ≈ 700 Hz): the 3-4-count touch margin no longer hears the house wiring | V5's |
+| 7 | [**V5.5** — power filter](versions/v5.5-power-filter/) ⭐ newest | + **filtered 5 V input** (TVS + Schottky + CLC pi, fc ≈ 700 Hz): the 3-4-count touch margin no longer hears the house wiring. *Firmware-only since 2026-09-09:* **free play + the mode wheel** | V5's, + host tests |
 
 Details, pin maps and per-board build commands: [versions/README.md](versions/README.md).
 The methodology (what counts as a new version, and the checklist for adding one):
 [docs/VERSIONING.md](docs/VERSIONING.md).
 
-## How the newest board (V5) plays
+## How the newest board (V5.5) plays
 
-1. **Power on.** The A7 game-select switch picks the **starting** game: 5 V = game
-   1 (Mario Main Theme), GND = game 2 (Underworld).
-2. **Touch lemons.** Hold the 5 V clip in one hand, touch a lemon with the other —
-   the note plays on the buzzer.
+> **Playing it rather than reading about it?** The printable instruction sheet is
+> [docs/USER-GUIDE.md](docs/USER-GUIDE.md) — [en español](docs/GUIA-DE-USO.es.md).
+
+1. **Power on → auto-calibration.** The bar counts up while it measures what
+   "untouched" looks like on each lemon (**lights running = hands off the
+   fruit**), then announces the mode with a tune. It always starts on level 1.
+2. **Touch lemons.** Hold the **GND** clip in one hand, touch a lemon with the
+   other — the note plays on the buzzer and holds while you hold the fruit.
 3. **Guess the secret sequence** (10 notes). Each correct note lights the next
-   green LED; a wrong note **blanks all ten** and the sequence restarts.
+   green LED; a wrong note **blanks all ten** and the sequence restarts. Until
+   you hit the first note of the code, nothing is punished — noodle freely.
 4. **Victory + auto-advance.** All ten lit → that level's theme plays in full
    with the bar progressively counting back up from empty to all ten as it
    plays, then the flagpole fanfare, then the next
@@ -49,7 +54,19 @@ The methodology (what counts as a new version, and the checklist for adding one)
    to the next of the **four levels**. Clearing level 4 instead loops the
    game-complete piece until you hold both sensitivity buttons for 1 s, which
    resets straight to level 1 without recalibrating.
-5. **Restart** anytime with the D7 button (re-reads game select, recalibrates).
+5. **Choose a mode, or just play.** Hold **−** for three seconds and a **mode
+   wheel** opens: the four levels and **FREE PLAY**, turned with **+**/**−**
+   (it wraps), each previewing its own tune and its own LED pattern, accepted
+   with **both buttons at once**. In **free play** the seven lemons are simply
+   *do re mi fa sol la si* — no code, no wrong notes, and the same lemon as many
+   times as you like. It is not a level: it can only be chosen, never won.
+6. **Tune it while you play.** **+**/**−** move the touch sensitivity a step at a
+   time; both buttons for one second, while touching a lemon, learns the best
+   setting from that actual touch.
+
+> There is **no restart button** — a power cycle is the reset. The gestures and
+> the reasoning behind every timing are in
+> [versions/v5.5-power-filter/](versions/v5.5-power-filter/).
 
 ### Secret codes (spoilers!)
 
@@ -65,7 +82,11 @@ Keys numbered 1–7, left to right. These two codes have been the same since V3:
 Clear all four and the **game-complete piece** plays on a loop until reset.
 Every non-key sound is a Mario effect (coin, power-up, 1-up, death, flagpole
 fanfare) — the note data and its provenance are in
-[docs/MARIO-SOUNDS.md](docs/MARIO-SOUNDS.md).
+[docs/MARIO-SOUNDS.md](docs/MARIO-SOUNDS.md). The mode wheel's three cues are the
+only sounds here that are deliberately *not* Mario.
+
+There is a **fifth mode with no code at all**: free play, where the lemons are
+`do re mi fa sol la si` (C5–B5). Reachable only from the mode wheel.
 
 ## Quick start
 

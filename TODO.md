@@ -72,6 +72,26 @@ named. New hardware belongs in a new version directory, not in this list — see
   `Serial.print` calls are live — decide whether to fix it (helps anyone reviving
   the rig) or leave it as 2019 shipped it.
 
+## Open — needs the physical board (2026-09-09 firmware)
+
+- [ ] **18. Playtest FREE PLAY and the MODE WHEEL on the real V5.5 board.**
+  Everything about them was designed and validated with the board unplugged
+  (`versions/v5.5-power-filter/firmware/test/run.sh`, 97 + 56 checks green,
+  mutation-checked). What a host test cannot judge: whether **3 s** is the right
+  hold, whether the charge chirp is reassuring or annoying, whether an 8-note
+  preview is too long to browse five modes, and whether the two-ends-lit idle
+  bar actually reads as "this is the piano" to someone who has not read the
+  guide. All four numbers are single constants — `GES_MENU_HOLD_MS`,
+  `GES_MENU_ARM_MS`, `MENU_PREVIEW_NOTES`, `MENU_BLINK_ON_MS`.
+- [ ] **19. Run `emulation/piano-mode.yaml`.** Written on a machine without the
+  Velxio harness, so it has never had a `--mode verify` pass. It parses and its
+  build compiles; that is all that is currently claimed for it.
+- [ ] **20. Should the chosen mode survive a power cycle?** Free play currently
+  lasts until you unplug it, then the piano is back on level 1. One EEPROM byte
+  would fix that, at the cost of a write per mode change — deliberately not done
+  without the owner asking, since "it forgets" may well be the right behaviour
+  for a toy that lives on a shelf.
+
 ## Nice-to-have (new ideas, not blocking)
 
 - [ ] On-hardware playtest: confirm `TOUCH_MARGIN` feels right; tune if needed.
