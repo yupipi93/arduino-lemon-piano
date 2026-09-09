@@ -7,14 +7,73 @@ mounting-ear holes 30.7 mm apart), the LM386 amplifier module (40.7 × 13.8,
 the wanted left-to-right layout (`comp distribution.png`) and the openings
 (`holes.png`).
 
-`enclosure-v4/` and `fruit-arc-v4/` are the **current** design. `enclosure-v2/`
+`enclosure-v5/` and `fruit-arc-v4/` are the **current** design. `enclosure-v4/`
+is superseded — kept only because its README section explains how the board got
+raised in the first place. `enclosure-v2/`
 is what was physically printed on 2026-09-07/08 and is kept as the record.
 Everything is generated from the parametric recipes in the 3D-design repo
 (`3d-modeling-agent`, `recetas/piano-limones-caja-v4` and
 `recetas/piano-limones-luna-v4` — that repo is the source of truth; the STLs
 here are copies of its gate output).
 
-## v4 of the box (2026-09-09): the PCB rises to the lid
+## v5 of the box (2026-09-09): the lid becomes a mask, the box drops 6.2 mm
+
+Sergio's second pass the same day: *"a hole with plenty of clearance in the lid
+for the two capacitors, the choke and the diodes, and for the 7-pin connector.
+Also holes for the internal buttons, in case the panel ones fail. The point is
+to redesign the box lower, with the PCB as close to the lid as you possibly
+can, so its components show. Adjust the speaker and the amplifier so they don't
+collide and you can cut height."*
+
+| File | What | Print |
+|---|---|---|
+| `enclosure-v5/base.stl` | box body, 219.2 × 66.9 × **23.4 mm** | upright, **68.78 g, 2 h 09 m** |
+| `enclosure-v5/tapa.stl` | lid, modelled face-down as printed | **33.43 g, 1 h 09 m** |
+
+The conceptual shift: once the tall parts have holes, the ceiling is no longer
+set by the tallest component but by whatever has **no** hole — which is the
+**M2 screw head** on the standoffs, 1.5 mm.
+
+- **Standoffs 9 → 17.3 mm**: the PCB's top face rises to **z 20.9**, i.e.
+  **2.5 mm** below the lid's inner face. `base_alto` 29.6 → **23.4**; assembled
+  height 32.8 → **26.6 mm**.
+- **Six openings** over the board: the two capacitors in **one** hole (as
+  asked — they are 10 mm apart and Ø8, so two holes would leave a 2 mm rib),
+  the filter block (choke + both diodes + the 5 V input) in another, the key
+  connector (the "7-pin" one is really a 1×8: 7 keys plus the player's ground
+  clip), a slot serving **both internal tact switches**, which merges with the
+  Nano window, and the buzzer — whose Ø12 body now passes through instead of
+  speaking through a 3.4 sound hole. Clearance 1.2 mm per side on top of
+  process compensation.
+- **The mini-USB channel is gone**: with the board up there, the Nano's
+  connector sits *above* the visible face, so the channel only weakened the lid.
+- **The LEDs no longer need to be soldered raised** — the v4's one awkward
+  assembly step. A short-legged Ø3 LED now ends inside the lid's 3.2 mm and
+  shines through its slot.
+- **Panel buttons go back side by side** (− left, + right): two Ø11 nuts in a
+  column need 24 mm of wall and the wall is 23.4. Their bodies pass *under* the
+  board now.
+- **The collision Sergio predicted was real and measured**: 11.5 mm³ between
+  the speaker's cable and the amplifier module. In v4 the cable exited above the
+  amp (z 22.2 vs its 18.1 top); lowering the box drops it to z 16.0, level with
+  it. The amp-to-collar gap goes 1.5 → 5.0 mm and the east gap 7.0 → 5.0, so the
+  box grows just 1.5 mm in length, with an assert per speaker orientation.
+
+What now limits the height, in order: the amp's **straight Dupont header**
+(z 22.6, 0.8 mm under the lid) and the **speaker's back** (z 4.9, 2.9 mm off
+the floor).
+
+**One assembly condition:** the speaker output J5 must use a soldered wire or a
+**right-angle** connector, never a straight Dupont (16.5 mm won't fit). It is
+the only header without a hole, because opening it would merge three openings
+into one 70 mm gap and leave the lid's north edge as an unsupported 5 mm rib.
+It gets a 2 mm relief pocket in the inner face instead.
+
+Components that deliberately stand proud of the visible face: the socketed Nano
+with its ICSP header (+12.9 mm), the key connector with its Dupont (+10.8) and
+the two capacitors (+9.3).
+
+## v4 of the box (2026-09-09, superseded): the PCB rises to the lid
 
 Sergio found the flaw with the printed box in his hands: with the board sitting
 at the bottom, the Nano window and the LED slot in the lid looked at 22 mm of
