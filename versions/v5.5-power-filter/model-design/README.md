@@ -7,6 +7,66 @@ mounting-ear holes 30.7 mm apart), the LM386 amplifier module (40.7 × 13.8,
 the wanted left-to-right layout (`comp distribution.png`) and the openings
 (`holes.png`).
 
+`enclosure-v4/` and `fruit-arc-v4/` are the **current** design. `enclosure-v2/`
+is what was physically printed on 2026-09-07/08 and is kept as the record.
+Everything is generated from the parametric recipes in the 3D-design repo
+(`3d-modeling-agent`, `recetas/piano-limones-caja-v4` and
+`recetas/piano-limones-luna-v4` — that repo is the source of truth; the STLs
+here are copies of its gate output).
+
+## v4 of the box (2026-09-09): the PCB rises to the lid
+
+Sergio found the flaw with the printed box in his hands: with the board sitting
+at the bottom, the Nano window and the LED slot in the lid looked at 22 mm of
+air. So the board goes up.
+
+| File | What | Print |
+|---|---|---|
+| `enclosure-v4/base.stl` | box body, 217.7 × 66.9 × 29.6 mm | upright, **74.44 g, 2 h 13 m** |
+| `enclosure-v4/tapa.stl` | lid, modelled face-down as printed | **34.40 g, 1 h 10 m** |
+
+- **Standoffs 4 → 9 mm**: the top face of the PCB moves from z 7.6 to **z 12.6**.
+  The ceiling is set by the **Dupont plugged into the pin strips (16.5 mm)**,
+  not by the Nano: they end 0.5 mm below the lid. The Nano reaches 31.2, i.e.
+  **1.6 mm below the visible face** — visible through its window and swappable
+  without opening the box. The 10 LEDs must be **soldered 11.6 mm raised** to
+  reach the slot, which is what Sergio planned. The tallest filter part, the
+  capacitor, is 15 mm (his measurement) and clears by 2 mm.
+- **The two panel buttons leave the lid** (a 20 mm body would hit the board)
+  and move to the **front wall in a column**: **+ at z 21, − at z 8**, hole
+  Ø6.3 = 5.0 thread + 0.8 process compensation + 0.5 assembly clearance, each
+  with its sign in relief beside it.
+- **18 mm front strip** (interior depth 62.5, +4.5 mm overall): it takes the
+  button bodies (14.5 mm with pins) and the **16.3 × 30 ferrite** of the power
+  lead, lying on the floor between two 4 mm stops.
+- **LED slot narrowed 6.4 → 5.0**: it now guides the raised LEDs.
+- **The lid stays single-level.** Sergio asked whether a stepped lid was worth
+  it; with the board raised there is no clearance left to recover, and a step
+  would add two overhangs and a visible seam to a part that today prints with
+  no supports at all (1.59% overhang).
+
+Everything else is as in v3: engraved logo with a checked 2 mm keep-out, DIN 562
+square nuts in the six columns, centred key-ribbon slot, west power inlet
+separated from the USB-C jack, speaker-cable notches on **both** sides of the
+collar, 7-slot modern grille, cradles for the USB gadget and the LM386 with
+trimmer access.
+
+## v4 of the fruit arc (2026-09-08): oranges, puzzle joints, numbers
+
+| File | What | Print |
+|---|---|---|
+| `fruit-arc-v4/oeste.stl`, `este.stl` | end segments (2 cups each) | 35.05 / 34.31 g |
+| `fruit-arc-v4/centro.stl` | middle segment (3 cups), rotated to fit the bed | 57.35 g |
+
+Open 140° arc, radius 226.7, seven cups **85 mm apart** with a Ø34 mouth so a
+fat orange sits without touching its neighbour; **puzzle joints** (peg and
+socket, 0.30 mm diametral clearance) instead of dowels, so no loose parts;
+**numbers 1–7 on inclined wedges** on the outside, reading upright from outside
+the arc; and the wire channel **extended past the end nail holes** so the nail
+goes fully in — the four corrections Sergio asked for with the v3 arc printed.
+
+## The printed record (v2 box + v3 arc)
+
 `enclosure-v2/` is the resulting design, generated from the parametric
 recipes in the 3D-design repo (`3d-modeling-agent`, `recetas/piano-limones-caja-v2`
 and `recetas/piano-limones-luna-v3` — that repo is the source of truth; the
