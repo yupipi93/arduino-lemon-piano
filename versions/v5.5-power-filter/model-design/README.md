@@ -7,7 +7,7 @@ mounting-ear holes 30.7 mm apart), the LM386 amplifier module (40.7 × 13.8,
 the wanted left-to-right layout (`comp distribution.png`) and the openings
 (`holes.png`).
 
-`enclosure-v5/` and `fruit-arc-v4/` are the **current** design. `enclosure-v4/`
+`enclosure-v5/` and `fruit-arc-v5/` are the **current** design. `enclosure-v4/`
 is superseded — kept only because its README section explains how the board got
 raised in the first place. `enclosure-v2/`
 is what was physically printed on 2026-09-07/08 and is kept as the record.
@@ -110,7 +110,50 @@ separated from the USB-C jack, speaker-cable notches on **both** sides of the
 collar, 7-slot modern grille, cradles for the USB gadget and the LM386 with
 trimmer access.
 
-## v4 of the fruit arc (2026-09-08): oranges, puzzle joints, numbers
+## v5 of the fruit arc (2026-09-09): the joint actually locks now
+
+Sergio, with the v4 arc **assembled** in his hands: *"the puzzle pieces go in
+and out without having to be fitted from above, and that means I'd need glue.
+Make the puzzle tab more pronounced so it has to go in top-down and can't be
+pulled apart once joined."*
+
+**The neck size was never the problem, and that was the trap.** v4 had a Ø7.0
+head against a 5.6 neck, and the check passed it — because it compared a
+*formula* (`2·radius` vs `2·sqrt(radius² − offset²)`) and ignored the **relief
+holes**. Those two holes sat **on the joint line itself**, and with their radius
+plus clearance they opened the female's mouth to **7.70 mm** — wider than the
+male's 7.10 head. The head simply walked out. Simulating extraction on the real
+profile: **0.00 mm of deformation needed**.
+
+The new profile is a **keyhole**: a **straight 4.4 mm neck** (a rectangle — the
+only thing that sets the mouth) and a **Ø8.4 head** pushed 5.2 mm past the
+joint line. Mouth 4.70 vs head 8.10 → **3.40 mm of deformation** would be needed
+to pull it apart, so it can only be assembled and disassembled by **lowering one
+piece onto the other**. No glue.
+
+The relief holes are gone on purpose. They existed because the v4 circle crossed
+the joint line at a very acute angle; in the keyhole that corner meets at **122°**
+measured in the material. And here they did harm twice over: they opened the
+mouth (the bug) and, at 0.9 mm, they poked past the head's arc leaving a
+**0.63 mm** fin — 13.4 mm², caught by the gate on this very v5's first attempt.
+
+And the part that actually mattered: `comprobar_puzzle.py` no longer compares a
+formula. It **simulates the extraction** on the profile the recipe draws,
+sweeping the tenon along the arc axis and measuring the deformation needed at
+each position, requiring at least 2.0 mm — with a **new positive control**: the
+same computation on the v4 profile must return 0.00 mm, i.e. reproduce the
+failure Sergio is holding. Without that control, "3.40 mm" would prove nothing.
+
+Nothing else changed: cups, numbers, wire channel and the rest are as in v4. The
+longer tenon grows the west piece from 123.44 to 126.76 mm and the centre from
+183.93 to 187.58.
+
+| File | What | Print |
+|---|---|---|
+| `fruit-arc-v5/oeste.stl`, `este.stl` | end segments (2 cups each) | 35.50 / 34.36 g |
+| `fruit-arc-v5/centro.stl` | middle segment (3 cups) | 57.90 g |
+
+## v4 of the fruit arc (2026-09-08, superseded): oranges, puzzle joints, numbers
 
 | File | What | Print |
 |---|---|---|
