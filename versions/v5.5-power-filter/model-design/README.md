@@ -7,7 +7,7 @@ mounting-ear holes 30.7 mm apart), the LM386 amplifier module (40.7 × 13.8,
 the wanted left-to-right layout (`comp distribution.png`) and the openings
 (`holes.png`).
 
-`enclosure-v5/` and `fruit-arc-v5/` are the **current** design. `enclosure-v4/`
+`enclosure-v6/` and `fruit-arc-v5/` are the **current** design. `enclosure-v4/`
 is superseded — kept only because its README section explains how the board got
 raised in the first place. `enclosure-v2/`
 is what was physically printed on 2026-09-07/08 and is kept as the record.
@@ -15,6 +15,51 @@ Everything is generated from the parametric recipes in the 3D-design repo
 (`3d-modeling-agent`, `recetas/piano-limones-caja-v4` and
 `recetas/piano-limones-luna-v4` — that repo is the source of truth; the STLs
 here are copies of its gate output).
+
+## v6 of the box (2026-09-10): three fixes found with the parts in the box
+
+Three corrections Sergio found once the v5 box was printed and populated. All
+three are the same lesson: **a component modelled as a plain brick hides its
+real features.**
+
+| File | What | Print |
+|---|---|---|
+| `enclosure-v6/tapa.stl` | lid — **needs reprinting** | 33.34 g, 1 h 09 m |
+| `enclosure-v6/base.stl` | base — changed, but see below | 63.79 cm³ |
+
+1. **LED slot 5.0 → 5.5 mm.** *"A touch wider, barely half a millimetre, so the
+   LEDs go in properly — right now they rub a little and that could cause
+   friction opening and closing the lid."* They rubbed because of v5 itself: with
+   the board raised the LEDs are no longer soldered proud, so the slot stopped
+   being a peephole and became the **socket** the LED head enters. 5.5 leaves
+   2.0 mm of real air, 1.0 per side.
+2. **The volume trimmer is not on the module's centreline.** *"You worked the
+   hole out as if the pot were in the middle of the board."* It was an
+   assumption of mine, not a measurement. Measured **from his photo** — blue
+   trimmer and board edges segmented by colour, scaled by the **14.4 mm between
+   the cradle rails** (a model dimension, not a guess): the trimmer axis sits
+   **3.0 mm west** of the module axis. The access changes from a Ø6.4 circle to
+   a **10.0 × 6.4 slot** shifted west — a slot rather than a circle because a
+   handheld photo is easily ±0.5 mm out and looking down on a 13.6 mm-tall part
+   makes it worse, so the screwdriver still reaches if I'm 2 mm off.
+3. **The amp's screw terminal fouled the cradle stop.** *"On the side opposite
+   the pins it has the speaker input, and right now it hits the wall a bit —
+   you need to take that wall down."* The wall is the cradle's 8 mm south stop;
+   the terminal sits **on top of** the board (top face at z 6.1), so the stop
+   covered the 3.9 mm where the wires enter. Both amp stops now come up only to
+   **the board's top face** — they stop the board's **edge** and leave anything
+   soldered above it clear — and they are set back **1.5 mm** instead of 0.3 so a
+   terminal overhanging the edge passes over them.
+
+The screw terminal now has its **own envelope** in `comprobar_encaje.py` (10.2 ×
+7.5 × 9.0 on the board's top face, overhanging 1.5 mm — the worst case the design
+accepts), and the check reports what the wire has to the south: **1.4 mm worst
+case** before the x=150 screw column, 2.9 mm if the terminal is flush. Moving
+that column would fix it but would force reprinting the base too, because the
+lid's countersinks would no longer line up with the already-printed base.
+
+**The base does not need reprinting**: the only change is 4 mm of height off two
+1.35 mm walls, which comes off the printed part with a file in a minute.
 
 ## v5 of the box (2026-09-09): the lid becomes a mask, the box drops 6.2 mm
 
