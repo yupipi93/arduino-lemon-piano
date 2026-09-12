@@ -163,11 +163,28 @@ higher-impedance node.
 
 ## Touch sensing
 
-Unchanged from [V4.5](../v4.5-margin-buttons/HARDWARE.md): pins float near 0,
-the +5 V clip through the body raises the reading,
-`threshold = baseline + max(40, 3 × noise)` re-measured at boot and on every
-RESTART. There are no MARGIN buttons on this board — those pins are LEDs. The
-physics and the 2019-vs-2026 polarity table are in
+> **Corrected 2026-09-12.** This section used to say "unchanged from V4.5: pins
+> float near 0, the +5 V clip through the body raises the reading,
+> `threshold = baseline + max(40, 3 × noise)`". That was V4.5's front end, copied
+> forward and never updated when V5 went back to pull-ups — it contradicted the
+> pin map, the BOM and the measured section three paragraphs above it, and it was
+> still being read as ground truth while the assembled v0.7.1 board sat silent.
+> See [../../pcb/docs/REVIEW-v0.7.1-silent-keys.md](../../pcb/docs/REVIEW-v0.7.1-silent-keys.md).
+
+**The pins are pulled UP and a touch drags them DOWN**, as the pin map and the
+measured section above say, and as the firmware does:
+
+```cpp
+int thresholdFor(uint8_t i) { return baseline[i] - touchMargin; }   // minus
+bool keyTouched(uint8_t i)  { return readKey(i) <= thresholdFor(i); }
+```
+
+`touchMargin = max(4, 2 × worst measured noise)`, re-measured at boot and on
+every RESTART (`AUTO_MARGIN_MIN = 4`, `NOISE_FACTOR = 2`). Four counts, not
+forty: with a 220 Ω pull-up the entire touch signal is 3–4 counts, so the margin
+has to live inside it. That tightness is the front end's weak point and it is
+quantified in the review above. There are no MARGIN buttons on this board —
+those pins are LEDs. The physics and the 2019-vs-2026 polarity table are in
 [../../docs/HARDWARE.md](../../docs/HARDWARE.md).
 
 ## Buzzer

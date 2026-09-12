@@ -2,6 +2,65 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-12 — v0.7.1 assembled and silent: review, board probe, doc correction
+
+The real PCB arrived, was assembled, and plays nothing — touching a lemon or an
+A-pin directly produces no note, on several power supplies, while the Nano boots
+and the LED bar runs. The owner suspected a design fault, having noticed that on
+the board every key resistor looks joined to every other.
+
+**The copper is not the fault.** `pcb/kicad/lemon-piano.kicad_pcb` was re-derived
+independently of the design tooling — pads parsed out of the footprints, tracks
+joined geometrically, the B.Cu pour treated as the GND node. All 34 nets are one
+connected island each, no net is split, no island carries two nets, no non-GND
+copper falls inside the pour, and the Nano socket rows map pin-for-pin onto the
+real Nano. KiCad 9.0.9 DRC agrees (0 violations, 0 unconnected). The resistors
+that look joined *are* joined, correctly: R1–R7 share `/+5V`, R8–R17 share the
+GND pour.
+
+Which means DRC never answered the question being asked. **DRC checks the copper
+against the netlist; it cannot check the netlist against the intent.**
+
+**The fault is the front end, and it was in the file all along.** The touch
+signal on this board is **4 ADC counts out of 1023**: a 220 Ω pull-up against
+skin only fires if the entire hand → body → fruit → clip path stays under
+**56 kΩ**, and dry-skin contact alone is routinely 100 kΩ–1 MΩ. One extra count
+of measured noise pushes `max(4, 2 × noise)` above the whole signal and the board
+goes silent exactly as reported. `versions/v5-led-bar/HARDWARE.md` already named
+the fix in its last paragraph and did not take it.
+
+Added:
+
+- **`pcb/docs/REVIEW-v0.7.1-silent-keys.md`** — the review: the connectivity
+  evidence, the signal budget as a table of pull-up against body resistance, the
+  buzzer branch as the cheaper thing to rule out first (the firmware plays a
+  fireball, seven coins and a power-up sweep *before* any lemon is touched, so
+  "silent at boot too" and "silent only on touch" are different faults), and a
+  proposed V5.6: R1–R7 at 220 kΩ plus a discarded first ADC conversion.
+- **`versions/v5.5-power-filter/firmware/probe/`** — a standalone PlatformIO
+  project that turns "it does not sound" into numbers: beeps D13, prints every
+  channel's baseline, then all seven channels at 10 Hz with the largest
+  excursion since boot. Builds clean (5242 B flash, 269 B RAM). The game build's
+  `-DDEBUG_TOUCH` cannot do this — it logs only *accepted* presses, so it says
+  nothing when nothing is ever accepted.
+
+Corrected — **two documents disagreed with the board, the firmware and
+themselves**, and were being read as ground truth while the board sat silent:
+
+- `versions/v5-led-bar/HARDWARE.md` "Touch sensing" claimed "pins float near 0,
+  the +5 V clip through the body raises the reading,
+  `threshold = baseline + max(40, 3 × noise)`" — V4.5's front end, copied forward
+  and never updated, three paragraphs below the measured section that says the
+  opposite.
+- `docs/HARDWARE.md` filed V5 under "2026 boards — the clip is on +5 V" in the
+  prose, the polarity table and the calibration section.
+
+Both now say what `main.cpp` does: `threshold = baseline − max(4, 2 × noise)`,
+pins pulled **up**, player on **GND**, touch drags **down**.
+
+Nothing was changed on the board or in the game firmware: V5.6 waits on the
+measurements, because the buzzer branch may turn out to be the whole story.
+
 ## 2026-09-09 — V5.5 firmware: FREE PLAY and the MODE WHEEL (no hardware change)
 
 Requested by the owner with the board unplugged: *"diseña todo el software y

@@ -26,7 +26,7 @@ sensor — it is a wet, conductive lump that couples your skin to an analog pin.
 body's resistance (hundreds of kΩ) sits in series with a 220 Ω resistor, and the
 firmware just watches the pin move.
 
-**2026 boards (V4, V4.5, V5) — the clip is on +5 V:**
+**V4 / V4.5 — the clip is on +5 V:**
 
 ```
  5V ──[hand-held clip]── player ── 🍋 lemon ──[clip]──[220 Ω]── A0..A6
@@ -40,6 +40,15 @@ firmware just watches the pin move.
 ```cpp
 if (analogRead(i) > keyThreshold[i]) { /* key i touched */ }
 ```
+
+**V5 / V5.5 (and the v0.7.1 PCB) went BACK to the 2019 arrangement.** The
+floating +5 V-clip keyboard could not be read at all — measured, 2026-07-27/28,
+[V5 HARDWARE](../versions/v5-led-bar/HARDWARE.md#why-the-keyboard-is-pulled-up-again-measured-2026-07-27--28).
+So on every current board the **pull-up is back, the player holds GND, and a
+touch drags the pin DOWN**, exactly like the 2019 rigs below. The price is a
+3–4 count signal; see
+[../pcb/docs/REVIEW-v0.7.1-silent-keys.md](../pcb/docs/REVIEW-v0.7.1-silent-keys.md)
+for what that costs on the real board.
 
 **2019 boards (V1, V2, V3) — the clip is on GND:**
 
@@ -61,29 +70,38 @@ if (((analogRead(n) + analogRead(n)) / 2) <= 1019) { /* key n touched */ }
 The single biggest electrical change in the project's history — useful to keep
 straight when reading the older sketches:
 
-| | V1 / V2 / V3 (2019) | V4 / V4.5 / V5 (2026) |
+| | V1 / V2 / V3 (2019) **and V5 / V5.5** | V4 / V4.5 only |
 |---|---|---|
 | Player's clip | **GND** | **+5 V** |
 | 220 Ω resistor | pull-up, pin → +5 V | in series, lemon → pin |
 | Idle reading | ≈1023 (pin biased high) | ≈0 (pin floating) |
 | Touch detected | averaged reading drops `<= 1019` | reading rises above the calibrated baseline |
 | Sampling | 2–4× averaged `analogRead` | single `analogRead`, edge-triggered |
-| Threshold | hardcoded constant | auto-calibrated (V4) → noise-adaptive (V4.5, V5) |
+| Threshold | hardcoded constant | auto-calibrated (V4) → noise-adaptive (V4.5) |
 
-### Calibration (2026 boards)
+### Calibration
 
 - **V4:** `threshold = baseline + 100`, sampled once at boot.
-- **V4.5 / V5:** `threshold = baseline + max(40, 3 × measured noise)`, capped at
-  900, re-sampled at boot **and on every RESTART**. V4.5 adds two buttons that
-  nudge a manual offset on top (±10 per press).
+- **V4.5:** `threshold = baseline + max(40, 3 × measured noise)`, capped at 900,
+  re-sampled at boot **and on every RESTART**. Two buttons nudge a manual offset
+  on top (±10 per press).
+- **V5 / V5.5:** the polarity is the other way round, so the margin is
+  **subtracted**, and it is an order of magnitude smaller because the signal is:
+  `threshold = baseline − max(4, 2 × measured noise)`, re-sampled at boot and on
+  every RESTART. Two SENS buttons move the margin in **single counts**. A touch
+  through a 220 Ω pull-up is worth 3–4 counts, so 4 is not a conservative floor,
+  it is the entire budget — see
+  [../pcb/docs/REVIEW-v0.7.1-silent-keys.md](../pcb/docs/REVIEW-v0.7.1-silent-keys.md).
 
 The relay-driven water pump exists on **V3** (wired, never fired) and **V4** only;
 V4.5 removed it, so from V4.5 on a late miss is punished with a low groan instead
 of a spray.
 
 Keep hands off the fruit while calibration runs — it is measuring the *idle*
-level. ⚠️ No pull-downs exist in any version's model; if ghost notes appear, add
-~1 MΩ from each analog pin to GND so calibration sees a cleaner baseline.
+level. ⚠️ On V4/V4.5 (floating pins) no pull-downs exist in the model; if ghost
+notes appear there, add ~1 MΩ from each analog pin to GND so calibration sees a
+cleaner baseline. On V5/V5.5 the 220 Ω pull-up already anchors the node and this
+does not apply.
 
 ## Parts common to every version
 
@@ -91,7 +109,7 @@ level. ⚠️ No pull-downs exist in any version's model; if ghost notes appear,
 |---|---|
 | ATmega328P board | Uno on the 2019 rigs; Nano from V4 (key 7 needs A6, V5 also needs A7) |
 | Fruit + alligator clips | 7 keys + 1 hand-held clip. Lemons from V4; bananas before that |
-| 220 Ω resistors | one per key in every version (pull-up in 2019, series from V4) |
+| 220 Ω resistors | one per key in every version (pull-up in 2019, series on V4/V4.5, pull-up again from V5) |
 | Passive buzzer / speaker | always on **D8** on hardware (**D11** in the browser builds — see any version's `emulation/README.md`) |
 | Breadboard + jumpers | |
 
