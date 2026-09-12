@@ -2,6 +2,31 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-12 (fix) — the probe flashed fine and printed to nobody
+
+First real run on the board: upload SUCCESS on `/dev/ttyUSB0`, and then nothing.
+The probe's `platformio.ini` declared two environments and no `default_envs`, so
+`pio run -t upload` uploaded **twice** — the second one out of sync against a
+board that had just been reset — the command exited non-zero, and the
+`&& pio device monitor` chained after it never ran. A correctly flashed board
+printed to nobody, and the round trip was spent on a bug of mine.
+
+The second attempt then auto-detected `/dev/ttyS0`, the motherboard's own serial
+port, and failed with "Permission denied" — which reads like a permissions
+problem to go and fix, and is not one.
+
+- `default_envs = nanoatmega328`, with the reason written next to it.
+- `upload_port` / `monitor_port` pinned to `/dev/ttyUSB*`, so auto-detect can
+  never wander onto `ttyS0` again.
+- **`probe/run.sh`** — one command, one file: `./run.sh pcb` flashes, records a
+  fixed window into `~/sonda-pcb.txt`, and prints the verdict lines at the end.
+  If no `/dev/ttyUSB*` is present it says so in one line instead of failing on
+  the wrong port. `./run.sh proto` does the breadboard.
+
+The file matters as much as the fix: the board is flashed from quantumpc over
+SSH, so the log lands on the machine the agent is already on — nobody has to
+copy a screenful of serial output out of a terminal to be read.
+
 ## 2026-09-12 (later) — the bench answers back: the probe learns to look both ways
 
 Three facts from Sergio with the board in his hands, and they delete two of the
