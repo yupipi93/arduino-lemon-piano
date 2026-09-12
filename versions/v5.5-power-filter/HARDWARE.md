@@ -116,6 +116,41 @@ felt:
    (±1–2 counts). If filtered still shows events, they are common-mode or
    radiated — ferrite turns first, then the V5.6 pin capacitors.
 
+## Reference designators (shared with PCB v0.7.1)
+
+Since 2026-09-12 the wiring diagram labels **every** part with the same
+reference designator the PCB uses, so a component identified on the breadboard
+is the same component on the board. Ground truth: [`pcb/docs/NETLIST.md`](../../pcb/docs/NETLIST.md).
+
+| Ref | Part | Function / node |
+|---|---|---|
+| J1 | 2-pin 5 V input | `VIN` + `GND` — the filter's entry |
+| D1 | P6KE6.8A TVS | across the input, clamps to `GND` |
+| D2 | 1N5817 Schottky | series, `VIN` → `VRAW` |
+| C1 ‖ C2 | 470 µF ‖ 100 nF | input reservoir on `VRAW` |
+| L1 | 100 µH choke | series, `VRAW` → `+5V` |
+| C3 ‖ C4 | 470 µF ‖ 100 nF | output reservoir on `+5V` (the rail = AVcc) |
+| **R1–R7** | 220 Ω | key pull-ups — **R1 = A0 = KEY1** … R7 = A6 = KEY7 |
+| **R8–R17** | 220 Ω | LED series — LED *n* uses **R(n+7)** |
+| R18 | 10 kΩ | `SENS_MINUS` pull-up on A7 (A7 has no internal one) |
+| **D3–D12** | 3 mm LED | the bar — LED *n* is **D(n+2)**, driven by pin **D(n+1)** |
+| BUZ1 | passive buzzer | `/BUZZER` on D13 |
+| SW1 / SW2 | SENS + / SENS − | D12 → GND · A7 → GND |
+| U1 / U2 | Nano socket rows | U1 = analog row, U2 = digital row |
+| J2 | keys header (PCB only) | pins 1–7 = KEY1–KEY7, pin 8 = `G`, the hand-held clip |
+| J3 / J4 | EXT button headers (PCB only) | wired in parallel with SW1 / SW2 |
+| J5 | `SPK` aux header (PCB only) | in parallel with BUZ1 — where the amp plugs in |
+| R19, R20, C5 | 10 kΩ, 1 kΩ, 1 µF | **off-board** amp divider, D13 → LM386 |
+| H1–H4 | M2 mounting holes (PCB only) | mechanical, nothing to wire |
+
+Two things differ **physically** between the diagram and the board, and both
+are called out on the drawing itself:
+
+1. The diagram draws the LED bar left to right with **D3 at the west end**; the
+   PCB runs it the other way, **LED1/D3 at the EAST end** and D12 at the west.
+2. The amp stage (R19, R20, C5, the LM386 module and the speaker) is **not on
+   the PCB**. It plugs into **J5**, the 2-pin `SPK` header across BUZ1.
+
 ## Diagrams
 
 | File | What it shows |

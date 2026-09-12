@@ -69,7 +69,7 @@ def _board(title, subtitle, board, h=H, gnd_y=RAIL_GND_Y, w=W,
 
 
 # ── keyboard, 2019 wiring (player holds GND, pins biased HIGH) ───────────────
-def keyboard_2019(s, fruit="banana", dx=0):
+def keyboard_2019(s, fruit="banana", dx=0, refs=False):
     """Each analog pin is pulled UP to +5 V through 220 Ω and reads ~1023 idle;
     the fruit sits directly on the pin, so touching it drags the pin down
     through the player's body to the hand-held GND clip (`analogRead <= 1019`).
@@ -80,9 +80,16 @@ def keyboard_2019(s, fruit="banana", dx=0):
     `dx` shifts the whole keyboard east. V6 needs it: the battery + power-bank
     module take the top-left corner that used to be the filter's, so the filter
     and the board it feeds both move east by the same amount and the left→right
-    power flow stays intact. dx=0 reproduces V1..V5.5 byte-for-byte."""
+    power flow stays intact. dx=0 reproduces V1..V5.5 byte-for-byte.
+
+    `refs=True` labels the pull-ups with their PCB reference designators
+    (R1..R7, where R1 = A0 = KEY1) and points the clip at the PCB's J2-8
+    terminal. Only V5.5 has a PCB, so it defaults OFF and every other
+    revision renders byte-for-byte as before."""
     s.add(lib.clip_box("CLIP", 130 + dx, 1130, w=430, title="hand-held GND clip",
-                       sub=f"one hand on the clip, one on the {fruit} = the player"))
+                       sub=(f"one hand on the clip, one on the {fruit} = the player"
+                            if not refs else
+                            f"one hand on the clip, one on the {fruit} · PCB J2-8 (G)")))
     s.connect("clipgnd", C["gnd"], P("CLIP", "out"), R("GND"))
 
     key_ys = [470 + i * 100 for i in range(7)]
@@ -92,7 +99,8 @@ def keyboard_2019(s, fruit="banana", dx=0):
         ky = key_ys[row]
         s.add(lib.lemon_key(f"K{ai}", KEY_X + dx, ky, ai + 1, f"A{ai}"))
         rx = 470 + dx + row * 100                   # own channel per key in the pull-up comb
-        s.add(lib.resistor(f"RK{ai}", rx, PULLUP_Y, orient="V", length=50))
+        s.add(lib.resistor(f"RK{ai}", rx, PULLUP_Y, orient="V", length=50,
+                           **({"label": f"R{ai + 1}"} if refs else {})))
         # ONE node: the pin, the fruit clip and the pull-up's low side.
         s.connect(f"kn{ai}", C["key"], P("U1", f"A{ai}"), P(f"K{ai}", "clip"), P(f"RK{ai}", "b"))
         s.connect(f"kp{ai}", C["v5"], P(f"RK{ai}", "a"), R("5V"))
@@ -507,22 +515,27 @@ def build_v5_5():
                "off the UNFILTERED 5 V on purpose, so the filter still only sees the "
                "keyboard's quiet load.",
                "ATmega328P · Nano only (A6 = key 7, A7 = a button)",
-               w=4200, h=2080, gnd_y=GND_2019, v5_x1=2850)
-    keyboard_2019(s, fruit="lemon")
+               w=4200, h=2200, gnd_y=GND_2019, v5_x1=2850)
+    keyboard_2019(s, fruit="lemon", refs=True)
 
     # ── the power-entry filter, left to right across the top band ────────────
-    s.add(lib.power_jack("J1", 130, 110, title="5 V IN",
+    # Every part carries its PCB v0.7.1 reference designator, so the same
+    # component can be found on the breadboard and on the board (docs/NETLIST.md:
+    # J1 5V_IN · D1 TVS · D2 Schottky · C1‖C2 input · L1 choke · C3‖C4 output).
+    s.add(lib.power_jack("J1", 130, 110, title="J1 · 5 V IN",
                          sub="USB charger pigtail — not the PC"))
-    s.add(lib.diode("DTVS", 560, 250, orient="V", flip=True, label="P6KE6.8A",
-                    sub="TVS clamp"))
-    s.add(lib.diode("DS", 700, 140, orient="H", label="1N5817",
+    s.add(lib.diode("DTVS", 560, 250, orient="V", flip=True, label="D1",
+                    sub="P6KE6.8A TVS"))
+    s.add(lib.diode("DS", 700, 140, orient="H", label="D2 · 1N5817",
                     sub="reverse + USB backfeed"))
-    s.add(lib.capacitor("CF1", 850, 250, orient="V", polarized=True, label="470 µF"))
-    s.add(lib.capacitor("CF2", 950, 250, orient="V", label="100 nF"))
-    s.add(lib.inductor("LF1", 1090, 140, orient="H", label="100 µH",
+    s.add(lib.capacitor("CF1", 850, 250, orient="V", polarized=True,
+                        label="C1", sub="470 µF"))
+    s.add(lib.capacitor("CF2", 950, 250, orient="V", label="C2", sub="100 nF"))
+    s.add(lib.inductor("LF1", 1090, 140, orient="H", label="L1 · 100 µH",
                        sub="≥ 1 A · low DCR"))
-    s.add(lib.capacitor("CF3", 1210, 250, orient="V", polarized=True, label="470 µF"))
-    s.add(lib.capacitor("CF4", 1310, 250, orient="V", label="100 nF"))
+    s.add(lib.capacitor("CF3", 1210, 250, orient="V", polarized=True,
+                        label="C3", sub="470 µF"))
+    s.add(lib.capacitor("CF4", 1310, 250, orient="V", label="C4", sub="100 nF"))
 
     s.connect("vin", C["ctrl"], P("J1", "vout"), P("DTVS", "cathode"), P("DS", "anode"),
               P("AMP", "vcc"))
@@ -532,25 +545,34 @@ def build_v5_5():
               P("CF2", "b"), P("CF3", "b"), P("CF4", "b"), R("GND"))
 
     # ── everything below is V5, unchanged ────────────────────────────────────
+    # PCB v0.7.1: the bar is D3..D12 (LED n = D(n+2)) with R8..R17 in series,
+    # and the VU colours are 3 green / 3 yellow / 2 orange / 2 red (ADR-021).
+    # The bold ref is the PCB designator, the small line under it the Arduino
+    # pin driving it — they are OFF BY ONE, which is why both are shown.
     pins = ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11"]
+    VU = ([(45, 185, 75)] * 3 + [(235, 200, 45)] * 3
+          + [(240, 140, 35)] * 2 + [(215, 45, 45)] * 2)
     x0, dx, ybar = 1700, 100, 950
     for i, pin in enumerate(pins):
         cx = x0 + i * dx
         cid = f"L{i}"
-        s.add(lib.led(cid, cx, ybar, (45, 185, 75), str(i + 1), pin, anode="N", cathode="S"))
-        s.add(lib.resistor(f"{cid}R", cx, ybar + 90, orient="V"))
+        s.add(lib.led(cid, cx, ybar, VU[i], f"D{i + 3}", pin, anode="N", cathode="S"))
+        s.add(lib.resistor(f"{cid}R", cx, ybar + 90, orient="V",
+                           label=f"R{i + 8}"))
         s.connect(f"a{i}", C["led"], P("U1", pin), P(cid, "anode"))
         s.connect(f"c{i}", C["gnd"], P(cid, "cathode"), P(f"{cid}R", "a"))
         s.connect(f"g{i}", C["gnd"], P(f"{cid}R", "b"), R("GND"))
 
-    s.add(lib.buzzer("BUZ", 1560, 420, label="passive buzzer", pin_label="D13"))
+    s.add(lib.buzzer("BUZ", 1560, 420, label="BUZ1 · passive buzzer",
+                     pin_label="D13"))
     s.connect("buzgnd", C["gnd"], P("BUZ", "gnd"), R("GND"))
 
-    _button_to_gnd(s, "SUP", 2350, 420, "D12", "SENS +", "more sensitive",
+    _button_to_gnd(s, "SUP", 2350, 420, "D12", "SW1 · SENS +", "more sensitive",
                    C["margin"], (60, 170, 90))
 
-    s.add(lib.push_button("SDN", 2850, 420, "SENS −", "less sensitive", cap=(200, 60, 60)))
-    s.add(lib.resistor("SDNPU", 2750, 250, orient="V", label="10k"))
+    s.add(lib.push_button("SDN", 2850, 420, "SW2 · SENS −", "less sensitive",
+                          cap=(200, 60, 60)))
+    s.add(lib.resistor("SDNPU", 2750, 250, orient="V", label="R18 · 10k"))
     s.connect("sdnsig", C["margin"], P("U1", "A7"), P("SDN", "pin"), P("SDNPU", "b"))
     s.connect("sdnpu", C["v5"], P("SDNPU", "a"), R("5V"))
     s.connect("sdngnd", C["gnd"], P("SDN", "v5"), R("GND"))
@@ -562,12 +584,14 @@ def build_v5_5():
     # the ADC reference the 3-4-count touch margin is measured against. D13 drives
     # a 10 k / 1 k divider (never a bare coil — that would kill the pin), the 1 µF
     # blocks D13's DC average, and the on-board piezo stays in parallel on D13.
-    s.add(lib.resistor("R19", 3080, 500, orient="H", label="10k"))
-    s.add(lib.resistor("R20", 3170, 610, orient="V", label="1k"))
-    s.add(lib.capacitor("C5", 3240, 500, orient="H", label="1 µF", sub="DC block"))
+    s.add(lib.resistor("R19", 3080, 500, orient="H", label="R19 · 10k"))
+    s.add(lib.resistor("R20", 3170, 610, orient="V", label="R20 · 1k"))
+    s.add(lib.capacitor("C5", 3240, 500, orient="H", label="C5", sub="1 µF"))
     s.add(lib.amp_module("AMP", 3480, 880, chip="LM386",
-                         label="LM386 amp module", sub="unfiltered 5 V"))
-    s.add(lib.speaker("SPK", 3960, 880, label="speaker", sub="4 Ω · 3 W"))
+                         label="LM386 amp module — OFF-BOARD",
+                         sub="unfiltered 5 V · plugs into PCB J5"))
+    s.add(lib.speaker("SPK", 3960, 880, label="speaker — OFF-BOARD",
+                      sub="4 Ω · 3 W"))
 
     s.connect("buzsig", C["buzz"], P("U1", "D13"), P("BUZ", "sig"), P("R19", "a"))
     s.connect("attn", C["buzz"], P("R19", "b"), P("R20", "a"), P("C5", "a"))
@@ -578,20 +602,25 @@ def build_v5_5():
     s.connect("spkret", C["gnd"], P("SPK", "n"), R("GND"))
 
     entries = [
-        (C["ctrl"], "Power-entry filter (NEW)",
-         ["P6KE6.8A TVS across the input · 1N5817 in series",
-          "470 µF ‖ 100 nF → 100 µH → 470 µF ‖ 100 nF (fc ≈ 700 Hz)"]),
-        (C["key"], "Lemon keys (7)", ["A0..A6 · 220 Ω pull-up to +5 V each",
-                                      "idle ≈ 1022 · a touch drags the pin DOWN"]),
+        (C["ctrl"], "Power-entry filter — J1 · D1 · D2 · C1 C2 · L1 · C3 C4",
+         ["D1 = P6KE6.8A TVS across the input · D2 = 1N5817 in series",
+          "C1 470 µF ‖ C2 100 nF → L1 100 µH → C3 470 µF ‖ C4 100 nF"]),
+        (C["key"], "Lemon keys (7) — R1..R7 · PCB header J2",
+         ["A0..A6 · R1..R7 = 220 Ω pull-up to +5 V (R1 = A0 = KEY1)",
+          "keys → J2 pins 1..7 · hand-held GND clip → J2 pin 8 (G)",
+          "idle ≈ 1022 · a touch drags the pin DOWN"]),
         (C["v5"], "+5 V / GND rails", ["the rail is the FILTERED node — Nano, keys,",
                                        "pull-ups. It STOPS SHORT of the amp (dirty side)"]),
-        (C["led"], "Bar of 10 green LEDs",
-         ["ONE ASCENDING RUN: LED n on pin n+1 (D2..D11) · 220 Ω each"]),
-        (C["margin"], "Sensitivity buttons",
-         ["SENS + (D12, to GND) · SENS − (A7, to GND + 10 kΩ pull-up)"]),
-        (C["buzz"], "Audio: D13 → LM386 → speaker",
-         ["D13 → 10 kΩ / 1 kΩ divider (≈ ÷11) → 1 µF → amp IN → 4 Ω 3 W",
-          "the on-board piezo stays in parallel on the same D13 node"]),
+        (C["led"], "LED bar — D3..D12 each with its 220 Ω R8..R17",
+         ["BOLD ref = PCB designator D3..D12 · small line = Arduino pin D2..D11",
+          "bar position n → PCB D(n+2), driven by pin D(n+1), resistor R(n+7)",
+          "PCB colours: 3 green · 3 yellow · 2 orange · 2 red"]),
+        (C["margin"], "Sensitivity buttons — SW1 · SW2 · R18",
+         ["SW1 SENS + (D12, to GND) · SW2 SENS − (A7, to GND + R18 = 10 kΩ)",
+          "the PCB brings each out in parallel too: J3 ‖ SW1, J4 ‖ SW2"]),
+        (C["buzz"], "Audio — BUZ1 · R19 R20 · C5 · LM386 · speaker",
+         ["D13 → R19 10 kΩ / R20 1 kΩ (≈ ÷11) → C5 1 µF → amp IN → 4 Ω 3 W",
+          "BUZ1 piezo stays in parallel on D13 · the amp is OFF-BOARD (PCB J5)"]),
     ]
     notes = [("Why: the V5 touch margin is 3-4 ADC counts ≈ 15-20 mV (220 Ω pull-up vs "
               "~1 MΩ of body). Any conducted transient bigger than that IS a key press: "
@@ -617,9 +646,20 @@ def build_v5_5():
              ("Ground caveat vs V6: wall-fed, the amp's ground and the speaker return "
               "share the board's single GND. V6 solves this with a battery + power-bank "
               "module whose own G gives the audio a star-ground return, off the key "
-              "returns — the reason V6 adds the battery, not just the amp.", C["muted"])]
+              "returns — the reason V6 adds the battery, not just the amp.", C["muted"]),
+             ("The Nano itself plugs into two PCB socket strips: U1 is the ANALOG row "
+              "(D13, 3V3, AREF, A0..A7, 5V, RST, GND, VIN) and U2 the DIGITAL row "
+              "(TX1, RX0, RST, GND, D2..D12). H1..H4 are the four M2 mounting holes — "
+              "mechanical only, nothing to wire.", C["muted"]),
+             ("EVERY reference designator here matches PCB v0.7.1 (pcb/docs/NETLIST.md), "
+              "so a part identified on this diagram is the same part on the board. Two "
+              "things still differ PHYSICALLY. (1) This diagram draws the LED bar left to "
+              "right, D3 at the west end; the PCB runs it the other way, LED1/D3 at the "
+              "EAST end and D12 at the west. (2) The amp stage — R19, R20, C5, the LM386 "
+              "and the speaker — is NOT on the PCB: it plugs into J5, the 2-pin SPK "
+              "header wired in parallel with BUZ1.", C["muted"])]
     s.decorations.append(deco.legend(entries=entries, notes=notes,
-                                     **_legend_box(GND_2019, h=640)))
+                                     **_legend_box(GND_2019, h=760)))
     return s, "v5.5-power-filter", "wiring-v5.5.png"
 
 

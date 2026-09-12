@@ -2,6 +2,40 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-12 — V5.5 wiring diagram: every part labelled with its PCB v0.7.1 reference designator
+
+- **Why**: the V5.5 breadboard is built and the PCB exists, so a part has to be
+  findable on both. The diagram previously showed values only (`470 µF`,
+  `220 Ω`), which cannot be matched to a board silkscreen.
+- **`build_v5_5()`** in `tools/wiring_diagrams.py` now labels all 42 parts with
+  the designator from `pcb/docs/NETLIST.md`: `J1 D1 D2 C1 C2 L1 C3 C4`
+  (filter), `R1..R7` (key pull-ups, R1 = A0 = KEY1), `D3..D12` + `R8..R17`
+  (LED bar), `BUZ1 SW1 SW2 R18` (UI) and `R19 R20 C5` (the off-board amp).
+  Values move to the legend where a part has only one text slot.
+- **LED bar now carries BOTH numbers**, because they are off by one and that is
+  the easiest mistake to make: the bold ref is the PCB designator `D3..D12`,
+  the small line under it is the Arduino pin `D2..D11` that drives it.
+- **LED colours now match the PCB VU meter** (3 green, 3 yellow, 2 orange,
+  2 red per ADR-021) instead of ten green, verified by sampling the rendered
+  pixels at the bar centres.
+- **`keyboard_2019()` gains `refs=False`** so only V5.5 opts in. Re-rendering
+  all ten revisions changed **only** `wiring-v5.5.png`; V1, V2, V2.5, V3, V5
+  and V6 are byte-identical.
+- The legend gains the PCB cross-reference: the keys land on `J2` (pin 8 = `G`,
+  the hand-held clip), `J3`/`J4` parallel the SENS buttons, `J5` is where the
+  amp plugs in, `U1`/`U2` are the Nano's socket rows, `H1..H4` the M2 holes.
+  It also states the two physical differences: the PCB runs the LED bar the
+  other way round (LED1/D3 at the EAST end), and the amp stage is off-board.
+- The SENS buttons keep their `SW1`/`SW2` hardware labels; the FREE PLAY /
+  MODE WHEEL roles added on 2026-09-09 are firmware on the same two buttons,
+  no wiring change.
+- `versions/v5.5-power-filter/HARDWARE.md` gains the full designator table.
+- **Verification**: 64 nets, **0 spacing warnings, 0 hard violations** (the
+  wirewright DRC treats label boxes as obstacles, so it is what proves the new
+  longer labels do not collide); all ten diagrams re-rendered clean; label
+  text dumped from the built schematic to confirm all 42 designators are
+  actually drawn.
+
 ## 2026-09-12 — v0.7.1 assembled and silent: review, board probe, doc correction
 
 The real PCB arrived, was assembled, and plays nothing — touching a lemon or an
