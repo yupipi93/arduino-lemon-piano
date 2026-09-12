@@ -98,7 +98,79 @@ So the resistor swap is only half a fix. The other half is in firmware:
 - **220 kΩ, not 1 MΩ**, as the sweet spot: still 185–433 counts of signal on
   ordinary skin, and a settling time a double-read absorbs comfortably.
 
-## 3. The other candidate, and it is cheaper to test first: the buzzer branch
+## 2b. What the bench said back (2026-09-12, same day)
+
+Sergio, with the board in front of him, added three facts. They delete two whole
+branches of this review and sharpen the third.
+
+1. **Every boot sound plays, and both SENS buttons beep when pressed.** So §3 is
+   closed: BUZ1, D13 and J5 are fine. And it closes §4 as a bonus — the buttons
+   respond, so SW1/SW2 are not shorted and the footprint's pad grouping is right.
+2. **SENS− is on A7 and only works through R18, a 10 kΩ pull-up to `/+5V`** — the
+   same rail, the same bottom-side row as R1…R7. That one beep proves the 5 V
+   rail reaches the key pull-ups, with no meter. So "R1–R7 or the rail are
+   missing" is closed too.
+3. **He never touches a clip.** On the breadboard, with 220 Ω, he touches only
+   the fruit — no ground clip, no second hand, nothing — calibrates, and it
+   plays.
+
+Buzzer, buttons, LEDs and rail are alive. **Exactly one block is dead: the seven
+key channels.**
+
+### Fact 3 is the one that matters, and it does not fit this board
+
+With a 220 Ω pull-up the key node is a *stiff* node: 220 Ω to the rail. A body
+that is not galvanically tied to circuit GND couples through maybe 100–200 pF to
+earth — microamps at 50 Hz, which across 220 Ω is nanovolts. **Nothing a
+10-bit ADC can see.** A no-clip touch cannot work on the v0.7.1 front end. It is
+not a tolerance, a threshold or a margin; it is four orders of magnitude.
+
+So the working rig must have a **high-impedance** key node, and there are exactly
+two ways to get one:
+
+- **The V4 / V4.5 front end**: pin floating, the 220 Ω in *series* between fruit
+  and pin, player's clip on +5 V. Same resistor value — which is precisely why
+  "the same values work on the breadboard" is true and still tells us nothing.
+  A floating pin is swung hundreds of counts by a hand, with no clip needed, and
+  the touch reads **UP**. The V5 measurements describe that node exactly ("idle
+  ~250 with 76–104 counts of noise… readings came in gradient ramps"), call it
+  unreadable, and go back to pull-ups — trading a large messy signal for a tiny
+  clean one that needs a clip.
+- **An earth reference through the supply.** A breadboard fed from an earthed PC
+  sits at earth potential, so a body on a chair has a real return path and no
+  clip is needed. A phone charger or a power bank is double-insulated and floats;
+  its GND has no relation to the body. This matters because V5.5's own powering
+  rules say *"Feed the filter from a USB wall charger or a bench supply — the
+  PC's 5 V is the worst source in the house"* and *"don't leave the PC attached
+  while playing"*. **Following the filter's rule removes the earth path that made
+  clipless play work.** It also explains why several different supplies all
+  failed: if they were all wall-warts, they all float.
+
+Both explanations point the same way, and the probe separates them by the sign
+of the movement. Do not pick one from the armchair.
+
+### Why "just press both buttons and recalibrate" cannot rescue it
+
+Sergio's objection is fair: `MARGIN_MAX` is 600, so the smart-adjust gesture has
+plenty of range for any resistor value. The range is not the problem. The
+*direction* is. `learnFromTouch()` tracks one array:
+
+```cpp
+int lo[KEY_COUNT];                      // ...only the minimum
+if (v < lo[i]) lo[i] = v;
+dropped[i] = baseline[i] - lo[i];
+if (dropped[i] < 0) dropped[i] = 0;     // an upward touch scores exactly zero
+```
+
+A touch that *raises* a pin scores `dropped = 0` on every channel, so `best`
+stays −1 and the gesture prints "touch not separable from noise — margin
+unchanged", forever, however wide the range is. **A one-directional search
+cannot be saved by making it wider.** Same for `autoCalibrate()`, `keyTouched()`
+and `strongestKey()`: all three only ever look down.
+
+That is also why the probe in §5 reports both directions and names the winner.
+
+## 3. The buzzer branch — CLOSED 2026-09-12, it works (kept for the reasoning)
 
 "The notes do not sound" and "the keys do not detect" are not the same fault,
 and this firmware distinguishes them for free at every boot:
@@ -133,26 +205,32 @@ breadboard:
 Do not reach for `versions/v0-buzzer/` to test this: its buzzer is on **D8**,
 which on this board is LED7's pin. V0 is a breadboard diagnostic, not a board one.
 
-## 4. What to measure, in order
+## 4. What to measure, in order — revised 2026-09-12
 
-1. **Power on and listen.** Boot chirps? That splits §3 from §2 in five seconds.
-2. **Serial monitor, 9600 baud** (`serialEnabled` is `true`; the log is
-   unconditional). Read the calibration block:
-   - `baseline ≈ 1022, noise 0–1` → rail and pull-ups are fine; go to §2.
-   - `baseline ≈ 0` → the +5 V rail or R1–R7 are not there. Check continuity from
-     R1 pad 2 to U1 pad 12.
-   - `noise ≥ 3` → `auto margin` will be ≥ 6, above the whole signal. §2 again.
-3. **Unplug everything from J5** and retry.
-4. **Continuity, board unpowered**, on SW1: between the two pads on the **same
-   side** (4.5 mm apart) versus the two on the **same row** (6.5 mm apart). The
-   generated footprint groups pad 1 = north row and pad 2 = south row, i.e. it
-   assumes the 6.5 mm pairs are the internally-shorted ones. On a standard 6 mm
-   tact switch the shorted pairs are the **4.5 mm** ones. If the meter beeps on
-   the 4.5 mm pair with the button up, `/SENS_PLUS` and `/SENS_MINUS` are hard
-   shorted to GND and both buttons read permanently held. **Unverified — this is
-   a measurement to take, not a confirmed defect**, but it costs thirty seconds
-   and it would explain a second set of symptoms.
-5. `firmware/probe/` — flash it and watch all seven channels live. §5.
+Steps 1–4 of the original list are **done and passed** (§2b): it beeps at boot,
+the buttons beep, the rail reaches the pull-ups. What is left is one experiment
+with two runs, and the second run is the one that matters.
+
+1. **Flash `firmware/probe/` to the assembled board.** Touch the fruit exactly as
+   you play — no clip, as you always do. Let it run a minute and read the
+   `verdict:` line.
+2. **Flash the same probe to the working breadboard.** Same sketch, same Nano,
+   same baud. Touch it the same way.
+
+Then compare the two `-- since boot   DOWN: … UP: …` lines:
+
+| Board | Breadboard | Conclusion |
+|---|---|---|
+| nothing moves | moves **UP** | Different front ends. The breadboard is V4/V4.5 (floating pin, series resistor); the PCB is V5 (pull-up, needs a GND reference). §2b. |
+| nothing moves | moves **DOWN** | Same topology, and something on the board is killing the signal. That is the only outcome that puts the fault back in the PCB itself, and it is the one to escalate. |
+| moves **DOWN** but small | moves **DOWN** bigger | Same topology, signal attenuated. Tune the margin down with SENS− and measure how far you have to go. |
+
+3. **Free and worth doing in the same session:** power the board from an
+   **earthed PC's USB** rather than a charger, and retry. If clipless play starts
+   working, the missing ingredient was the earth reference, not the resistor —
+   and V5.5's own powering rule is what removed it (§2b).
+
+Nothing needs desoldering until those two runs disagree.
 
 ## 5. `firmware/probe/` — the bench sampler this board never had
 

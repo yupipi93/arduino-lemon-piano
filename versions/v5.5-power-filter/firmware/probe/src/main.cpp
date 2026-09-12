@@ -47,6 +47,15 @@ const int      SHOW_TOUCH_AT = 2;     // mark a channel once it has moved this
                                       // not four: the point is to SEE a signal
                                       // the game would have rejected.
 
+// This probe is deliberately DIRECTION-AGNOSTIC. The game firmware only ever
+// looks DOWN (thresholdFor = baseline - margin), and so does its smart-adjust
+// gesture: learnFromTouch() tracks lo[] only, so a touch that raises a pin
+// scores dropped = 0 on every channel and the gesture reports "touch not
+// separable from noise - margin unchanged" no matter how wide MARGIN_MAX is.
+// If the rig's touch goes UP, no amount of calibration range can find it, and
+// a probe that also only looked down would hide exactly that. So this one
+// reports both directions and names the winner.
+
 int baseline[KEY_COUNT];
 int noise[KEY_COUNT];
 int minSeen[KEY_COUNT];
@@ -123,9 +132,11 @@ void setup() {
   measureBaselines();
 
   Serial.println();
-  Serial.println(F("Live. Touch a lemon while HOLDING THE GND CLIP (J2 pin 8)."));
-  Serial.println(F("Columns: raw(delta-from-baseline). '*' = moved >= 2 counts."));
-  Serial.println(F("min/max is the extreme seen since boot, per channel."));
+  Serial.println(F("Live. Touch the fruit exactly as you normally play - clip"));
+  Serial.println(F("or no clip, whatever works on your breadboard. The probe"));
+  Serial.println(F("does not care which direction the signal goes."));
+  Serial.println(F("Columns: raw(delta). '-n' = pin dragged DOWN n counts,"));
+  Serial.println(F("'+n' = pushed UP. '*' = moved >= 2 counts either way."));
   Serial.println();
 }
 
@@ -170,15 +181,46 @@ void loop() {
   }
 
   // Every 10 s, the thing a scrolling log cannot show: how far each channel has
-  // EVER moved. If the largest excursion after a minute of playing is 1 count,
-  // the front end is the fault and no threshold will rescue it.
+  // EVER moved, in BOTH directions. Three outcomes, and they are three
+  // different faults:
+  //   biggest movement DOWN  -> the board's polarity. The game can work; the
+  //                             margin is the only thing to tune.
+  //   biggest movement UP    -> the rig is the V4/V4.5 front end (pin floating,
+  //                             series resistor, player on +5 V). The game
+  //                             firmware and this board cannot see it at all,
+  //                             and smart adjust will never find it either.
+  //   nothing moves (<= 2)   -> the front end is dead: no touch signal exists
+  //                             to threshold, whatever the margin says.
   if (now - lastSummary >= 10000UL) {
     lastSummary = now;
-    Serial.print(F("-- excursion since boot, counts below baseline:"));
+    int worstDown = 0, worstUp = 0;
+    Serial.print(F("-- since boot   DOWN:"));
     for (uint8_t i = 0; i < KEY_COUNT; i++) {
-      Serial.print(' ');
-      Serial.print(baseline[i] - minSeen[i]);
+      int d = baseline[i] - minSeen[i];
+      if (d < 0) d = 0;
+      if (d > worstDown) worstDown = d;
+      Serial.print(' '); Serial.print(d);
+    }
+    Serial.print(F("   UP:"));
+    for (uint8_t i = 0; i < KEY_COUNT; i++) {
+      int u = maxSeen[i] - baseline[i];
+      if (u < 0) u = 0;
+      if (u > worstUp) worstUp = u;
+      Serial.print(' '); Serial.print(u);
     }
     Serial.println();
+
+    Serial.print(F("   verdict: "));
+    if (worstDown <= 2 && worstUp <= 2) {
+      Serial.println(F("NOTHING MOVES. No touch signal to threshold."));
+    } else if (worstDown >= worstUp) {
+      Serial.print(F("signal goes DOWN, best ")); Serial.print(worstDown);
+      Serial.println(F(" counts - this board's polarity. Tune the margin."));
+    } else {
+      Serial.print(F("signal goes UP, best ")); Serial.print(worstUp);
+      Serial.println(F(" counts - WRONG POLARITY for this board and firmware."));
+      Serial.println(F("   The game looks DOWN only; so does smart adjust. This"));
+      Serial.println(F("   rig is the V4/V4.5 front end, not V5's."));
+    }
   }
 }

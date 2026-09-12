@@ -2,6 +2,56 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-12 (later) — the bench answers back: the probe learns to look both ways
+
+Three facts from Sergio with the board in his hands, and they delete two of the
+three branches of this morning's review:
+
+- **Every boot sound plays and both SENS buttons beep.** The buzzer branch is
+  closed. So is the stuck-switch worry — the buttons respond, so SW1/SW2's pad
+  grouping is right.
+- SENS− is on A7 and works **only** through R18, a pull-up to `/+5V` in the same
+  bottom-side row as R1–R7. That beep proves the 5 V rail reaches the key
+  pull-ups, with no meter. "The rail or R1–R7 are missing" is closed too.
+- **He never touches a clip.** On the breadboard, with the same 220 Ω, he touches
+  only the fruit, calibrates, and it plays.
+
+Buzzer, buttons, LEDs and rail alive; exactly one block dead. And the third fact
+does not fit this board at all: a 220 Ω pull-up is a stiff node, so a body that
+is not galvanically tied to circuit GND couples nanovolts into it. Clipless play
+cannot work on the v0.7.1 front end — not by four counts, by four orders of
+magnitude. The working rig must have a **high-impedance** key node: either the
+V4/V4.5 front end (pin floating, the 220 Ω in *series*, touch reads **UP**) or an
+earth reference through an earthed PC's USB. Same resistor value in both, which
+is exactly why "the same values work on the breadboard" was never evidence of the
+same circuit.
+
+Also answered, because it was a fair objection: *"pressing both buttons should
+auto-calibrate whatever the value is — it has range."* It does; `MARGIN_MAX` is
+600. The range is not the problem, the **direction** is. `learnFromTouch()`
+tracks `lo[]` only, and clamps `dropped[i]` to 0, so an upward touch scores zero
+on every channel and the gesture reports "not separable from noise — margin
+unchanged" forever. `autoCalibrate()`, `keyTouched()` and `strongestKey()` all
+look down too. A one-directional search cannot be widened into a two-directional
+one.
+
+So the probe is now **direction-agnostic**: it reports the largest excursion
+since boot **both ways** and prints a one-line verdict — signal DOWN (this
+board's polarity, tune the margin), signal UP (wrong front end, and no
+calibration gesture will ever find it), or nothing moves (no signal to
+threshold). A probe that only looked down would have hidden the very thing it
+was flashed to find. Builds clean.
+
+The protocol in the review is now one experiment with two runs: the same sketch
+on the **board** and on the **working breadboard**, comparing the sign. Only one
+of the four outcomes puts the fault back inside the PCB, and it is named. Plus a
+free test in the same session — power the board from an earthed PC instead of a
+charger, since V5.5's own powering rule ("never the PC's 5 V") is what would have
+removed the earth path that makes clipless play work.
+
+Nothing desoldered, no values changed, V5.6 still unwritten: it waits on the two
+runs.
+
 ## 2026-09-12 — V5.5 wiring diagram: every part labelled with its PCB v0.7.1 reference designator
 
 - **Why**: the V5.5 breadboard is built and the PCB exists, so a part has to be
