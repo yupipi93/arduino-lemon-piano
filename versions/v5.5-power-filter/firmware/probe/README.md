@@ -4,10 +4,24 @@ Not a game and not a version: a diagnostic firmware for the **assembled
 v0.7.1 board**, for when it boots, lights its LEDs, and plays nothing.
 
 ```bash
-cd versions/v5.5-power-filter/firmware/probe
-pio run -t upload          # or -e nanoatmega328new for the new bootloader
-pio device monitor         # 9600 baud
+# The one to use when nobody is standing at the board yet:
+nohup ./run-when-ready.sh pcb 60 >/tmp/probe.log 2>&1 &
+
+# The one to use when you ARE at the board, hand on the fruit:
+./run.sh pcb              # ...or ./run.sh proto for the breadboard
 ```
+
+**`run-when-ready.sh` is the default, and the reason is not politeness.** A
+measurement that needs a person's hands is not ready when the machine is ready;
+it is ready when the person says so. It flashes the board, sends two buttons to
+Sergio's phone, and then sits there — for hours if need be — until he taps
+"estoy delante". Only then does it record. `run.sh` starts recording the instant
+it is launched, which is correct **only** if someone is already playing.
+
+On 2026-09-13 an agent got this backwards: it started a 160 s capture and then
+messaged him to go and play. His answer is the rule now — *"no puedes esperar
+que esté yo siempre disponible, no soy una máquina, soy un humano que tiene un
+hijo y responsabilidades."* The machine waits for the human, never the reverse.
 
 > **2026-09-12, from the bench:** questions 1 and 2 below are **already
 > answered** on the real board — every boot sound plays, and both SENS buttons
