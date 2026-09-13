@@ -170,6 +170,80 @@ and `strongestKey()`: all three only ever look down.
 
 That is also why the probe in §5 reports both directions and names the winner.
 
+## 2c. MEASURED, 2026-09-13: zero. Not small — zero.
+
+The Nano was plugged into quantumpc and the board read over SSH by the agent
+directly. Raw log: `pcb/validation/probe-v0.7.1-board-2026-09-13.txt`.
+
+```
+  key 1..7  baseline=1023  noise=0        (all seven identical)
+-- since boot   DOWN: 0 0 0 0 0 0 0   UP: 0 0 0 0 0 0 0
+   verdict: NOTHING MOVES. No touch signal to threshold.
+```
+
+**156.5 s, 1345 samples, seven channels, and the set of distinct values observed
+on every single one of them is `{1023}`.** Not a weak signal. Not a signal under
+the margin. No signal, at the resolution of the instrument, for two and a half
+minutes.
+
+### That is the predicted number, not an anomaly
+
+§2's table predicted **0.2–0.7 counts** for a normal-to-dry touch through a 220 Ω
+pull-up. The ADC cannot show a fraction of a count, so the prediction *was* zero.
+Working back from the observation: a reading of exactly 1023 needs the total
+hand → body → fruit → clip path to stay **above ~250 kΩ**, and ordinary dry skin
+is 100 kΩ–1 MΩ *per contact point*. The measurement and the arithmetic agree.
+
+Note the honest gap: the operator was asked to touch during the window but that
+cannot be verified from the log. It does not change the conclusion — a touch
+through this front end could not have shown up either way — and step 1 below
+settles it without needing anyone's word for it.
+
+### Three things this closes for good
+
+- **R1–R7 are populated and soldered.** A floating analog pin does not sit at a
+  rock-steady 1023; it wanders and drags the previous mux channel's residue
+  behind it, which is exactly what the V4 keyboard measurements look like. Seven
+  immovable 1023s are the signature of a working pull-up.
+- **Nothing is mis-calibrated.** `noise=0` puts the auto-margin at its floor of
+  4, the most sensitive the firmware can be. There is no threshold left to tune.
+- **No firmware change can rescue this board.** A 220 Ω path to the rail defeats
+  every sensing technique available on an AVR: the resistive divider (the signal
+  is sub-count), and RC timing / `CapacitiveSensor` too, because the node
+  recharges through 220 Ω in nanoseconds. **The resistor has to physically go.**
+
+## 2d. The plan, in the order that costs least
+
+**Step 1 — remove R1…R7 and measure again. No new parts.** Seven 0805s on the
+bottom side; they lift with an iron and tweezers. Leave the pads empty and re-run
+the probe. If the channels start swinging while touching the fruit **with no
+clip**, then the breadboard's key node is a floating one and the PCB's pull-up
+bank *is* the entire difference between the two rigs — established by
+measurement rather than by argument, and without needing to know what the
+breadboard is wired like.
+
+**Step 2 — fit the value that matches what step 1 shows.** Sergio's parts drawer
+(top unit, ascending value order) already has **1 MΩ** and **220 kΩ**. They are
+through-hole, but a THT resistor solders onto an 0805 pad pair with bent legs
+perfectly well for seven parts.
+
+| | signal with a GND clip | clipless | firmware |
+|---|---|---|---|
+| empty pads (floating) | large, messy | works — this is the V4 front end | polarity **flips**: touch reads UP |
+| **1 MΩ** | ~500 counts | 50 Hz swing, board must be earth-referenced | unchanged |
+| 220 kΩ | ~430 counts | weak | unchanged |
+
+1 MΩ is the recommendation: it keeps the firmware's polarity, so nothing has to
+change in the game except the double-read below.
+
+**Step 3 — `readKey()` must discard its first conversion.** Above ~10 kΩ source
+impedance the ATmega's sample-and-hold has not settled when the conversion
+starts, so a single `analogRead` after a mux switch carries the previous
+channel's residue. The probe already does this; the game build does not. It is
+two lines.
+
+That trio is V5.6. Nothing about it re-fabricates the board.
+
 ## 3. The buzzer branch — CLOSED 2026-09-12, it works (kept for the reasoning)
 
 "The notes do not sound" and "the keys do not detect" are not the same fault,

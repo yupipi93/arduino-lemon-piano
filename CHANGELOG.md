@@ -42,6 +42,27 @@ closes a question this review had left open:
 
 The board is doing exactly what it was designed to do. That is the finding.
 
+**Then the long run: 156.5 s, 1345 samples, seven channels, and the set of
+distinct values seen on every one of them is `{1023}`.** Zero movement, both
+directions, for two and a half minutes with the fruit being played. Log kept at
+`pcb/validation/probe-v0.7.1-board-2026-09-13.txt`.
+
+That is the *predicted* number. §2's table said 0.2–0.7 counts for a normal-to-dry
+touch through 220 Ω, and an ADC cannot show a fraction of a count — so the
+prediction was zero, and zero is what the instrument reports. Working backwards,
+a reading of exactly 1023 means the hand → body → fruit path stays above
+~250 kΩ, which dry skin does on its own.
+
+And one consequence worth writing down plainly: **no firmware change can rescue
+this board.** A 220 Ω path to the rail defeats the resistive divider (sub-count
+signal) *and* RC-timing / `CapacitiveSensor` alike, because the node recharges
+through 220 Ω in nanoseconds. The resistor has to physically come off.
+
+The plan is now in §2d of the review, cheapest step first: **remove R1–R7, fit
+nothing, measure again** — no new parts, and it settles what the breadboard is
+doing without anyone having to describe it. Then fit 1 MΩ (already in the parts
+drawer, top unit) and make `readKey()` discard its first conversion.
+
 ## 2026-09-12 (fix) — the probe flashed fine and printed to nobody
 
 First real run on the board: upload SUCCESS on `/dev/ttyUSB0`, and then nothing.
