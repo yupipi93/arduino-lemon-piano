@@ -2,6 +2,34 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-13 — quiet-rest control: 1 MΩ does not ghost, and the game is loaded
+
+The V5.5 game firmware (with the first-conversion discard) was flashed to the
+board: 15454 bytes written and verified. It boots, calibrates all seven at
+baseline 1023 / noise 0 / margin 4, enters Level 1, and **detects key 1** — the
+`key 1 again - locked` messages are the repeat lock behaving correctly, since
+keys 2–7 are still 220 Ω and cannot unlock it.
+
+A first pass showed chatter (11 retriggers in 0.6 s) and the margin walking from
+4 to 76 on its own. Both were the operator playing with the board during the
+flash — he confirmed it, and then left the rig untouched so it could be proved.
+Unattended batch, nobody in the room:
+
+- **Game, 4 min at rest:** after `Level 1`, **zero lines**. No phantom notes.
+- **Probe, 4 min at rest, 2087 samples:** the 1 MΩ channel reads **1023 in
+  100.00 % of samples** — zero excursion, zero samples below the 1019 threshold.
+  Channels 2–7 (still 220 Ω) likewise flat.
+
+Against a press signal of 132–291 counts and a threshold of 4, that settles it:
+**do not raise `TOUCH_HYSTERESIS`, do not drop to 470 kΩ.** 1 MΩ has room on both
+sides. Logs kept as `*-quiet-rest-4min-2026-09-13.txt`; the batch re-flashed the
+game afterwards, so the board is playable as it stands.
+
+Process note: the results sat finished for 26 minutes because the agent's own
+wait loop ran `pgrep -f quiet.sh`, a pattern that **matches the waiting shell's
+own command line** — it waited on itself and no completion ever fired. The user
+had to come and say so.
+
 ## 2026-09-13 — SOLVED: R1 at 1 MΩ, 15 clean presses, no ground clip
 
 External 1 MΩ from J2 pin 1 to the Nano's 5V pin, R1 lifted. Baseline **1022,

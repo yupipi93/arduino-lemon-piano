@@ -1,0 +1,11 @@
+[    1.5] Lemon Piano V5.5
+[    1.6] Auto-calibrating - LEDs running = HANDS OFF THE FRUIT...
+[    4.7]   key 1 baseline=1023 noise=0 -> threshold=1019
+[    4.8]   key 2 baseline=1023 noise=0 -> threshold=1019
+[    4.8]   key 3 baseline=1023 noise=0 -> threshold=1019
+[    4.9]   key 4 baseline=1023 noise=0 -> threshold=1019
+[    4.9]   key 5 baseline=1023 noise=0 -> threshold=1019
+[    5.0]   key 6 baseline=1023 noise=0 -> threshold=1019
+[    5.0]   key 7 baseline=1023 noise=0 -> threshold=1019
+[    5.1] auto margin=4  (worst noise 0 x 2, floor 4)
+[    5.4] Level 1

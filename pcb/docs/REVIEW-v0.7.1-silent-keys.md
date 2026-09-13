@@ -505,6 +505,46 @@ it worked on 2 counts of headroom and the PCB fell off the edge. **1 MΩ replace
    change is what makes a MΩ front end readable at all) and play it on fruit.
 4. Then, and only then, decide whether V5.6 exists as a board revision.
 
+## 2i. The quiet-rest control: zero ghosting at 1 MΩ
+
+The one thing §2h could not answer was whether a 1 MΩ node ghosts when nobody is
+near it — the earlier chatter (11 retriggers in 0.6 s, and the margin walking
+from 4 to 76) was suspected to be the operator's own hands, but suspicion is not
+evidence. He then left the rig untouched and said so, which is the control this
+needed. Unattended batch, nobody in the room:
+
+**The game, 4 minutes at rest** (`game-v0.7.1-quiet-rest-4min-2026-09-13.txt`):
+after `Level 1`, **zero lines**. No phantom notes, no margin nudges, nothing.
+
+**The probe, 4 minutes at rest**, 2087 samples
+(`probe-v0.7.1-quiet-rest-4min-2026-09-13.txt`):
+
+| channel | min | max | excursion | pull-up |
+|---|---|---|---|---|
+| 1 | 1023 | 1023 | **0** | **1 MΩ** |
+| 2–7 | 1023 | 1023 | 0 | 220 Ω |
+
+**100.00 % of the 1 MΩ channel's 2087 samples are exactly 1023.** Not one count
+of movement in four minutes; zero samples below the game's 1019 threshold.
+
+So the earlier chatter was hands, confirmed from both ends, and the decision
+falls out:
+
+| | |
+|---|---|
+| press signal (§2h) | **132–291 counts** |
+| rest noise at 1 MΩ | **0 counts / 4 min** |
+| game threshold | **4 counts** |
+
+**Do not raise `TOUCH_HYSTERESIS`. Do not drop to 470 kΩ.** 1 MΩ is the answer,
+with room on both sides. The hysteresis worry in §2h was real arithmetic aimed at
+a symptom that turned out to be a human — worth recording precisely because the
+temptation was to fix it before measuring it.
+
+One caveat survives: six of the seven channels are still 220 Ω, so this cannot
+show coupling *between* MΩ neighbours. After the swap, repeat this same
+quiet-rest run — as a confirmation now, not a gate.
+
 ## 3. The buzzer branch — CLOSED 2026-09-12, it works (kept for the reasoning)
 
 "The notes do not sound" and "the keys do not detect" are not the same fault,
