@@ -24,6 +24,18 @@ FakeSerial Serial;
 #include <string>
 #include <vector>
 
+// LED_PINS lives in the firmware, so the fake board's frame recorder can only
+// be defined once main.cpp has been included. One frame per change to the bar.
+void FakeBoard::noteLedFrame(uint8_t pin) {
+  for (uint8_t i = 0; i < LED_COUNT; i++) {
+    if (LED_PINS[i] != pin) continue;
+    std::string f;
+    for (uint8_t j = 0; j < LED_COUNT; j++) f += pinState[LED_PINS[j]] ? '#' : '.';
+    pushLedFrame(f);
+    return;
+  }
+}
+
 // ── the rig ─────────────────────────────────────────────────────────────────
 static int failures = 0, checks = 0;
 
@@ -48,6 +60,26 @@ static std::vector<int> tonesSince(size_t mark) {
   std::vector<int> out;
   for (size_t i = mark; i < board.tones.size(); i++) out.push_back(board.tones[i].freq);
   return out;
+}
+static size_t frameMark() { return board.ledFrames.size(); }
+static std::vector<std::string> framesSince(size_t mark) {
+  std::vector<std::string> out;
+  for (size_t i = mark; i < board.ledFrames.size(); i++) {
+    if (out.empty() || out.back() != board.ledFrames[i]) out.push_back(board.ledFrames[i]);
+  }
+  return out;
+}
+// Was there a single LED walking from the right end towards the left?
+static bool sawBackwardsSweep(const std::vector<std::string> &f) {
+  int lastLone = -1, steps = 0;
+  for (size_t i = 0; i < f.size(); i++) {
+    int lit = -1, n = 0;
+    for (int j = 0; j < (int) f[i].size(); j++) if (f[i][j] == '#') { lit = j; n++; }
+    if (n != 1) continue;                       // only interested in lone LEDs
+    if (lastLone >= 0 && lit == lastLone - 1) steps++;
+    lastLone = lit;
+  }
+  return steps >= LED_COUNT - 2;                // it walked most of the bar
 }
 static size_t serialMark() { return board.serial.size(); }
 static bool serialSince(size_t mark, const char *needle) {
@@ -125,8 +157,10 @@ static void test_game_still_scores() {
   ok(serialSince(sm, "OK 1/10"), "the first note of the code lights LED 1");
   eqInt(board.pinState[LED_PINS[0]], HIGH, "  ...and it really is LED 1");
   sm = serialMark();
+  size_t tm2 = toneMark();
   touchKey(5);                                    // the SAME key again
   ok(!serialSince(sm, "OK 2/10"), "the same lemon twice does NOT score twice (the game's repeat filter)");
+  ok(!tonesSince(tm2).empty(), "  ...but it DOES sound: a piano before it is a game");
   sm = serialMark();
   touchKey(0);                                    // key 1: wrong note
   ok(serialSince(sm, "WRONG"), "a wrong note is punished");
@@ -520,6 +554,75 @@ static void test_bar_counts_sensitivity() {
      std::to_string(afterMinus) + " -> " + std::to_string(litLeds()));
 }
 
+
+// ── 18. A repeated lemon sounds, costs nothing, and SHOWS that (2026-09-13) ─
+// Sergio: the locked-key rattle read as a mistake, and pressing the same lemon
+// twice is not a mistake -- it is just not a move. So the repeat now (a) sounds
+// its note like any other press, (b) scores nothing and costs nothing, and
+// (c) says so with the backwards sweep instead of a scolding noise.
+//
+// The bar is what carries the message, so the bar is what this pins: the score
+// is IDENTICAL before and after, which is exactly what a wrong note is not.
+static void test_repeat_sounds_but_scores_nothing() {
+  section("18. A repeated lemon sounds, scores nothing, and costs nothing");
+
+  boot();
+  const int code[10] = {5, 4, 5, 6, 1, 4, 1, 0, 2, 3};
+  touchKey(code[0]);
+  touchKey(code[1]);
+  eqInt(litLeds(), 2, "two correct notes, two LEDs");
+  const std::string before = ledPattern();
+
+  // The same lemon again: it is the note the game just accepted.
+  size_t sm = serialMark(), tm = toneMark();
+  touchKey(code[1]);
+  std::vector<int> heard = tonesSince(tm);
+
+  ok(!heard.empty(), "the repeat SOUNDS",
+     std::to_string(heard.size()) + " tones");
+  ok(!heard.empty() && heard[0] == keys[code[1] + (level - 1) * KEY_COUNT],
+     "  ...and it is that lemon's own note, at full voice",
+     heard.empty() ? "silence" : "got " + std::to_string(heard[0]));
+  ok(!serialSince(sm, "WRONG"), "  ...the game does NOT punish it");
+  ok(!serialSince(sm, "OK 3/10"), "  ...and does NOT score it");
+  eqInt(currentStep, 2, "  ...the progress is untouched");
+  ok(ledPattern() == before, "  ...and the bar ends exactly where it started",
+     before + " -> " + ledPattern());
+  ok(serialSince(sm, "scores nothing"), "  ...and it says so in the log");
+
+  // The old scolding noise is gone: the ONLY sound was the note itself.
+  eqInt((long) heard.size(), 1, "  ...and the locked-key rattle is gone: one sound, the note");
+
+  // ...and the cue really is the BACKWARDS sweep. The bar starts and ends the
+  // same, so only the film in between can prove the player was told anything.
+  boot();
+  touchKey(code[0]);
+  touchKey(code[1]);
+  size_t fm = frameMark();
+  touchKey(code[1]);                   // the repeat
+  std::vector<std::string> film = framesSince(fm);
+  ok(sawBackwardsSweep(film),
+     "  ...and the cue is one LED running RIGHT TO LEFT across the bar",
+     std::to_string(film.size()) + " frames, none of them a backwards run");
+  ok(!film.empty() && film.back() == before,
+     "  ...landing back on the score it started from",
+     film.empty() ? "no frames" : before + " -> " + film.back());
+
+  // ...and the game carries on normally from there: the NEXT correct lemon
+  // scores, so a repeat really did cost nothing.
+  sm = serialMark();
+  touchKey(code[2]);
+  ok(serialSince(sm, "OK 3/10"), "the next correct lemon still scores");
+  eqInt(litLeds(), 3, "  ...and the bar moves on to three");
+
+  // A WRONG note, by contrast, still blanks the bar and LEAVES it blank --
+  // which is what makes the two impossible to confuse.
+  sm = serialMark();
+  touchKey(0);                        // step 3 wants key 7 (code[3] = 6), not key 1
+  ok(serialSince(sm, "WRONG"), "a wrong lemon is still punished");
+  eqInt(litLeds(), 0, "  ...and its bar stays blank, unlike a repeat's");
+}
+
 int main(int argc, char **argv) {
   if (argc > 1 && std::string(argv[1]) == "-v") board.traceSerial = true;
   printf("\n\033[1mLemon Piano V5.5 — firmware on a fake board\033[0m\n");
@@ -542,6 +645,7 @@ int main(int argc, char **argv) {
   test_free_play_is_a_switch_on_plus();
   test_held_fruit_sounds_once();
   test_bar_counts_sensitivity();
+  test_repeat_sounds_but_scores_nothing();
 
   printf("\n%d checks, \033[%sm%d failed\033[0m\n\n",
          checks, failures ? "31" : "32", failures);

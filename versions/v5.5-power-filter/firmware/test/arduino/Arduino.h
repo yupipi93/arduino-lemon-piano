@@ -74,6 +74,29 @@ struct FakeBoard {
   // logs
   struct ToneEvent { int freq; uint32_t atMs; };
   std::vector<ToneEvent> tones;           // every tone() that started
+
+  // ── the LED bar, as a FILM rather than a snapshot (2026-09-13) ───────────
+  // Some of what this piano says is an ANIMATION, and an animation is invisible
+  // to a test that only ever reads the final pin states: the backwards repeat
+  // sweep starts and ends on the identical bar, which is the whole point of it.
+  // So every change to the bar is appended here, one "#....." frame per change,
+  // and a test can assert the shape of the motion in between.
+  //
+  // It is CAPPED. A long scenario writes the bar hundreds of times a second,
+  // and an unbounded log ate the heap and segfaulted the runner before this cap
+  // existed. Every reader works from a mark taken moments earlier, so only the
+  // recent past is ever needed; when the cap is hit the oldest half is dropped
+  // and `ledFramesDropped` records that it happened.
+  static const size_t LED_FRAME_CAP = 40000;
+  std::vector<std::string> ledFrames;
+  size_t ledFramesDropped = 0;
+  void pushLedFrame(const std::string &f) {
+    if (ledFrames.size() >= LED_FRAME_CAP) {
+      ledFrames.erase(ledFrames.begin(), ledFrames.begin() + LED_FRAME_CAP / 2);
+      ledFramesDropped += LED_FRAME_CAP / 2;
+    }
+    ledFrames.push_back(f);
+  }
   std::string serial;
   bool traceSerial = false;
 
@@ -134,6 +157,9 @@ struct FakeBoard {
     if (touched[k] && !contactBroken()) v -= touchDepth;
     return v < 0 ? 0 : v;
   }
+  // Called on every pin change; records a frame only when it was a bar LED.
+  void noteLedFrame(uint8_t pin);
+
   int readChannel(int k)      { return convert(settledValue(k), adcSettle); }
   int readButtonChannel()     { return convert(minusDown ? 0 : 1023, 1.0); }
 };
@@ -150,7 +176,10 @@ inline void pinMode(uint8_t pin, uint8_t mode) {
   if (pin < FakeBoard::PIN_COUNT) board.pinMode_[pin] = mode;
 }
 inline void digitalWrite(uint8_t pin, uint8_t v) {
-  if (pin < FakeBoard::PIN_COUNT) board.pinState[pin] = v;
+  if (pin >= FakeBoard::PIN_COUNT) return;
+  const uint8_t was = board.pinState[pin];
+  board.pinState[pin] = v;
+  if (was != v) board.noteLedFrame(pin);
 }
 inline int digitalRead(uint8_t pin) {
   if (pin == 12) return board.plusDown ? LOW : HIGH;   // SENS_UP, to GND

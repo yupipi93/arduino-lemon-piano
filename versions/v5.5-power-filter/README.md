@@ -74,16 +74,42 @@ Two additions, on the two buttons that were already there. No hardware changed.
 > **What changed on 2026-09-13, after the first real session on the v0.7.1
 > board.** Free play came off the wheel and onto its own button; neither button
 > ramps the sensitivity any more; the LED bar counts sensitivity instead of
-> margin; and a lemon held down sounds once instead of machine-gunning. Each is
-> Sergio's own report from playing it, and each has a named test.
+> margin; a lemon held down sounds once instead of machine-gunning; and the
+> locked-key rattle is gone — a repeated lemon sounds its note and is marked by
+> a backwards LED sweep instead. Each is Sergio's own report from playing it,
+> and each has a named test.
+
+### A repeated lemon, in the GAME (2026-09-13)
+
+Pressing the same lemon twice in a row is **not a mistake**. It is just not a
+move: the game is already waiting for a *different* lemon. Until 2026-09-13 the
+piano said that by going silent and then playing `sfxKeyStuck`, a low rattle —
+and a rattle reads as "you got it wrong". Sergio asked for both halves to go.
+
+Now the repeat **sounds its note at full voice** (a piano before it is a game),
+scores nothing, costs nothing, and is marked in **light**: one LED runs from the
+right end of the bar to the left, and the progress bar snaps back exactly as it
+was. Three deliberate choices make that readable across the room:
+
+- it **moves**, and the game's bar is otherwise perfectly steady — motion is
+  already this piano's word for "neither a score nor a question";
+- it runs **right to left**, against the direction progress fills, so it reads
+  as "that took you nowhere";
+- it **ends on the identical bar it started from**, which is the actual message.
+  A wrong note, by contrast, blanks the bar and *leaves* it blank.
+
+The animation is pinned by a test, not just its end state: the fake board records
+a frame per change to the bar (`ledFrames`), so `piano_sim_test` asserts the
+shape of the motion in between — a cue that starts and ends on the same picture
+is invisible to anything that only reads the final pin states.
 
 **FREE PLAY** is the piano with the game taken out. The seven lemons become
 **do re mi fa sol la si** — C5 D5 E5 F5 G5 A5 B5, one octave of plain white
 keys — and that is all they are: no secret code, no wrong note, no penalty, and
 crucially **the same lemon may be played over and over**. That last point is the
-whole feature. The game deliberately swallows a repeated key (flaky fruit
-contact used to machine-gun both the buzzer and the guesses), and that rule is
-exactly backwards for an instrument, so free play does not have it.
+whole feature. The game does not SCORE a repeated key, and that rule is exactly
+backwards for an instrument, so free play does not have it at all — here a
+repeat is simply another note, with no bar animation and nothing to ignore.
 
 **Over and over means one note per touch, not one per flicker** (2026-09-13).
 Resting a finger on a lemon is a single note that lasts as long as the finger

@@ -58,10 +58,16 @@ oído.
 - Al superar el nivel 4 la melodía final se repite en bucle hasta que la pares
   (ver §5).
 
-**Tocar el mismo limón dos veces seguidas no hace nada.** Es a propósito: el
-contacto con la fruta es inestable y sin esa regla un roce suelta cinco notas.
-Toca otro limón y se desbloquea. Si insistes en el limón bloqueado pasado medio
-segundo, oirás un traqueteo grave: es un "prueba con otro", no una avería.
+**Tocar el mismo limón dos veces seguidas no es un fallo: simplemente no
+cuenta.** La nota suena igual de bien; el juego no la está escuchando, porque ya
+está esperando un limón *distinto*.
+
+Y se ve que no ha contado: **una luz recorre la barra hacia atrás**, del extremo
+derecho al izquierdo, y después tu marcador vuelve exactamente como estaba. Hacia
+atrás porque no te ha llevado a ningún sitio. No pierdes nada, no se te resta
+nada, y ya no hay sonido de regañina: ese traqueteo se ha quitado (13-09-2026).
+Compáralo con una nota equivocada, que **apaga la barra y la deja apagada**: no
+se pueden confundir.
 
 ## 4. Modo libre — el piano sin juego
 
@@ -229,7 +235,6 @@ afinado **por encima** de los limones para que nunca se confunda con una nota.
 | Las mismas tres, descendentes | La rueda se cerró sin cambiar nada |
 | Quinta que resuelve en la octava | Has elegido un modo |
 | Golpe doble grave | Fin del recorrido, o carga cancelada |
-| Traqueteo grave triple | Ese limón está bloqueado: toca otro |
 | Estertor corto de muerte | Nota equivocada |
 | 1-up | El ajuste inteligente ha aprendido algo |
 | Melodía de muerte completa | El ajuste inteligente no ha podido; no ha cambiado nada |

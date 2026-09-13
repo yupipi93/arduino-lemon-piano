@@ -50,10 +50,16 @@ Each level hides a **secret ten-note melody**. Your job is to find it by ear.
   it, then the flagpole fanfare — and the **next level starts by itself**.
 - Clear level 4 and the finale plays on a loop until you stop it (see §5).
 
-**Playing the same lemon twice in a row does nothing.** That is deliberate: fruit
-contact is flaky, and without that rule one wobbly touch would fire five notes.
-Play a different lemon to unlock it. If you press a locked lemon again after half
-a second, you get a low rattle — that is "try another one", not a fault.
+**Playing the same lemon twice in a row is not a mistake — it just does not
+count.** The note sounds exactly as it should; the game simply is not listening
+for it, because it is already waiting for a *different* lemon.
+
+You can see that it did not count: **one light runs backwards across the bar**,
+from the right end to the left, and then your score comes back exactly as it
+was. Backwards, because it took you nowhere. Nothing is lost, nothing is
+deducted, and there is no telling-off noise — that rattle is gone (2026-09-13).
+Compare it with a wrong note, which **blanks the bar and leaves it blank**: the
+two can never be confused.
 
 ## 4. Free play — the piano with no game
 
@@ -208,7 +214,6 @@ lemons so it can never be mistaken for a note.
 | The same three, falling | The wheel closed, nothing changed |
 | Fifth resolving to the octave | You chose a mode |
 | Low double bump | End of the range, or a cancelled charge |
-| Low triple rattle | That lemon is locked — play a different one |
 | Short death rattle | Wrong note |
 | 1-up | Smart adjust learned something |
 | Full death tune | Smart adjust could not; nothing changed |

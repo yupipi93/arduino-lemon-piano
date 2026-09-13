@@ -200,12 +200,12 @@ const unsigned long SUSTAIN_CAP_MS = 2000;  // how long the wrong tone waits for
 // (about 150 ms hand-to-hand at speed) or fast playing would lose notes.
 const unsigned long RELEASE_CONFIRM_MS = 90;
 
-const unsigned long KEY_LOCK_COOLDOWN_MS = 500;  // a locked key (pressed again
-                                  // before a different one unlocks it) stays
-                                  // silent for this long after release — a
-                                  // quick accidental double-tap gets no cue.
-                                  // Press it again after the cooldown and it
-                                  // plays sfxKeyStuck instead of staying silent.
+// A repeated lemon SOUNDS and says "that did not count" with light instead.
+// One LED from the right end to the left, at this pace, then the progress bar
+// snaps back — see showRepeatSweep(). Faster than the menu's entry sweep on
+// purpose: this one has to read as a flick, not as an announcement.
+const int REPEAT_SWEEP_MS = 20;
+
 // UI chirps sit ABOVE every game note (game 1 reaches G7 = 3136 Hz, game 2 runs
 // 220..587 Hz), so a state sound can never be mistaken for the piano. 3.3-4.8 kHz
 // is also where a piezo is loudest.
@@ -536,12 +536,10 @@ int  currentStep = 0;          // how many correct notes so far (index into the 
 unsigned long keyToneMinEndsAt = 0;  // a key note never stops before this millis()
 int  activeKey = -1;           // key whose note is sounding right now (-1 = silence)
 unsigned long releaseSeenAt = 0;  // when activeKey first read clear — 0 = it did not
-int  lastCountedKey = -1;      // last key the GAME accepted; pressing it again is
-                               // ignored until a different key is pressed
-int  lastSoundedKey = -1;      // ...and it does not sound again either
+int  lastCountedKey = -1;      // last key the GAME accepted; pressing it again
+                               // sounds, shows the repeat sweep, and scores
+                               // nothing until a DIFFERENT key is played
 int  pressedNote = 0;          // last note played
-unsigned long lastReleaseAt = 0;  // when the locked key (lastSoundedKey) was let
-                                  // go — starts the KEY_LOCK_COOLDOWN_MS clock
 
 int  baseline[KEY_COUNT];      // each key's resting level (measured, then tracked)
 int  noiseLevel[KEY_COUNT];    // peak-to-peak idle noise, from calibration
@@ -607,7 +605,7 @@ void soundLearnBlip();
 void soundLearnOk();
 void soundLearnFail();
 void soundStuck();
-void soundKeyStuck();
+void showRepeatSweep();
 void resetBoard();
 void logGame();
 void toggleFreePlay();
@@ -719,7 +717,6 @@ void loop() {
     long remaining = (long) (keyToneMinEndsAt - millis());
     if (remaining > 0) delay(remaining);
     stopKeyTone();
-    lastReleaseAt = millis();  // starts the locked key's KEY_LOCK_COOLDOWN_MS clock
     activeKey = -1;
     if (freePlay() && !ledMeterUntil) showFreePlayIdle();
     return;
@@ -747,25 +744,13 @@ void loop() {
       return;
     }
 
-    if (justPressed != lastSoundedKey) {
-      startKeyTone(pressedNote); // it's a piano — a fresh key sounds its note and
-                                 // keeps sounding while the lemon is touched
-    } else {
-      // Locked: this key already reached the game and won't again until a
-      // different one is played. Stay silent for the first KEY_LOCK_COOLDOWN_MS
-      // (a quick accidental double-tap gets no cue) — but a press after that
-      // grace window means the player is genuinely stuck, so say so.
-      bool stillCoolingDown = (millis() - lastReleaseAt) < KEY_LOCK_COOLDOWN_MS;
-      if (!stillCoolingDown) {
-        soundKeyStuck();
-      }
-      if (serialEnabled) {
-        Serial.print(F("    key ")); Serial.print(justPressed + 1);
-        Serial.println(stillCoolingDown
-          ? F(" again - locked (play another key to unlock it)")
-          : F(" again - STUCK (play another key to unlock it)"));
-      }
-    }
+    // A KEY ALWAYS SOUNDS (2026-09-13). This is a piano before it is a game, so
+    // the note under the finger is never withheld — not even when the game has
+    // nothing to do with it. A repeat used to stay silent and then scold, with
+    // the sfxKeyStuck rattle; Sergio asked for both of those to go, because
+    // pressing the same lemon twice is not a mistake, it is just not a move.
+    startKeyTone(pressedNote);
+
 #ifdef DEBUG_TOUCH
     Serial.print(F("press key ")); Serial.print(justPressed + 1);
     Serial.print(F("  readings:"));
@@ -779,14 +764,18 @@ void loop() {
     Serial.println();
 #endif
 
-    // ...but the GAME only sees the first press of a key, and a repeat does not
-    // even sound: holding a lemon or tapping it again is the same single event
-    // until a DIFFERENT key is played. Flaky fruit contact used to machine-gun
-    // both the buzzer and the guesses.
+    // ...but the GAME only sees the FIRST press of a key. A repeat still sounds;
+    // it simply does not score, does not advance and — this is the part that
+    // changed — does not COST anything either. It says so in light, not in noise.
     if (justPressed != lastCountedKey) {
       lastCountedKey = justPressed;
-      lastSoundedKey = justPressed;
       handleGuess();
+    } else {
+      showRepeatSweep();
+      if (serialEnabled) {
+        Serial.print(F("    key ")); Serial.print(justPressed + 1);
+        Serial.println(F(" again - sounds, scores nothing (play a different lemon)"));
+      }
     }
   }
 }
@@ -845,7 +834,6 @@ void handleGuess() {
       // guess of the next level. Leave it marked as already used: releasing and
       // pressing again is what unlocks it, exactly like any other repeat.
       lastCountedKey = wonWith;
-      lastSoundedKey = wonWith;
       logGame();
       delay(PHRASE_GAP_MS);
       playLevelIntro();          // announce the new level before free play resumes
@@ -1472,6 +1460,39 @@ void showMarginOnBar() {
   ledMeterUntil = millis() + LED_METER_MS;
 }
 
+// ── "that lemon does not count" ─────────────────────────────────────────────
+// A repeated lemon still SOUNDS — this is a piano before it is a game — but the
+// game ignores it, and the player has to be able to SEE that. It used to be
+// told with the sfxKeyStuck rattle, and Sergio had it right on 2026-09-13: that
+// noise reads as a mistake, and pressing the same lemon twice is not a mistake.
+// It is simply not a move.
+//
+// So the bar runs BACKWARDS: one LED from the right end to the left, then the
+// progress bar snaps back exactly as it was. Three things make that readable
+// across the room, and each is deliberate:
+//
+//   - it MOVES, and this bar is otherwise perfectly steady while playing.
+//     Motion is already this piano's word for "neither a score nor a question"
+//     (it is what the wheel used to mark free play), so it cannot be read as
+//     either of them.
+//   - it runs RIGHT TO LEFT, against the direction progress fills, so it reads
+//     as "that took you nowhere" and never as a step forward.
+//   - it ENDS on the identical bar it started from. The score is visibly
+//     untouched, which is the whole message. A wrong note, by contrast, blanks
+//     the bar and LEAVES it blank — the two can never be confused.
+//
+// It is not the menu's entry sweep either: that one goes out AND back, is
+// slower, and arrives with a three-note cue. This is one flick, under a note
+// that is already sounding.
+void showRepeatSweep() {
+  for (int8_t i = LED_COUNT - 1; i >= 0; i--) {
+    allLedsOff();
+    digitalWrite(LED_PINS[i], HIGH);
+    delay(REPEAT_SWEEP_MS);
+  }
+  restoreIdleDisplay();      // …and the score is exactly where it was
+}
+
 // ── What the bar means in FREE PLAY ─────────────────────────────────────────
 // Idle: the two ENDS lit and nothing between them. The game's bar always fills
 // from the left, so a gap in the middle is a shape no game state can produce —
@@ -1529,7 +1550,6 @@ void resetBoard() {
   pressedNote = 0;
   lastCountedKey = -1;   // a new round may legitimately open with the key that
                          // ended the last one
-  lastSoundedKey = -1;
   stopKeyTone();
   activeKey = -1;
   allLedsOff();
@@ -1640,7 +1660,6 @@ void soundLearnBlip()  { playSfx(sfxCoin); }       // smart adjust, still listen
 void soundLearnOk()    { playSfx(sfxOneUp); }      // a genuine gain: 1-up
 void soundLearnFail()  { playSfx(sfxDeath); }      // it did not work
 void soundStuck()      { playSfx(sfxFireball); }   // odd, but carry on
-void soundKeyStuck()   { playSfx(sfxKeyStuck); }   // a locked lemon, pressed again
 
 // The sensitivity tick is the coin's grace note alone — the shortest sound in the
 // set — with its PITCH TRACKING THE MARGIN, so holding a button sweeps a

@@ -2,6 +2,67 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-13 — a repeated lemon is not a mistake: it sounds, and the bar says so
+
+Sergio, after the four changes above landed: the locked-key rattle reads as
+"you got it wrong", and pressing the same lemon twice is not wrong. It is just
+not a move. He asked for the lock and the scolding noise to go, for the note to
+sound properly, and for the piano to say **visually** that the press did not
+count — and left the choice of cue to me.
+
+**What the game does now.** A repeat sounds its note at full voice (a piano
+before it is a game), scores nothing, advances nothing and — the part that
+changed — costs nothing. Gone with it: `KEY_LOCK_COOLDOWN_MS`, `lastReleaseAt`,
+`lastSoundedKey` (fully redundant with `lastCountedKey`) and `soundKeyStuck()`.
+`sfxKeyStuck` stays in `mario_sfx.h`, unused by V5.5; earlier versions still
+play it.
+
+**The cue: the bar runs BACKWARDS.** One LED from the right end to the left,
+then the progress bar snaps back exactly as it was. Three deliberate choices,
+each one a reason it can be read across the room with the lid closed:
+
+- it **moves**, and this bar is otherwise perfectly steady while playing. Motion
+  is already this piano's word for "neither a score nor a question" — it is what
+  the wheel used to use to mark free play — so it cannot be read as either.
+- it runs **right to left**, against the direction progress fills, so it reads
+  as "that took you nowhere" and never as a step forward.
+- it **ends on the identical bar it started from**. The score is visibly
+  untouched, which is the whole message. A wrong note blanks the bar and LEAVES
+  it blank, so the two can never be confused.
+
+It is not the menu's entry sweep either: that one goes out and back, is slower,
+and arrives with a three-note cue.
+
+**A cue that starts and ends on the same picture is invisible to a test that
+only reads final pin states** — which is how the first version of test 18 passed
+with the sweep deleted. So the fake board now records a frame per change to the
+bar (`ledFrames`, capped) and the test asserts the **shape of the motion**, not
+just where it landed.
+
+Evidence:
+
+- New **test 18**, `A repeated lemon sounds, scores nothing, and costs nothing`:
+  it sounds, it is that lemon's own note, no WRONG, no OK, progress untouched,
+  the bar ends where it started, one sound only, the cue really is a right-to-
+  left run, the next correct lemon still scores, and a wrong note still blanks
+  the bar and leaves it blank.
+- **107 + 100 checks, 0 failed.**
+- **Mutation controls, run separately:** delete `showRepeatSweep()` → 2 checks
+  fail (`0 frames, none of them a backwards run`); make the repeat silent again
+  → 4 checks fail.
+- Two harness defects found and fixed on the way, both mine: `ledFrames` grew
+  without bound, and test 18 indexed an empty vector (ASAN: SEGV at
+  `piano_sim_test.cpp:585`). The second is why the first mutation run reported
+  a crash instead of a failure.
+- `pio run` clean on all five envs; 15570 B.
+- Flashed and verified on the board: boots, all seven at baseline 1023 /
+  noise 0 / margin 4, Level 1.
+
+Both printed instruction sheets and `docs/MARIO-SOUNDS.md` updated — they
+documented a lock, a cooldown and a rattle that no longer exist.
+
+**Not yet played by a human.**
+
 ## 2026-09-13 — four changes from the first real session with the board
 
 All four are Sergio's own reports after playing the fixed v0.7.1 rig, and each

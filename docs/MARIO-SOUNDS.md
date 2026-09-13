@@ -316,7 +316,7 @@ notes.
 | Smart adjust failed | **Death** (short) | it did not work, and nothing changed |
 | Key stuck / re-baselined (noise, not a finger) | **Fireball** | something odd happened, keep going |
 | Wrong note in the game | **Mistake** (short Death excerpt) | the game's own "no" — unmistakably Mario, distinct from the UI chirps |
-| Locked key pressed again, after 500 ms | **Key Stuck** (low rattle) | "this key specifically is locked, try another" — silent for the first 500 ms so a quick double-tap isn't scolded |
+| Locked key pressed again | **Key Stuck** (low rattle) | V1–V5 only. **Retired in V5.5 on 2026-09-13**: the repeat now sounds its own note and is marked by a backwards LED sweep, because pressing the same lemon twice is not a mistake |
 | **A level (re)starts** | the first few notes of **that level's own theme** | so the player recognises which of the four they landed on before touching a lemon |
 | **Level complete** | the level's own theme, **then** the Level-clear fanfare | the theme is the pay-off; the fanfare punctuates it |
 | **All levels complete** | fanfare, **then** the Game-complete/castle-clear piece **on a loop** | keeps celebrating until the player resets (both sensitivity buttons, 1 s) |
@@ -363,10 +363,14 @@ at the end of `setup()` and at the end of a win's `handleGuess()` branch, a key
 touched during it is not queued — see the emulation specs' comments for the
 measured delay this adds before free play actually starts.
 
-**Locked-key cooldown (2026-07-29):** `KEY_LOCK_COOLDOWN_MS` (500 ms) gates the
-Key Stuck cue above — `lastReleaseAt` records when the locked key was let go,
-and a repeat press within the cooldown stays silent (unchanged from before this
-feature), while one after it plays `sfxKeyStuck`.
+**Locked-key cooldown (2026-07-29) — RETIRED 2026-09-13.** `KEY_LOCK_COOLDOWN_MS`
+used to gate the Key Stuck cue: a repeat press within 500 ms stayed silent, one
+after it played `sfxKeyStuck`. All of it is gone from V5.5, at Sergio's request
+after playing the board — a repeated lemon **sounds its note like any other
+press**, scores nothing, costs nothing, and is marked by a **backwards LED
+sweep** instead of a noise. Pressing the same lemon twice is not a mistake, and
+a scolding sound said it was. `sfxKeyStuck` stays in `mario_sfx.h` (nothing else
+was built on it) but **V5.5 no longer plays it**; earlier versions still do.
 
 **Ending loop + reset gesture (2026-07-29):** `playEndingLoop()` plays
 `sfxEnding` repeatedly via `playSfx()`'s new optional `checkAbort` callback
