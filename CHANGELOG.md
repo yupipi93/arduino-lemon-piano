@@ -2,6 +2,66 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-13 — four changes from the first real session with the board
+
+All four are Sergio's own reports after playing the fixed v0.7.1 rig, and each
+one lands with a named test and a mutation control.
+
+**1. Neither button ramps the sensitivity any more.** Holding used to fire a
+step every 120 ms. Both buttons carry a hold gesture now, so a hold that also
+spun the knob thirty times re-tuned the keyboard on every mode change. A tap is
+one step and that is all. The nudge still fires on PRESS — a knob that waits for
+the release feels broken — so the gesture that fires puts its own step back:
+each button snapshots the margin as it goes down (`marginBeforePlus` /
+`marginBeforeMinus`) and restores its own.
+
+**2. The LED bar counts SENSITIVITY, not margin.** More LEDs = more sensitive =
+a smaller margin, so **+** adds light and **−** takes it away. It was inverted,
+and he called it immediately: a button labelled "more" that puts lights out
+reads as "less" from across the room. The bar's own comment already claimed it
+was a sensitivity meter; now it is one.
+
+**3. FREE PLAY left the wheel and became a hold on +.** His words: "mantener el
+botón más es un switch entre el modo libre y el nivel". So the wheel is four
+levels and nothing else — turning it can never take the instrument away — and
++ held for 3 s swaps game for instrument and back. Going in remembers the level
+it interrupted; coming out restarts it, for the same reason accepting a level
+does. A player who never touched the wheel is on level 1, so for them it is
+exactly the "free play <-> level 1" switch he asked for, with no special case.
+Opening the wheel from inside free play lands on the interrupted level, so the
+wheel is still a way out. + and − now arm identically (1 s meter, 3 s fire) and
+differ only in where they land.
+
+**4. A HELD lemon sounds once.** In free play, resting a finger on a lemon
+machine-gunned the note. The contact is not a switch: through 1 MOhm it breaks
+for a few ms at a time without the finger moving, and every one of those ended
+the note and started a new one. A release is now only believed after
+`RELEASE_CONFIRM_MS` (90 ms) of silence — the note survives any shorter dropout,
+a real release still lets it sound again, and fast deliberate playing is
+untouched.
+
+Evidence:
+
+- `test/arduino/Arduino.h` grew a flaky-contact model (`dropoutEveryMs` /
+  `dropoutMs`) so a held key can read clear in bursts, which is what the bug
+  needed to exist at all.
+- New tests: gestures 2, 3, 3b, 3c (no ramp; + arms and toggles; + cancels; the
+  two holds never cross) and piano 15, 16, 17 (the switch both ways and the
+  level it remembers; a held lemon is one note; the bar counts sensitivity).
+- **107 + 84 checks, 0 failed.**
+- **Mutation controls:** put the ramp back and 5 gesture checks fail; remove the
+  release confirmation and test 16 reports **11 notes for one held lemon** —
+  the reported symptom, reproduced exactly.
+- `pio run` clean on all five envs; 15754 B.
+- Flashed and verified on the board: boots, all seven at baseline 1023 /
+  noise 0 / margin 4, Level 1.
+
+Docs rewritten to match, including both printed instruction sheets
+(`docs/USER-GUIDE.md` and `docs/GUIA-DE-USO.es.md`) — they documented a ramp
+that no longer exists and a wheel item that moved.
+
+**Not yet played by a human.** Everything above is the host tests and a boot log.
+
 ## 2026-09-13 — the SENS − button played a note: A7 is on the key multiplexer
 
 With all seven pull-ups swapped to 1 MΩ and R18 finally a real 10 kΩ, every key

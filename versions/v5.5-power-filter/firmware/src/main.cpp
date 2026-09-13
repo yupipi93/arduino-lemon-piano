@@ -177,8 +177,9 @@ const uint8_t LEARN_BURSTS = 4;               // bursts, with a blip + LED betwe
 
 // ── Buttons ─────────────────────────────────────────────────────────────────
 const unsigned long BUTTON_DEBOUNCE_MS = 40;
-const unsigned long REPEAT_DELAY_MS = 400;    // hold this long to start ramping
-const unsigned long REPEAT_EVERY_MS = 120;    // then one step this often
+// The sensitivity ramp is GONE (2026-09-13). Both buttons carry a hold gesture
+// now, so a hold must be a mode change and nothing else: one tap, one step.
+// Timings live in include/ui_gestures.h, which is what the host test compiles.
 
 // ── Sound ───────────────────────────────────────────────────────────────────
 const int NOTE_DURATION = 70;     // minimum key tone length; a held key sustains
@@ -187,6 +188,18 @@ const int WRONG_TONE_GAP_MS = 60; // silence between the played note and the
 const unsigned long SUSTAIN_CAP_MS = 2000;  // how long the wrong tone waits for a
                                   // held key before sounding anyway (a stuck key
                                   // must not freeze the game)
+// A RELEASE HAS TO BE CONFIRMED (2026-09-13). A finger resting on fruit is not
+// a clean contact: through 1 MOhm the reading wanders, and a single scan that
+// crosses back over the threshold used to end the note — and the next scan,
+// finding the finger still there, started a NEW one. Held fruit machine-gunned
+// itself, which is what Sergio reported: "si el usuario mantiene la fruta, solo
+// tiene que sonar una vez".
+//
+// So the note survives any dropout shorter than this, and only silence that
+// LASTS counts as letting go. It has to stay well under a deliberate re-tap
+// (about 150 ms hand-to-hand at speed) or fast playing would lose notes.
+const unsigned long RELEASE_CONFIRM_MS = 90;
+
 const unsigned long KEY_LOCK_COOLDOWN_MS = 500;  // a locked key (pressed again
                                   // before a different one unlocks it) stays
                                   // silent for this long after release — a
@@ -236,7 +249,6 @@ const int MENU_BLINK_ON_MS = 420; // the selected item BLINKS. A steady bar is a
 const int MENU_BLINK_OFF_MS = 180;// score; a blinking bar is a question. The
                                   // difference has to be visible from a metre
                                   // away with no legend to read.
-const int MENU_SWEEP_MS = 90;     // free play's runner, per LED
 const int MENU_ENTER_SWEEP_MS = 26;  // the "something happened" sweep on entry
 const int ARM_TICK_LOW = 3300;    // the charge-up chirps while − is held: the
 const int ARM_TICK_HIGH = 4700;   // pitch rises with the meter, so the gesture
@@ -463,11 +475,15 @@ const uint8_t STARMAN_INTRO_LEN = 10;
 // repeated press of the same key is filtered as flaky contact.
 const uint8_t LEVEL_COUNT = 4;
 
-// FREE PLAY is the fifth entry in `keys` and the fifth item on the wheel, but it
-// is NOT a fifth level: nothing advances into it, `handleGuess()` refuses to
-// score in it, and the only way in is to choose it.
+// FREE PLAY is the fifth entry in `keys`, but it is NOT a fifth level: nothing
+// advances into it and `handleGuess()` refuses to score in it.
+//
+// AND IT IS NO LONGER ON THE WHEEL (2026-09-13). Sergio asked for it on its own
+// button: holding + swaps between the instrument and the game, the way a piano
+// has a switch rather than a menu entry. The wheel is now four levels and
+// nothing else, so turning it can never take the instrument away by accident.
 const int FREE_PLAY = LEVEL_COUNT + 1;
-const uint8_t MENU_ITEM_COUNT = LEVEL_COUNT + 1;   // 4 levels + free play
+const uint8_t MENU_ITEM_COUNT = LEVEL_COUNT;   // the four levels. Free play is a hold on +.
 
 const int keys[(LEVEL_COUNT + 1) * KEY_COUNT] = {
   // level 1 — Overworld (the 2019 set)
@@ -509,10 +525,17 @@ int  level = 1;                // 1..LEVEL_COUNT, or FREE_PLAY (the mode wheel)
 // The single question everything else asks: is this an instrument or a game?
 static inline bool freePlay() { return level == FREE_PLAY; }
 
+// Where holding + puts you back. Free play is a detour, not a destination: the
+// level you were playing waits for you, and a player who never chose a level
+// gets level 1, which is what "a switch between free play and level 1" means
+// for everyone who never touched the wheel.
+int  levelBeforeFreePlay = 1;
+
 int  currentStep = 0;          // how many correct notes so far (index into the sequence)
                                // 0 = free play: any key just sounds its note
 unsigned long keyToneMinEndsAt = 0;  // a key note never stops before this millis()
 int  activeKey = -1;           // key whose note is sounding right now (-1 = silence)
+unsigned long releaseSeenAt = 0;  // when activeKey first read clear — 0 = it did not
 int  lastCountedKey = -1;      // last key the GAME accepted; pressing it again is
                                // ignored until a different key is pressed
 int  lastSoundedKey = -1;      // ...and it does not sound again either
@@ -532,11 +555,13 @@ unsigned long ledMeterUntil = 0;        // bar is showing the level until this m
 // and this file only reacts to the events it emits. `buttons[]` and the manual
 // both-held timer it used to need are gone with it.
 UiGestures gestures;
-int  marginBeforeHold = 0;        // the margin at the instant − went down
-bool minusWasDown = false;        // ...and the edge detector that captures it
+// Both buttons nudge the knob on PRESS and can still turn out to be a hold, so
+// each one carries a snapshot of the margin taken as it went down. The gesture
+// that fires puts its own snapshot back — see collision 1 in ui_gestures.h.
+int  marginBeforePlus = 0, marginBeforeMinus = 0;
+bool plusWasDown = false, minusWasDown = false;
 unsigned long menuAnimAt = 0;     // last menu animation frame
 bool menuBlinkOn = true;
-uint8_t menuSweepPos = 0;
 unsigned long endingHeldSince = 0;  // separate timer: the same both-buttons-1s
                                      // gesture, but read only by playEndingLoop()
 #endif
@@ -585,6 +610,7 @@ void soundStuck();
 void soundKeyStuck();
 void resetBoard();
 void logGame();
+void toggleFreePlay();
 void handleGuess();
 void playVictory();
 void playLevelIntro();
@@ -678,8 +704,16 @@ void loop() {
   // thresholds and any "first index wins" scan would flip between them.
   if (activeKey >= 0) {
     if (keyStillDown(activeKey)) {
+      releaseSeenAt = 0;   // whatever that was, it was not letting go
       return;              // still held: the note is sounding, nothing to decide
     }
+    // It read clear — but ONE scan is not a release (see RELEASE_CONFIRM_MS).
+    // Hold the note and the key while the silence proves itself; a finger that
+    // is still on the fruit comes back within a scan or two and nothing happened.
+    if (releaseSeenAt == 0) releaseSeenAt = millis();
+    if ((millis() - releaseSeenAt) < RELEASE_CONFIRM_MS) return;
+    releaseSeenAt = 0;
+
     // RELEASE — let the note reach its minimum length (so a quick tap is still a
     // note), then go silent. The next loop is free to accept a new key.
     long remaining = (long) (keyToneMinEndsAt - millis());
@@ -691,6 +725,7 @@ void loop() {
     return;
   }
 
+  releaseSeenAt = 0;                  // nothing is held; the clock starts fresh
   int justPressed = strongestKey();   // the clearest touch this scan, or -1
   if (justPressed >= 0) {
     pressedNote = keys[justPressed + keyboardOffset];
@@ -1176,13 +1211,14 @@ void serviceButtons() {
   const bool plusDown = sensUpDown();
   const bool minusDown = sensDownDown();
 
-  // Snapshot the knob the instant − goes down. If this press turns out to be a
-  // menu-open, the margin is put back to this value: the first second of the
-  // hold legitimately ramps the sensitivity, and someone reaching for the menu
-  // must not discover afterwards that they also desensitised the keyboard by
-  // five counts on the way in. (Releasing early KEEPS the ramp — that press
-  // really was the knob. Only the menu undoes it.)
-  if (minusDown && !minusWasDown) marginBeforeHold = touchMargin;
+  // Snapshot the knob as each button goes down. The nudge fires on PRESS, so
+  // every hold gesture begins by moving the sensitivity one step; if the press
+  // turns out to be a hold, the gesture puts ITS OWN snapshot back. Someone
+  // reaching for a mode change must not find the keyboard re-tuned afterwards.
+  // (Releasing early KEEPS the step — that press really was the knob.)
+  if (plusDown  && !plusWasDown)  marginBeforePlus  = touchMargin;
+  if (minusDown && !minusWasDown) marginBeforeMinus = touchMargin;
+  plusWasDown  = plusDown;
   minusWasDown = minusDown;
 
   switch (gestures.update(plusDown, minusDown, now)) {
@@ -1196,7 +1232,8 @@ void serviceButtons() {
       learnFromTouch();
       break;
     case UiGestures::EV_ARM_START:
-      log(F("hold − ... keep holding for the mode menu"));
+      log(gestures.armingPlus() ? F("hold + ... keep holding to swap instrument/game")
+                                : F("hold − ... keep holding for the level wheel"));
       ledMeterUntil = 0;              // the bar is the charge meter from here
       showArmBar(0);
       soundArmTick(0);
@@ -1212,8 +1249,12 @@ void serviceButtons() {
       soundLimit();
       showMarginOnBar();
       break;
+    case UiGestures::EV_TOGGLE_FREEPLAY:
+      touchMargin = marginBeforePlus;  // see the snapshot above
+      toggleFreePlay();
+      break;
     case UiGestures::EV_MENU_OPEN:
-      touchMargin = marginBeforeHold; // see the snapshot above
+      touchMargin = marginBeforeMinus; // see the snapshot above
       enterMenu();
       break;
     case UiGestures::EV_MENU_NEXT:
@@ -1240,9 +1281,11 @@ void serviceButtons() {
 //################################
 //########  MODE WHEEL ###########
 //################################
-// Five items: level 1, 2, 3, 4, FREE PLAY. It wraps. It previews. It is opened
-// by holding −, turned with + and −, accepted with both buttons, and left by a
-// long press or by walking away. See the gesture map in include/ui_gestures.h.
+// Four items: level 1, 2, 3, 4. It wraps. It previews. It is opened by holding
+// −, turned with + and −, accepted with both buttons, and left by a long press
+// or by walking away. See the gesture map in include/ui_gestures.h.
+//
+// FREE PLAY IS NOT ON IT (2026-09-13) — it is a hold on +, see toggleFreePlay().
 
 // True while ANY button is down — the abort hook that lets a preview melody be
 // cut off the moment the player turns the wheel again. Without it the wheel
@@ -1255,8 +1298,10 @@ static bool menuInterrupt() { return sensUpDown() || sensDownDown(); }
 void enterMenu() {
   hushBuzzer();                       // a held lemon stops sounding, cleanly
   ledMeterUntil = 0;
-  gestures.setItem((uint8_t) (level - 1));   // open ON the mode being played, so
-                                             // "open it, accept it" is a no-op
+  // Open ON the mode being played, so "open it, accept it" is a no-op. From
+  // free play there is no such item any more, so it opens on the level free
+  // play interrupted — accept that and you are back where the + hold found you.
+  gestures.setItem((uint8_t) ((freePlay() ? levelBeforeFreePlay : level) - 1));
   log(F("== MODE MENU: + / - to choose, BOTH to accept, long press to leave"));
   for (uint8_t i = 0; i < LED_COUNT; i++) {  // sweep out...
     allLedsOff(); digitalWrite(LED_PINS[i], HIGH); delay(MENU_ENTER_SWEEP_MS);
@@ -1274,13 +1319,10 @@ void enterMenu() {
 void announceMenuItem() {
   const uint8_t it = gestures.item();
   if (serialEnabled) {
-    Serial.print(F("  > "));
-    if (it == LEVEL_COUNT) Serial.println(F("FREE PLAY (the piano)"));
-    else { Serial.print(F("Level ")); Serial.println(it + 1); }
+    Serial.print(F("  > Level ")); Serial.println(it + 1);
   }
   menuAnimAt = millis();
   menuBlinkOn = true;
-  menuSweepPos = 0;
   showMenuItem(it, true);
   playMenuPreview(it);
   gestures.noteActivity(millis());  // the music was not idleness
@@ -1289,10 +1331,6 @@ void announceMenuItem() {
 // The preview: the opening of that level's own theme, capped so the wheel never
 // feels slow, and abortable so the next press cuts it off mid-phrase.
 void playMenuPreview(uint8_t item) {
-  if (item == LEVEL_COUNT) {          // free play previews itself: the scale
-    playFreePlayFlourish(true);
-    return;
-  }
   const uint8_t cap = MENU_PREVIEW_NOTES;
   switch (item) {
     case 0: playSong(marioNotes, marioTempo, 0,
@@ -1310,14 +1348,46 @@ void playMenuPreview(uint8_t item) {
   }
 }
 
-// The wheel stops here. Accepting a level RESTARTS it from zero (a mode you
+// ── FREE PLAY, on its own button (2026-09-13) ───────────────────────────────
+// Sergio's ask: "mantener el botón más es un switch entre el modo libre y el
+// nivel". Not a menu entry — a switch, the way an instrument has one. So the
+// wheel lost its fifth item and + grew a three-second hold.
+//
+// Going IN remembers the level it interrupted; coming OUT goes back to it,
+// restarted from zero, for the same reason accepting a level does: a mode you
+// asked for should not hand you someone else's half-finished progress bar. A
+// player who never touched the wheel is on level 1, so for them this is exactly
+// the "free play <-> level 1" switch they asked for, with no special case.
+//
+// playLevelIntro() already says which of the two you landed in — the level's
+// own theme, or free play's scale — so the switch announces itself in the one
+// language that works with the lid closed.
+void toggleFreePlay() {
+  hushBuzzer();
+  if (freePlay()) {
+    level = levelBeforeFreePlay;
+    if (level < 1 || level > LEVEL_COUNT) level = 1;   // nothing else is a level
+  } else {
+    levelBeforeFreePlay = level;
+    level = FREE_PLAY;
+  }
+  playSfx(sfxMenuAccept);
+  resetBoard();
+  logGame();
+  delay(PHRASE_GAP_MS);
+  playLevelIntro();
+  restoreIdleDisplay();
+}
+
+// The wheel stops here. Accepting a level RESTARTS it from zero — a mode you
 // chose deliberately should not drop you into someone else's half-finished
-// progress bar), and accepting free play hands over the instrument.
+// progress bar. Accepting from inside free play also LEAVES free play, which is
+// the only other way out of it besides the + hold.
 void acceptMenuItem() {
   const uint8_t it = gestures.item();
   hushBuzzer();
   playSfx(sfxMenuAccept);
-  level = (int) it + 1;               // item 4 -> level 5 == FREE_PLAY
+  level = (int) it + 1;               // item 0..3 -> level 1..4, never FREE_PLAY
   resetBoard();
   logGame();
   delay(PHRASE_GAP_MS);
@@ -1334,39 +1404,22 @@ void cancelMenu() {
   restoreIdleDisplay();
 }
 
-// Draw one wheel item. Levels are a COUNT (level n = n LEDs from the left, so
-// the number you read is the level you get); free play is the whole bar, which
-// is the one thing seven-and-under can never be.
+// Draw one wheel item. Levels are a COUNT: level n = n LEDs from the left, so
+// the number you read is the level you get.
 void showMenuItem(uint8_t item, bool on) {
   allLedsOff();
   if (!on) return;
-  if (item == LEVEL_COUNT) { allLedsOn(); return; }
   for (uint8_t i = 0; i <= item && i < LED_COUNT; i++) {
     digitalWrite(LED_PINS[i], HIGH);
   }
 }
 
-// The menu's heartbeat, called every loop while it is open. Levels blink (a
-// blinking bar is a question, a steady one is a score). Free play RUNS — a
-// single LED bouncing along the bar — because "all ten lit" and "four lit"
-// blink alike from across the room, and motion never reads as a score.
+// The menu's heartbeat, called every loop while it is open. Levels blink: a
+// blinking bar is a question, a steady one is a score. (The bouncing-LED
+// animation that marked free play on the wheel went with free play, 2026-09-13.)
 void serviceMenu() {
   const unsigned long now = millis();
   const uint8_t it = gestures.item();
-
-  if (it == LEVEL_COUNT) {
-    if (now - menuAnimAt >= (unsigned long) MENU_SWEEP_MS) {
-      menuAnimAt = now;
-      const uint8_t span = LED_COUNT * 2 - 2;        // 0..9..1, then round again
-      menuSweepPos = (uint8_t) ((menuSweepPos + 1) % span);
-      const uint8_t pos = menuSweepPos < LED_COUNT
-                        ? menuSweepPos
-                        : (uint8_t) (span - menuSweepPos);
-      allLedsOff();
-      digitalWrite(LED_PINS[pos], HIGH);
-    }
-    return;
-  }
 
   const unsigned long period = menuBlinkOn ? (unsigned long) MENU_BLINK_ON_MS
                                            : (unsigned long) MENU_BLINK_OFF_MS;
@@ -1400,10 +1453,17 @@ void soundArmTick(uint8_t pct) {
 #endif  // !VELXIO_EMULATION
 
 // The ten-LED bar doubles as a SENSITIVITY METER: how many LEDs are lit shows
-// where the margin sits between MARGIN_MIN and 20 (the useful range on fruit),
-// so the knob can be read across the room without a serial monitor.
+// where the knob sits across the useful range on fruit (a margin of MARGIN_MIN
+// to 20), so it can be read across the room without a serial monitor.
+//
+// IT COUNTS SENSITIVITY, NOT MARGIN (2026-09-13). More LEDs = more sensitive =
+// a SMALLER margin, so the + button adds light and − takes it away. It used to
+// be the other way round and Sergio called it straight away: a button labelled
+// "more" that puts out lights is a button that reads as "less". The number on
+// the bar and the label on the button now move together, which is the only
+// version of this that can be read with the lid closed.
 void showMarginOnBar() {
-  int lit = ((long) touchMargin * LED_COUNT) / 20;
+  int lit = LED_COUNT - (int) (((long) touchMargin * LED_COUNT) / 20);
   if (lit < 1) lit = 1;
   if (lit > LED_COUNT) lit = LED_COUNT;
   for (uint8_t i = 0; i < LED_COUNT; i++) {

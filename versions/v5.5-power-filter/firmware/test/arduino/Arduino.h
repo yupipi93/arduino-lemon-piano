@@ -116,9 +116,22 @@ struct FakeBoard {
     return (int) (sampleHeld + 0.5);
   }
 
+  // ── flaky fruit contact (2026-09-13) ────────────────────────────────────
+  // A finger resting on a lemon is not a switch. Through 1 MOhm the contact
+  // wanders, and the reading crosses back over the threshold for a few
+  // milliseconds at a time without the finger going anywhere. Set
+  // dropoutEveryMs/dropoutMs and a HELD key reads clear in bursts, which is
+  // what made held fruit machine-gun itself before RELEASE_CONFIRM_MS.
+  // Off by default: every other test wants a clean contact.
+  uint32_t dropoutEveryMs = 0, dropoutMs = 0;
+  bool contactBroken() const {
+    if (dropoutEveryMs == 0) return false;
+    return (uint32_t) ((micros_ / 1000) % dropoutEveryMs) < dropoutMs;
+  }
+
   int settledValue(int k) {
     int v = baseline[k] - nextNoise();
-    if (touched[k]) v -= touchDepth;
+    if (touched[k] && !contactBroken()) v -= touchDepth;
     return v < 0 ? 0 : v;
   }
   int readChannel(int k)      { return convert(settledValue(k), adcSettle); }

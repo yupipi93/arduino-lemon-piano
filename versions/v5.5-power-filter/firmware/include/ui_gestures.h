@@ -12,20 +12,25 @@
  *
  * ── The complete gesture map ────────────────────────────────────────────────
  *
+ * THE TWO BUTTONS ARE SYMMETRIC (2026-09-13). A tap is the sensitivity knob, a
+ * hold is a mode change, and which mode depends on which button. There is no
+ * ramp on either: holding a button is a gesture of its own now, so a hold must
+ * not also be dozens of taps. Sergio asked for exactly this -- "tienen que ser
+ * pulsaciones individuales para subir y bajar la sensibilidad".
+ *
  * While PLAYING (game or free play):
  *
- *   tap +                      EV_NUDGE_MORE     more sensitive, one step
- *   hold + (>= 400 ms)         EV_NUDGE_MORE …   ramps every 120 ms, forever
- *   tap −                      EV_NUDGE_LESS     less sensitive, one step
- *   hold − 400 … 1000 ms       EV_NUDGE_LESS …   ramps, same as +
- *   hold − at 1000 ms          EV_ARM_START      ramp STOPS, the menu arms
- *   hold − 1000 … 3000 ms      EV_ARM_TICK       every 500 ms, rising pitch
- *   release − while arming     EV_ARM_CANCEL     nothing changed
- *   hold − at 3000 ms          EV_MENU_OPEN      the menu opens
- *   press + while − is arming  EV_ARM_CANCEL     …and the both-hold takes over
- *   hold BOTH 1000 ms          EV_SMART_ADJUST   unchanged since 2026-07-28
+ *   tap +                      EV_NUDGE_MORE      more sensitive, ONE step
+ *   tap −                      EV_NUDGE_LESS      less sensitive, ONE step
+ *   hold either at 1000 ms     EV_ARM_START       the arming meter appears
+ *   hold either 1000 … 3000    EV_ARM_TICK        every 500 ms, rising pitch
+ *   release while arming       EV_ARM_CANCEL      nothing changed
+ *   hold + at 3000 ms          EV_TOGGLE_FREEPLAY free play <-> the level
+ *   hold − at 3000 ms          EV_MENU_OPEN       the level wheel
+ *   press the other mid-arm    EV_ARM_CANCEL      …and the both-hold takes over
+ *   hold BOTH 1000 ms          EV_SMART_ADJUST    unchanged since 2026-07-28
  *
- * In the MENU:
+ * In the MENU (four levels — free play left the wheel on 2026-09-13):
  *
  *   tap +                      EV_MENU_NEXT      next item, wraps
  *   tap −                      EV_MENU_PREV      previous item, wraps
@@ -35,11 +40,13 @@
  *
  * ── The four collisions, and how each is resolved ───────────────────────────
  *
- * 1. "hold − 3 s" vs "hold − to ramp the margin down". The ramp is CAPPED at
- *    GES_MENU_ARM_MS: past one second the button is arming the menu and no
- *    longer touching the margin. main.cpp additionally restores the margin to
- *    its value at press time when the menu opens, so opening the menu never
- *    leaves the sensitivity somewhere else (see marginBeforeHold there).
+ * 1. "hold a button" vs "that same press was also a tap". The nudge fires on
+ *    PRESS, because a knob that waits for the release feels broken. So every
+ *    hold gesture starts by moving the sensitivity one step. main.cpp undoes
+ *    it: it snapshots the margin as each button goes down and restores that
+ *    snapshot when the hold fires (marginBeforePlus / marginBeforeMinus), so
+ *    changing mode never leaves the sensitivity somewhere else. Before
+ *    2026-09-13 the ramp made this a much bigger correction than one step.
  *
  * 2. "press both" (accept) vs "tap one" (navigate). In the menu, navigation
  *    fires on RELEASE, never on press. So the first button of a two-button
@@ -49,16 +56,18 @@
  *
  * 3. "press both" (accept) vs "hold both 1 s" (smart adjust). They live in
  *    different states: smart adjust exists only while playing, accept only in
- *    the menu. Holding − for 3 s never emits EV_SMART_ADJUST and holding both
- *    never emits EV_MENU_OPEN — asserted as its own test case.
+ *    the menu. Holding one button for 3 s never emits EV_SMART_ADJUST and
+ *    holding both never emits EV_MENU_OPEN or EV_TOGGLE_FREEPLAY — asserted as
+ *    its own test case.
  *
  * 4. THE ONE THAT NEARLY SHIPPED: press +, then − on top of it, then let go of
- *    + while still holding −. The menu-open clock cannot be "when − went down"
- *    or that release would open the menu on the spot, with no arming meter and
- *    no warning — a two-finger fidget turning into a mode change. The clock is
- *    minusAloneSince_: it starts when − becomes the ONLY button down, from
- *    whatever combination came before. So that release begins a fresh 3 s hold,
- *    arming meter and all. Test: "plus then minus then release plus".
+ *    + while still holding −. The mode-change clock cannot be "when − went
+ *    down" or that release would open the menu on the spot, with no arming
+ *    meter and no warning — a two-finger fidget turning into a mode change. The
+ *    clock is aloneSince_: it starts when a button becomes the ONLY one down,
+ *    from whatever combination came before. So that release begins a fresh 3 s
+ *    hold, arming meter and all. Since + grew a hold of its own on 2026-09-13
+ *    the same clock, and the same test, cover it in both directions.
  *
  * After any state-changing event the machine SWALLOWS both buttons until they
  * are released together, so the release that ends a gesture can never start
@@ -72,11 +81,9 @@
 // ── Timings. The host test compiles this same header, so these ARE the numbers
 // under test; changing one here changes what the test proves. ───────────────
 static const uint16_t GES_DEBOUNCE_MS      = 40;     // both buttons
-static const uint16_t GES_REPEAT_DELAY_MS  = 400;    // hold this long to ramp
-static const uint16_t GES_REPEAT_EVERY_MS  = 120;    // ...then one step this often
 static const uint16_t GES_BOTH_HOLD_MS     = 1000;   // both -> smart adjust
-static const uint16_t GES_MENU_ARM_MS      = 1000;   // − alone: ramp stops, arms
-static const uint16_t GES_MENU_HOLD_MS     = 3000;   // − alone: menu opens
+static const uint16_t GES_HOLD_ARM_MS      = 1000;   // either alone: the meter starts
+static const uint16_t GES_HOLD_FIRE_MS     = 3000;   // either alone: the mode changes
 static const uint16_t GES_MENU_TICK_MS     = 500;    // arming feedback cadence
 static const uint16_t GES_MENU_CANCEL_MS   = 3000;   // in-menu long press = escape
 static const uint32_t GES_MENU_IDLE_MS     = 20000;  // in-menu inactivity = escape
@@ -88,24 +95,26 @@ class UiGestures {
     EV_NUDGE_MORE,     // + : one step more sensitive
     EV_NUDGE_LESS,     // − : one step less sensitive
     EV_SMART_ADJUST,   // both held 1 s while playing
-    EV_ARM_START,      // − crossed 1 s: show the arming meter, stop ramping
-    EV_ARM_TICK,       // ...and one of these every 500 ms until it opens
-    EV_ARM_CANCEL,     // released, or + joined in, before 3 s
-    EV_MENU_OPEN,
+    EV_ARM_START,      // a button crossed 1 s: show the arming meter
+    EV_ARM_TICK,       // ...and one of these every 500 ms until it fires
+    EV_ARM_CANCEL,     // released, or the other button joined in, before 3 s
+    EV_TOGGLE_FREEPLAY,// + held 3 s: free play <-> the level that was playing
+    EV_MENU_OPEN,      // − held 3 s: the level wheel
     EV_MENU_NEXT,
     EV_MENU_PREV,
     EV_MENU_ACCEPT,
     EV_MENU_CANCEL
   };
 
-  // itemCount = how many entries the wheel has (4 levels + free play = 5).
+  // itemCount = how many entries the wheel has (the four levels; free play left
+  // the wheel on 2026-09-13 and lives on a + hold instead).
   void begin(uint8_t itemCount) {
     itemCount_ = itemCount ? itemCount : 1;
     item_ = 0;
     menu_ = false;
-    arming_ = false;
+    arming_ = ARM_NONE;
     swallow_ = false;
-    minusAlonePrev_ = false;
+    plusAlonePrev_ = minusAlonePrev_ = false;
     bothSince_ = 0;
     plus_.reset();
     minus_.reset();
@@ -124,13 +133,14 @@ class UiGestures {
     if (plus_.rose)  plusSince_  = now;
     if (minus_.rose) minusSince_ = now;
 
-    // ...and the menu-open clock is not "when − went down" but "when − became
-    // the only button down", for the same reason.
+    // ...and a mode-change clock is not "when that button went down" but "when
+    // it became the only button down", for the same reason. Both buttons carry
+    // a hold gesture now, so both need the clock (see collision 4).
+    const bool plusAlone  = p && !m;
     const bool minusAlone = m && !p;
-    if (minusAlone && !minusAlonePrev_) {
-      minusAloneSince_ = now;
-      arming_ = false;
-    }
+    if (plusAlone  && !plusAlonePrev_)  { plusAloneSince_  = now; arming_ = ARM_NONE; }
+    if (minusAlone && !minusAlonePrev_) { minusAloneSince_ = now; arming_ = ARM_NONE; }
+    plusAlonePrev_  = plusAlone;
     minusAlonePrev_ = minusAlone;
 
     // A gesture has fired: ignore everything until the player lets go of both,
@@ -152,16 +162,19 @@ class UiGestures {
   // mode is currently running, so "open, accept" is always a no-op.
   void setItem(uint8_t i) { item_ = (uint8_t) (i % itemCount_); }
 
-  // 0..100 while the menu is arming: how full the LED bar should be.
+  // 0..100 while a hold is arming: how full the LED bar should be.
   uint8_t armPercent(uint32_t now) const {
-    if (!arming_) return 0;
-    const uint32_t held = (uint32_t) (now - minusAloneSince_);
-    if (held <= GES_MENU_ARM_MS) return 0;
-    const uint32_t span = (uint32_t) (GES_MENU_HOLD_MS - GES_MENU_ARM_MS);
-    const uint32_t pct = ((held - GES_MENU_ARM_MS) * 100u) / span;
+    if (arming_ == ARM_NONE) return 0;
+    const uint32_t since = (arming_ == ARM_PLUS) ? plusAloneSince_ : minusAloneSince_;
+    const uint32_t held = (uint32_t) (now - since);
+    if (held <= GES_HOLD_ARM_MS) return 0;
+    const uint32_t span = (uint32_t) (GES_HOLD_FIRE_MS - GES_HOLD_ARM_MS);
+    const uint32_t pct = ((held - GES_HOLD_ARM_MS) * 100u) / span;
     return (uint8_t) (pct > 100 ? 100 : pct);
   }
-  bool arming() const { return arming_; }
+  bool arming() const { return arming_ != ARM_NONE; }
+  // WHICH hold is charging — main.cpp says a different thing for each.
+  bool armingPlus() const { return arming_ == ARM_PLUS; }
 
   // main.cpp calls this after anything BLOCKING (a preview melody, a fanfare):
   // millis() jumped, and an idle timeout must not count the music as idleness.
@@ -185,7 +198,7 @@ class UiGestures {
   Event updatePlay(bool p, bool m, uint32_t now) {
     // ── BOTH DOWN: smart adjust (and it cancels any arming in progress) ──────
     if (p && m) {
-      if (arming_) { arming_ = false; bothSince_ = now; return EV_ARM_CANCEL; }
+      if (arming_ != ARM_NONE) { arming_ = ARM_NONE; bothSince_ = now; return EV_ARM_CANCEL; }
       if (bothSince_ == 0) bothSince_ = now;
       else if ((uint32_t) (now - bothSince_) >= GES_BOTH_HOLD_MS) {
         swallow_ = true;
@@ -196,35 +209,38 @@ class UiGestures {
     }
     bothSince_ = 0;
 
-    // ── − let go mid-arming: nothing happened, say so ────────────────────────
-    if (minus_.fell && arming_) { arming_ = false; return EV_ARM_CANCEL; }
-
-    // ── first press of either button: one step, immediately ─────────────────
-    if (plus_.rose)  { plusRepeat_  = now + GES_REPEAT_DELAY_MS; return EV_NUDGE_MORE; }
-    if (minus_.rose) { minusRepeat_ = now + GES_REPEAT_DELAY_MS; return EV_NUDGE_LESS; }
-
-    // ── + held alone: ramp, forever. + has no long-press meaning. ───────────
-    if (p && !m) {
-      if ((int32_t) (now - plusRepeat_) >= 0) {
-        plusRepeat_ = now + GES_REPEAT_EVERY_MS;
-        return EV_NUDGE_MORE;
-      }
-      return EV_NONE;
+    // ── let go mid-arming: nothing happened, say so ──────────────────────────
+    if ((minus_.fell && arming_ == ARM_MINUS) || (plus_.fell && arming_ == ARM_PLUS)) {
+      arming_ = ARM_NONE;
+      return EV_ARM_CANCEL;
     }
 
-    // ── − held alone: ramp, then ARM, then OPEN ─────────────────────────────
-    if (m && !p) {
-      const uint32_t held = (uint32_t) (now - minusAloneSince_);
-      if (held >= GES_MENU_HOLD_MS) {
-        arming_ = false;
+    // ── first press of either button: ONE step, immediately, and that is all
+    // this press will ever do to the knob. No ramp — holding is a gesture now,
+    // and main.cpp puts this step back if the hold turns into a mode change. ──
+    if (plus_.rose)  return EV_NUDGE_MORE;
+    if (minus_.rose) return EV_NUDGE_LESS;
+
+    // ── one button held alone: ARM, then FIRE ───────────────────────────────
+    // Identical timing for both; only the event at the end differs. + swaps the
+    // instrument for the game, − opens the level wheel.
+    if (p != m) {
+      const bool isPlus  = p;
+      const Arming which = isPlus ? ARM_PLUS : ARM_MINUS;
+      const uint32_t held =
+          (uint32_t) (now - (isPlus ? plusAloneSince_ : minusAloneSince_));
+
+      if (held >= GES_HOLD_FIRE_MS) {
+        arming_ = ARM_NONE;
+        swallow_ = true;             // the button is still down; its release
+        if (isPlus) return EV_TOGGLE_FREEPLAY;   // must not start the next gesture
         menu_ = true;
-        swallow_ = true;               // − is still down; don't let its release
-        menuIdleFrom_ = now;           // count as the first navigation tap
+        menuIdleFrom_ = now;
         return EV_MENU_OPEN;
       }
-      if (held >= GES_MENU_ARM_MS) {
-        if (!arming_) {                // the ramp ends here, on purpose
-          arming_ = true;
+      if (held >= GES_HOLD_ARM_MS) {
+        if (arming_ != which) {
+          arming_ = which;
           nextArmTick_ = now + GES_MENU_TICK_MS;
           return EV_ARM_START;
         }
@@ -232,11 +248,6 @@ class UiGestures {
           nextArmTick_ = now + GES_MENU_TICK_MS;
           return EV_ARM_TICK;
         }
-        return EV_NONE;
-      }
-      if ((int32_t) (now - minusRepeat_) >= 0) {
-        minusRepeat_ = now + GES_REPEAT_EVERY_MS;
-        return EV_NUDGE_LESS;
       }
       return EV_NONE;
     }
@@ -288,15 +299,17 @@ class UiGestures {
     return EV_NONE;
   }
 
+  enum Arming : uint8_t { ARM_NONE = 0, ARM_PLUS, ARM_MINUS };
+
   Debounced plus_, minus_;
   uint8_t itemCount_ = 1;
   uint8_t item_ = 0;
   bool menu_ = false;
-  bool arming_ = false;
+  Arming arming_ = ARM_NONE;
   bool swallow_ = false;
-  bool minusAlonePrev_ = false;
-  uint32_t plusSince_ = 0, minusSince_ = 0, minusAloneSince_ = 0;
-  uint32_t plusRepeat_ = 0, minusRepeat_ = 0;
+  bool plusAlonePrev_ = false, minusAlonePrev_ = false;
+  uint32_t plusSince_ = 0, minusSince_ = 0;
+  uint32_t plusAloneSince_ = 0, minusAloneSince_ = 0;
   uint32_t bothSince_ = 0;
   uint32_t nextArmTick_ = 0;
   uint32_t menuIdleFrom_ = 0;

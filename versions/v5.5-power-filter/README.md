@@ -67,9 +67,15 @@ widening to swallow the hum.
 **Playing it, rather than reading about it: [the printed instruction sheet](../../docs/USER-GUIDE.md)**
 ([en español](../../docs/GUIA-DE-USO.es.md)).
 
-### FREE PLAY, and the MODE WHEEL (2026-09-09)
+### FREE PLAY, and the MODE WHEEL (2026-09-09, reshaped 2026-09-13)
 
 Two additions, on the two buttons that were already there. No hardware changed.
+
+> **What changed on 2026-09-13, after the first real session on the v0.7.1
+> board.** Free play came off the wheel and onto its own button; neither button
+> ramps the sensitivity any more; the LED bar counts sensitivity instead of
+> margin; and a lemon held down sounds once instead of machine-gunning. Each is
+> Sergio's own report from playing it, and each has a named test.
 
 **FREE PLAY** is the piano with the game taken out. The seven lemons become
 **do re mi fa sol la si** — C5 D5 E5 F5 G5 A5 B5, one octave of plain white
@@ -79,22 +85,34 @@ whole feature. The game deliberately swallows a repeated key (flaky fruit
 contact used to machine-gun both the buzzer and the guesses), and that rule is
 exactly backwards for an instrument, so free play does not have it.
 
+**Over and over means one note per touch, not one per flicker** (2026-09-13).
+Resting a finger on a lemon is a single note that lasts as long as the finger
+does. The contact underneath is not a switch — through the 1 MΩ pull-ups it
+breaks for a few milliseconds at a time without the finger moving — so a release
+is only believed after `RELEASE_CONFIRM_MS` (90 ms) of silence. Let go properly
+and touch again and it sounds again; four deliberate taps are still four notes.
+
 The LED bar changes job with it: while a note sounds it is a **pitch meter**
 (key 1 lights one LED, key 7 lights all ten), and when nothing is sounding it
 shows **only its two ends lit** — a shape the game's left-filling bar can never
 produce, so one glance says "this is the instrument, there is nothing to win".
 
-Free play is **not a level**. Winning never advances into it; the only way in is
-to choose it.
+Free play is **not a level**. Winning never advances into it.
+
+**The way in and out is to hold + for 3 s** (2026-09-13). It is a switch, not a
+menu entry: the first hold swaps the game for the instrument, the next one puts
+the game back — **restarting the level it interrupted**, which for anyone who
+never touched the wheel is level 1. The arming meter and the rising chirp are
+the same as −'s, so the two holds feel like one gesture with two destinations.
 
 **The MODE WHEEL** is how you choose — the game-select switch that V5 removed,
 brought back as a gesture:
 
 | | |
 |---|---|
-| **Open** | hold **−** for 3 s. From 1 s the bar becomes a charge meter and a chirp climbs with it, so the gesture is never a mystery; let go early and a bump says "cancelled" |
-| **Turn** | tap **+** / **−**. Five items — level 1, 2, 3, 4, FREE PLAY — and it **wraps** both ways |
-| **Preview** | each stop plays the opening of its own theme (free play plays the scale) and shows itself on the bar: **level n = n LEDs, blinking**; free play = **one LED running** back and forth. Blinking is a question, steady is a score, and motion is neither |
+| **Open** | hold **−** for 3 s (from free play it opens on the level free play interrupted). From 1 s the bar becomes a charge meter and a chirp climbs with it, so the gesture is never a mystery; let go early and a bump says "cancelled" |
+| **Turn** | tap **+** / **−**. Four items — level 1, 2, 3, 4 — and it **wraps** both ways. Free play is **not** on it: it is a hold on **+** |
+| **Preview** | each stop plays the opening of its own theme and shows itself on the bar: **level n = n LEDs, blinking**. Blinking is a question, steady is a score |
 | **Accept** | **both buttons at once**, in any order, any overlap |
 | **Leave** | hold either button 3 s, or wait 20 s. Nothing changes — the game keeps its level and its progress bar |
 
@@ -103,19 +121,36 @@ speed of the hand, not of the tunes.
 
 ### The overlaps, and why they do not collide
 
-Three gestures now share two buttons, which is where this sort of thing normally
+Four gestures now share two buttons, which is where this sort of thing normally
 goes wrong. The four collisions and their resolutions are documented at the top
 of [`firmware/include/ui_gestures.h`](firmware/include/ui_gestures.h) and each
-one is a named test case. The two worth knowing at the keyboard:
+one is a named test case. The whole map, at the keyboard:
 
-- **Holding − ramps the sensitivity for the first second, then stops** and starts
-  charging the menu instead. If the hold turns into a menu-open, the margin is
-  **put back to where it was when the button went down** — reaching for the menu
-  must not quietly desensitise the keyboard on the way in.
-- **Both buttons for 1 s is smart adjust; − alone for 3 s is the wheel.** They
-  live in different states and cannot be reached from each other by accident: if
-  you press **+** while **−** is charging, the charge cancels and hands over to
-  smart adjust, out loud.
+| gesture | while playing | in the wheel |
+|---|---|---|
+| **tap +** | one step **more** sensitive — one LED **on** | next level, wraps |
+| **tap −** | one step **less** sensitive — one LED **off** | previous level, wraps |
+| **hold + 3 s** | **free play ⇄ the level** | (3 s leaves the wheel) |
+| **hold − 3 s** | **the level wheel** | (3 s leaves the wheel) |
+| **both, 1 s** | smart adjust: learn the margin from a real touch | accept, at any overlap |
+
+The two worth knowing:
+
+- **A tap is a step. A hold is a mode.** Holding a button no longer ramps the
+  knob — it used to fire a step every 120 ms, which meant every mode change also
+  re-tuned the keyboard by thirty counts. The nudge still fires on press, because
+  a knob that waits for the release feels broken, so the gesture that fires
+  **puts that one step back**: reaching for a mode must not leave the keyboard
+  somewhere else.
+- **Both buttons for 1 s is smart adjust; one button alone for 3 s is a mode.**
+  They live in different states and cannot be reached from each other by
+  accident: press the other button while one is charging and the charge cancels
+  and hands over to smart adjust, out loud.
+
+**The bar counts sensitivity, not margin.** More LEDs lit = more sensitive = a
+smaller margin, so **+ adds light and − takes it away**. It was the other way
+round until 2026-09-13, and it read as a lie: a button labelled "more" that puts
+lights out is a button that says "less" from across the room.
 
 ## Build, test & flash
 

@@ -27,6 +27,7 @@ static const char *evName(Ev e) {
     case UiGestures::EV_ARM_START:    return "ARM_START";
     case UiGestures::EV_ARM_TICK:     return "ARM_TICK";
     case UiGestures::EV_ARM_CANCEL:   return "ARM_CANCEL";
+    case UiGestures::EV_TOGGLE_FREEPLAY: return "TOGGLE_FREEPLAY";
     case UiGestures::EV_MENU_OPEN:    return "MENU_OPEN";
     case UiGestures::EV_MENU_NEXT:    return "MENU_NEXT";
     case UiGestures::EV_MENU_PREV:    return "MENU_PREV";
@@ -45,7 +46,7 @@ struct Sim {
   std::vector<Ev> seen;
   std::vector<uint32_t> at;
 
-  explicit Sim(uint8_t items = 5, uint32_t tickMs = 1) : tick(tickMs) {
+  explicit Sim(uint8_t items = 4, uint32_t tickMs = 1) : tick(tickMs) {
     g.begin(items);
   }
   void step() {
@@ -123,38 +124,83 @@ static void test_tap_each_button() {
   { Sim s; s.tapMinus(); eqShape(s, "NUDGE_LESS", "a tap on − is one step, less sensitive"); }
 }
 
-static void test_plus_ramps_forever() {
-  section("2. + has no long press: it just ramps");
-  Sim s;
-  s.hold(s.plus, 4000);
-  eqShape(s, "NUDGE_MORE", "holding + for 4 s only ever nudges");
-  eqInt(s.count(UiGestures::EV_MENU_OPEN), 0, "  ...and never opens the menu");
-  eqInt(s.count(UiGestures::EV_ARM_START), 0, "  ...and never arms it");
-  // 400 ms delay, then one every 120 ms, plus the initial press.
-  ok(s.count(UiGestures::EV_NUDGE_MORE) >= 25 && s.count(UiGestures::EV_NUDGE_MORE) <= 32,
-     "  ...at the documented ramp rate (1 + ~30 in 4 s)",
-     "got " + std::to_string(s.count(UiGestures::EV_NUDGE_MORE)));
+// 2. THE RAMP IS GONE (2026-09-13). Sergio asked for it: both buttons carry a
+// hold gesture now, so a hold that also spun the sensitivity knob thirty times
+// would re-tune the keyboard every time he changed mode.
+static void test_no_ramp_on_either_button() {
+  section("2. Holding a button does NOT keep moving the sensitivity");
+
+  { Sim s;
+    s.hold(s.plus, 900);             // below the arming line: purely the knob
+    eqInt(s.count(UiGestures::EV_NUDGE_MORE), 1,
+          "holding + for 900 ms is ONE step, not a ramp"); }
+
+  { Sim s;
+    s.hold(s.minus, 900);
+    eqInt(s.count(UiGestures::EV_NUDGE_LESS), 1,
+          "holding − for 900 ms is ONE step, not a ramp"); }
+
+  { Sim s;
+    s.hold(s.plus, 4000);            // all the way through the + gesture
+    eqInt(s.count(UiGestures::EV_NUDGE_MORE), 1,
+          "  ...and still ONE step after a full 4 s hold on +"); }
+
+  { Sim s;
+    s.hold(s.minus, 4000);
+    eqInt(s.count(UiGestures::EV_NUDGE_LESS), 1,
+          "  ...and still ONE step after a full 4 s hold on −"); }
 }
 
-// 3. The collision that mattered most: − is both the knob and the menu key.
-static void test_minus_ramp_stops_when_arming() {
-  section("3. − ramps the knob, then stops and arms the menu");
+// 3. + is no longer the button with no long press: it swaps instrument for game.
+static void test_plus_holds_to_toggle_free_play() {
+  section("3. + arms, then switches between free play and the level");
   Sim s;
-  s.hold(s.minus, 900);              // still purely a knob down here
-  eqInt(s.count(UiGestures::EV_ARM_START), 0, "at 900 ms it has not armed yet");
-  ok(s.count(UiGestures::EV_NUDGE_LESS) >= 4, "  ...and it HAS been ramping the knob",
-     "got " + std::to_string(s.count(UiGestures::EV_NUDGE_LESS)) + " nudges");
+  s.hold(s.plus, 900);
+  eqInt(s.count(UiGestures::EV_ARM_START), 0, "at 900 ms + has not armed yet");
 
-  s.advance(150);                    // ...crossing the 1 s arming line
-  eqInt(s.count(UiGestures::EV_ARM_START), 1, "at 1 s the menu arms");
-  const int nudgesAtArming = s.count(UiGestures::EV_NUDGE_LESS);
+  s.advance(150);
+  eqInt(s.count(UiGestures::EV_ARM_START), 1, "at 1 s it arms, same as −");
+  eqInt(s.count(UiGestures::EV_TOGGLE_FREEPLAY), 0, "  ...but has not fired");
+  ok(s.g.arming() && s.g.armingPlus(), "  ...and it knows + is the one charging",
+     "arming=" + std::to_string(s.g.arming()) +
+     " plus=" + std::to_string(s.g.armingPlus()));
 
-  s.advance(1200);                   // now well inside the charge
-  eqInt(s.count(UiGestures::EV_NUDGE_LESS), nudgesAtArming,
-        "  ...and the knob stopped moving the moment it armed");
+  s.advance(1200);
   ok(s.count(UiGestures::EV_ARM_TICK) >= 1, "  ...with audible ticks while it charges",
      "got " + std::to_string(s.count(UiGestures::EV_ARM_TICK)));
-  eqInt(s.count(UiGestures::EV_MENU_OPEN), 0, "  ...but it is not open yet");
+
+  s.advance(1000);                   // past 3 s
+  eqInt(s.count(UiGestures::EV_TOGGLE_FREEPLAY), 1, "at 3 s it switches mode");
+  eqInt(s.count(UiGestures::EV_MENU_OPEN), 0, "  ...and it is NOT the level wheel");
+  ok(!s.g.inMenu(), "  ...the menu never opened", "inMenu");
+
+  s.off(s.plus, 300);
+  eqInt(s.count(UiGestures::EV_TOGGLE_FREEPLAY), 1,
+        "  ...and letting go does not fire it a second time");
+  eqInt(s.count(UiGestures::EV_NUDGE_MORE), 1,
+        "  ...the whole gesture moved the knob exactly once (main.cpp puts it back)");
+}
+
+// 3b. Letting go of + mid-charge changes nothing at all.
+static void test_plus_release_cancels_arming() {
+  section("3b. Letting go of + mid-charge switches nothing");
+  Sim s;
+  s.hold(s.plus, 1600);
+  eqInt(s.count(UiGestures::EV_ARM_START), 1, "it armed");
+  s.off(s.plus, 300);
+  eqInt(s.count(UiGestures::EV_ARM_CANCEL), 1, "  ...and released = cancelled");
+  eqInt(s.count(UiGestures::EV_TOGGLE_FREEPLAY), 0, "  ...nothing switched");
+}
+
+// 3c. The two holds must never be confused for one another.
+static void test_the_two_holds_never_cross() {
+  section("3c. + and − hold to DIFFERENT things");
+  { Sim s; s.hold(s.minus, 4000);
+    eqInt(s.count(UiGestures::EV_MENU_OPEN), 1, "− for 4 s opens the wheel");
+    eqInt(s.count(UiGestures::EV_TOGGLE_FREEPLAY), 0, "  ...and never toggles free play"); }
+  { Sim s; s.hold(s.plus, 4000);
+    eqInt(s.count(UiGestures::EV_TOGGLE_FREEPLAY), 1, "+ for 4 s toggles free play");
+    eqInt(s.count(UiGestures::EV_MENU_OPEN), 0, "  ...and never opens the wheel"); }
 }
 
 static void test_minus_release_cancels_arming() {
@@ -210,11 +256,10 @@ static void test_wheel_wraps_both_ways() {
   eqInt((long) s.g.item(), 0, "the menu opened on item 0");
   s.tapPlus(); eqInt((long) s.g.item(), 1, "+ -> item 1");
   s.tapPlus(); eqInt((long) s.g.item(), 2, "+ -> item 2");
-  s.tapPlus(); eqInt((long) s.g.item(), 3, "+ -> item 3");
-  s.tapPlus(); eqInt((long) s.g.item(), 4, "+ -> item 4 (free play, the last one)");
+  s.tapPlus(); eqInt((long) s.g.item(), 3, "+ -> item 3 (level 4, the last one)");
   s.tapPlus(); eqInt((long) s.g.item(), 0, "+ WRAPS back round to item 0");
-  s.tapMinus(); eqInt((long) s.g.item(), 4, "− WRAPS the other way, to item 4");
-  s.tapMinus(); eqInt((long) s.g.item(), 3, "− -> item 3");
+  s.tapMinus(); eqInt((long) s.g.item(), 3, "− WRAPS the other way, to item 3");
+  s.tapMinus(); eqInt((long) s.g.item(), 2, "− -> item 2");
   eqInt(s.count(UiGestures::EV_MENU_ACCEPT), 0, "and no tap was ever read as an accept");
 }
 
@@ -413,13 +458,15 @@ static void test_knob_works_after_menu() {
 int main() {
   printf("\n\033[1mLemon Piano V5.5 — button gesture state machine\033[0m\n");
   printf("arm %u ms · open %u ms · both %u ms · debounce %u ms · idle %lu ms\n",
-         (unsigned) GES_MENU_ARM_MS, (unsigned) GES_MENU_HOLD_MS,
+         (unsigned) GES_HOLD_ARM_MS, (unsigned) GES_HOLD_FIRE_MS,
          (unsigned) GES_BOTH_HOLD_MS, (unsigned) GES_DEBOUNCE_MS,
          (unsigned long) GES_MENU_IDLE_MS);
 
   test_tap_each_button();
-  test_plus_ramps_forever();
-  test_minus_ramp_stops_when_arming();
+  test_no_ramp_on_either_button();
+  test_plus_holds_to_toggle_free_play();
+  test_plus_release_cancels_arming();
+  test_the_two_holds_never_cross();
   test_minus_release_cancels_arming();
   test_minus_opens_menu();
   test_arm_meter_fills();

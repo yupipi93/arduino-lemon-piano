@@ -57,8 +57,9 @@ a second, you get a low rattle — that is "try another one", not a fault.
 
 ## 4. Free play — the piano with no game
 
-The fifth mode is not a level and you cannot reach it by winning. **You have to
-choose it** (§5).
+Free play is not a level and you cannot reach it by winning. **Hold the + button
+for three seconds** and the piano swaps the game for the instrument. Hold it
+again and the game comes back, at the level you left.
 
 In free play the seven lemons are simply the notes you were taught at school:
 
@@ -70,17 +71,32 @@ In free play the seven lemons are simply the notes you were taught at school:
 - No secret melody, no wrong notes, nothing to win.
 - **Play the same lemon as many times as you like** — the game's one-touch rule
   is off here, because that rule is the opposite of what an instrument needs.
-- Hold a lemon and the note holds with it.
+- **Hold a lemon and the note holds with it — one note, not a stutter.** Let go
+  properly and touch it again for a second note. Playing fast still works; it
+  only ignores the flicker of a finger that never left.
 - The lights become a **pitch meter**: low notes light a little of the bar, high
   notes light all of it.
 - When you are not playing, the bar shows **only its two ends lit**. That shape
   means "this is the piano". The game's bar can never look like that.
 
-## 5. Choosing a mode — the wheel
+## 5. Choosing a mode
 
-Everything below uses only the two buttons: **+** and **−**.
+Everything below uses only the two buttons: **+** and **−**. The rule that makes
+them easy to remember: **a tap is the sensitivity, a hold is a mode.**
 
-### Open it
+### The instrument switch — hold **+**
+
+**Hold the + button for three seconds.** From one second the bar fills and a
+chirp climbs, exactly like the wheel below, so you can always tell it is
+charging. At three seconds the piano swaps:
+
+- playing a level → **free play**, announced by a run up do-re-mi-fa-sol-la-si
+- in free play → **back to the level you left**, announced by its own theme
+
+Let go early and nothing happens. It is a switch, so the same gesture takes you
+both ways; you never have to go looking for a menu to get your instrument back.
+
+### The level wheel — hold **−**
 
 **Hold the − button down and keep holding.** After one second the piano starts
 charging: the bar fills up and you hear a chirp that climbs. At **three seconds**
@@ -88,13 +104,15 @@ the lights sweep once across and back, a rising three-note cue plays, and you
 are in.
 
 Let go before three seconds and nothing happens — you get a low double bump
-meaning "cancelled". *(The first second of that hold does turn the sensitivity
-down, as a normal − press would. Opening the menu puts it straight back.)*
+meaning "cancelled". *(The press itself turns the sensitivity down one step, as
+any − press would; the moment the hold becomes a mode change that step is put
+straight back.)*
 
 ### Turn it
 
-**Tap +** for the next mode, **tap −** for the previous one. It is a wheel: past
-the last mode you come back to the first.
+**Tap +** for the next level, **tap −** for the previous one. It is a wheel: past
+level 4 you come back to level 1. Free play is **not** on the wheel — it is the
++ hold above, so turning the wheel can never take your instrument away.
 
 Each stop tells you where you are, twice over:
 
@@ -104,10 +122,8 @@ Each stop tells you where you are, twice over:
 | Level 2 | **2** lights, blinking | the Underworld theme |
 | Level 3 | **3** lights, blinking | the Starman theme |
 | Level 4 | **4** lights, blinking | the Castle theme |
-| **Free play** | one light **running** back and forth | a run up do-re-mi-fa-sol-la-si |
 
-Blinking lights mean *a question*; steady lights mean *a score*. Free play is the
-one that moves, so it is never confused with "four lights, blinking".
+Blinking lights mean *a question*; steady lights mean *a score*.
 
 Tap again while a tune is playing and it stops immediately and moves on — you
 never have to wait for the music.
@@ -155,10 +171,10 @@ out the best setting from your actual finger on your actual fruit.
 - A falling rattle = it could not tell your touch from the noise, and **nothing
   changed**. Check the clip is in your hand and try again.
 
-> **Do not confuse the two long presses.** *Both* buttons for one second = tune.
-> *Just* the **−** button for three seconds = the mode wheel. They cannot
-> collide: if you reach for the second button mid-charge, the wheel cancels and
-> hands over to tuning.
+> **The three long presses, and how to keep them apart.** *Both* buttons for one
+> second = tune. *Just* **+** for three seconds = the instrument switch. *Just*
+> **−** for three seconds = the level wheel. They cannot collide: if you reach
+> for the second button mid-charge, the charge cancels and hands over to tuning.
 
 To start completely fresh, **unplug it and plug it back in**. That re-runs
 calibration and returns to level 1.
@@ -167,11 +183,11 @@ calibration and returns to level 1.
 
 | Gesture | What it does |
 |---|---|
-| Tap **+** | More sensitive, one step |
-| Tap **−** | Less sensitive, one step |
-| Hold **+** or **−** | Runs through the steps |
-| Hold **−** for **3 s** | **Opens the mode wheel** |
-| In the wheel: tap **+** / **−** | Next / previous mode (it wraps) |
+| Tap **+** | More sensitive, one step — **one more light** |
+| Tap **−** | Less sensitive, one step — **one light out** |
+| Hold **+** for **3 s** | **Free play ⇄ the level** |
+| Hold **−** for **3 s** | **Opens the level wheel** |
+| In the wheel: tap **+** / **−** | Next / previous level (it wraps) |
 | In the wheel: **both buttons** | Choose this mode |
 | In the wheel: hold either **3 s** | Leave, change nothing |
 | Hold **both** for **1 s**, touching a lemon | Smart adjust |
@@ -187,7 +203,7 @@ lemons so it can never be mistaken for a note.
 |---|---|
 | Coin, one per lemon | Calibrating — hands off |
 | Mushroom power-up | Calibration finished, go ahead |
-| Rising chirps, climbing | The − button is charging the mode wheel |
+| Rising chirps, climbing | A button is charging: **+** the instrument switch, **−** the level wheel |
 | Rising three notes | The wheel is open |
 | The same three, falling | The wheel closed, nothing changed |
 | Fifth resolving to the octave | You chose a mode |

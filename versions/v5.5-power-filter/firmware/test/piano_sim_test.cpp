@@ -76,7 +76,13 @@ static void tapMinus(uint32_t hold = 90, uint32_t gap = 160) {
   board.minusDown = true;  runFor(hold);
   board.minusDown = false; runFor(gap);
 }
-// The documented way in: hold − for three seconds.
+// The documented way into free play since 2026-09-13: hold + for three seconds.
+// It is a switch, not a menu entry, so it also takes you back out.
+static void toggleFreePlayByHold() {
+  board.plusDown = true;  runFor(3400);
+  board.plusDown = false; runFor(4000);   // the accept cue + the mode's own intro
+}
+// The documented way into the level wheel: hold − for three seconds.
 static void openMenu() {
   board.minusDown = true;  runFor(3400);
   board.minusDown = false; runFor(300);
@@ -135,7 +141,7 @@ static void test_menu_opens_and_previews() {
   runFor(900);
   ok(!serialSince(sm, "MODE MENU"), "at 900 ms it is still the sensitivity knob");
   runFor(2600);
-  ok(serialSince(sm, "keep holding for the mode menu"), "  ...it warns before it opens");
+  ok(serialSince(sm, "keep holding for the level wheel"), "  ...it warns before it opens");
   ok(serialSince(sm, "MODE MENU"), "  ...and at 3 s the wheel is open");
   ok(tonesSince(tm).size() > 3, "  ...with sound to match",
      std::to_string(tonesSince(tm).size()) + " tones");
@@ -143,8 +149,8 @@ static void test_menu_opens_and_previews() {
   board.minusDown = false; runFor(300);
 }
 
-static void test_wheel_reaches_free_play_and_wraps() {
-  section("4. The wheel turns to every mode, and wraps");
+static void test_wheel_reaches_every_level_and_wraps() {
+  section("4. The wheel turns to every LEVEL, and wraps (free play left it)");
   boot();
   openMenu();
   size_t sm = serialMark();
@@ -154,22 +160,20 @@ static void test_wheel_reaches_free_play_and_wraps() {
   sm = serialMark();
   tapPlus(); runFor(4000);  ok(serialSince(sm, "> Level 4"), "+ -> Level 4");
   sm = serialMark();
-  tapPlus(); runFor(1500);  ok(serialSince(sm, "> FREE PLAY"), "+ -> FREE PLAY, the last item");
-  sm = serialMark();
   tapPlus(); runFor(2600);  ok(serialSince(sm, "> Level 1"), "+ WRAPS round to Level 1");
   sm = serialMark();
-  tapMinus(); runFor(1500); ok(serialSince(sm, "> FREE PLAY"), "− WRAPS the other way");
+  tapMinus(); runFor(4000); ok(serialSince(sm, "> Level 4"), "− WRAPS the other way");
+  ok(!board.serial.find("FREE PLAY (the piano)") ||
+     board.serial.find("> FREE PLAY") == std::string::npos,
+     "  ...and FREE PLAY is not on the wheel at all");
   eqInt(level, 1, "and nothing has been accepted yet: still playing level 1");
 }
 
 static void test_free_play_mapping() {
   section("5. FREE PLAY: the seven lemons are do re mi fa sol la si");
   boot();
-  openMenu();
-  tapPlus(); runFor(2600); tapPlus(); runFor(3000);
-  tapPlus(); runFor(4000); tapPlus(); runFor(1500);   // -> FREE PLAY
-  acceptSelection();
-  eqInt(level, FREE_PLAY, "the wheel handed over the instrument");
+  toggleFreePlayByHold();
+  eqInt(level, FREE_PLAY, "holding + handed over the instrument");
   ok(board.serial.find("do re mi fa sol la si") != std::string::npos,
      "  ...and the log says what it is");
 
@@ -189,10 +193,7 @@ static void test_free_play_mapping() {
 static void test_free_play_repeats_and_never_scores() {
   section("6. FREE PLAY: the same lemon, over and over — and never a verdict");
   boot();
-  openMenu();
-  tapPlus(); runFor(2600); tapPlus(); runFor(3000);
-  tapPlus(); runFor(4000); tapPlus(); runFor(1500);
-  acceptSelection();
+  toggleFreePlayByHold();
 
   size_t sm = serialMark(), tm = toneMark();
   for (int i = 0; i < 5; i++) touchKey(2);          // the SAME key, five times
@@ -215,10 +216,7 @@ static void test_free_play_repeats_and_never_scores() {
 static void test_free_play_pitch_bar() {
   section("7. FREE PLAY: the bar is a pitch meter, and its idle shape is unique");
   boot();
-  openMenu();
-  tapPlus(); runFor(2600); tapPlus(); runFor(3000);
-  tapPlus(); runFor(4000); tapPlus(); runFor(1500);
-  acceptSelection();
+  toggleFreePlayByHold();
   ok(ledPattern() == "#........#", "idle: only the two ends are lit", ledPattern());
 
   board.touched[0] = true; runFor(150);
@@ -409,6 +407,119 @@ static void test_minus_button_does_not_press_a_key() {
      "margin=" + std::to_string(touchMargin));
 }
 
+
+// ── 15. Free play is a SWITCH on +, not an item on the wheel (2026-09-13) ───
+// Sergio: "mantener el botón más es un switch entre el modo libre y el nivel".
+// So it has to go both ways, and coming back has to land where it left.
+static void test_free_play_is_a_switch_on_plus() {
+  section("15. Holding + switches between free play and the level");
+
+  boot();
+  eqInt(level, 1, "it boots into level 1");
+  toggleFreePlayByHold();
+  eqInt(level, FREE_PLAY, "hold + -> free play");
+  toggleFreePlayByHold();
+  eqInt(level, 1, "hold + again -> back to the level, which was 1");
+
+  // ...and it remembers a level that is NOT 1, which is the whole reason the
+  // switch keeps a snapshot instead of hard-coding level 1.
+  boot();
+  openMenu();
+  tapPlus(); runFor(2600);            // -> Level 2
+  tapPlus(); runFor(3000);            // -> Level 3
+  acceptSelection();
+  eqInt(level, 3, "the wheel put us on level 3");
+  toggleFreePlayByHold();
+  eqInt(level, FREE_PLAY, "  ...hold + -> free play");
+  toggleFreePlayByHold();
+  eqInt(level, 3, "  ...and hold + again comes back to LEVEL 3, not level 1");
+
+  // The − wheel is still a way out of free play, and it opens on a real level.
+  toggleFreePlayByHold();
+  eqInt(level, FREE_PLAY, "back into free play");
+  size_t sm = serialMark();
+  openMenu();
+  ok(serialSince(sm, "> Level 3"),
+     "  ...opening the wheel from free play lands on the level it interrupted");
+  acceptSelection();
+  eqInt(level, 3, "  ...and accepting it leaves free play");
+}
+
+// ── 16. A HELD lemon sounds ONCE (2026-09-13) ──────────────────────────────
+// REGRESSION for what Sergio reported the day the keyboard went to 1 MOhm: in
+// free play, resting a finger on a lemon machine-gunned the note. The contact
+// is not a switch — it breaks for a few ms at a time without the finger moving,
+// and every one of those used to end the note and start a new one.
+//
+// Delete the RELEASE_CONFIRM_MS guard in loop() and this section fails.
+static void test_held_fruit_sounds_once() {
+  section("16. Holding a lemon is ONE note, letting go and touching again is two");
+
+  boot();
+  toggleFreePlayByHold();
+  board.dropoutEveryMs = 200;         // flaky contact: 30 ms clear every 200 ms
+  board.dropoutMs = 30;
+
+  size_t tm = toneMark();
+  board.touched[2] = true;  runFor(2000);   // ten dropouts' worth of holding
+  board.touched[2] = false; runFor(400);
+  int mi = 0;
+  std::vector<int> t = tonesSince(tm);
+  for (size_t i = 0; i < t.size(); i++) if (t[i] == NOTE_E5) mi++;
+  eqInt(mi, 1, "two seconds of holding one lemon = ONE note");
+
+  // ...and a real release still lets it sound again.
+  tm = toneMark();
+  board.touched[2] = true;  runFor(300);
+  board.touched[2] = false; runFor(400);
+  t = tonesSince(tm);
+  mi = 0;
+  for (size_t i = 0; i < t.size(); i++) if (t[i] == NOTE_E5) mi++;
+  eqInt(mi, 1, "  ...and touching it again after letting go sounds it again");
+
+  // Fast deliberate playing must not be swallowed by the guard.
+  tm = toneMark();
+  for (int i = 0; i < 4; i++) touchKey(2, 120, 200);
+  t = tonesSince(tm);
+  mi = 0;
+  for (size_t i = 0; i < t.size(); i++) if (t[i] == NOTE_E5) mi++;
+  eqInt(mi, 4, "  ...and four deliberate taps are still four notes");
+
+  board.dropoutEveryMs = 0;
+}
+
+// ── 17. The bar counts SENSITIVITY, not margin (2026-09-13) ────────────────
+// Sergio: + put lights OUT and − turned them ON. A button labelled "more" that
+// takes light away reads as "less" from across the room.
+static void test_bar_counts_sensitivity() {
+  section("17. More LEDs = more sensitive, so + adds light");
+
+  boot();
+  touchMargin = 2;  showMarginOnBar();
+  const int litSensitive = litLeds();
+  touchMargin = 18; showMarginOnBar();
+  const int litBlunt = litLeds();
+  ok(litSensitive > litBlunt, "a tight margin lights MORE LEDs than a wide one",
+     "margin 2 -> " + std::to_string(litSensitive) +
+     " LEDs, margin 18 -> " + std::to_string(litBlunt));
+  eqInt(litBlunt, 1, "  ...and the bluntest end still shows one, never zero");
+
+  // End to end, through the buttons.
+  boot();
+  touchMargin = 10;
+  tapMinus(); runFor(50);
+  const int afterMinus = litLeds();
+  const int marginAfterMinus = touchMargin;
+  tapPlus(); runFor(50);
+  tapPlus(); runFor(50);
+  tapPlus(); runFor(50);
+  tapPlus(); runFor(50);
+  ok(touchMargin < marginAfterMinus, "+ makes it more sensitive",
+     "margin " + std::to_string(marginAfterMinus) + " -> " + std::to_string(touchMargin));
+  ok(litLeds() > afterMinus, "  ...and that LIGHTS MORE LEDs, not fewer",
+     std::to_string(afterMinus) + " -> " + std::to_string(litLeds()));
+}
+
 int main(int argc, char **argv) {
   if (argc > 1 && std::string(argv[1]) == "-v") board.traceSerial = true;
   printf("\n\033[1mLemon Piano V5.5 — firmware on a fake board\033[0m\n");
@@ -417,7 +528,7 @@ int main(int argc, char **argv) {
   test_boot_unchanged();
   test_game_still_scores();
   test_menu_opens_and_previews();
-  test_wheel_reaches_free_play_and_wraps();
+  test_wheel_reaches_every_level_and_wraps();
   test_free_play_mapping();
   test_free_play_repeats_and_never_scores();
   test_free_play_pitch_bar();
@@ -428,6 +539,9 @@ int main(int argc, char **argv) {
   test_open_and_accept_is_a_no_op();
   test_first_conversion_is_discarded();
   test_minus_button_does_not_press_a_key();
+  test_free_play_is_a_switch_on_plus();
+  test_held_fruit_sounds_once();
+  test_bar_counts_sensitivity();
 
   printf("\n%d checks, \033[%sm%d failed\033[0m\n\n",
          checks, failures ? "31" : "32", failures);

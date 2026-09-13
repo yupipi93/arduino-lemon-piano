@@ -65,8 +65,9 @@ segundo, oirás un traqueteo grave: es un "prueba con otro", no una avería.
 
 ## 4. Modo libre — el piano sin juego
 
-El quinto modo no es un nivel y **no se llega a él jugando**. Hay que
-**elegirlo** (§5).
+El modo libre no es un nivel y **no se llega a él jugando**. **Mantén pulsado el
+botón + tres segundos** y el piano cambia el juego por el instrumento. Vuelve a
+mantenerlo y el juego regresa, al nivel que dejaste.
 
 En modo libre los siete limones son sencillamente las notas de toda la vida:
 
@@ -79,18 +80,37 @@ En modo libre los siete limones son sencillamente las notas de toda la vida:
 - **Puedes repetir el mismo limón las veces que quieras**: aquí la regla de "una
   sola vez" está desactivada, porque es justo lo contrario de lo que necesita un
   instrumento.
-- Si mantienes el limón, la nota se mantiene.
+- **Si mantienes el limón, la nota se mantiene: una nota, no un tartamudeo.**
+  Suelta de verdad y vuelve a tocar para que suene otra vez. Tocar rápido sigue
+  funcionando; sólo ignora el parpadeo de un dedo que nunca se fue.
 - Las luces pasan a ser un **medidor de altura**: las notas graves encienden
   poca barra, las agudas la encienden entera.
 - Cuando no estás tocando, la barra enseña **sólo sus dos extremos encendidos**.
   Esa forma significa "esto es el piano". La barra del juego nunca puede tener
   ese aspecto.
 
-## 5. Elegir modo — la rueda
+## 5. Elegir modo
 
-Todo lo de aquí abajo se hace con los dos botones: **+** y **−**.
+Todo lo de aquí abajo se hace con los dos botones: **+** y **−**. La regla que
+los hace fáciles de recordar: **un toque es la sensibilidad, una pulsación larga
+es un modo.**
 
-### Abrirla
+### El interruptor del instrumento — mantener **+**
+
+**Mantén pulsado el botón + tres segundos.** Desde el primer segundo la barra se
+llena y suena un pitido que sube, igual que en la rueda de abajo, así que
+siempre sabes que está cargando. A los tres segundos el piano cambia:
+
+- si estabas jugando un nivel → **modo libre**, anunciado con una escala
+  do-re-mi-fa-sol-la-si
+- si estabas en modo libre → **vuelta al nivel que dejaste**, anunciado con su
+  propio tema
+
+Si lo sueltas antes, no pasa nada. Es un interruptor, así que el mismo gesto te
+lleva en los dos sentidos: nunca tienes que buscar un menú para recuperar tu
+instrumento.
+
+### La rueda de niveles — mantener **−**
 
 **Mantén pulsado el botón − y no lo sueltes.** Al segundo, el piano empieza a
 cargar: la barra se llena y suena un pitido que va subiendo. A los **tres
@@ -98,13 +118,16 @@ segundos** las luces hacen un barrido de ida y vuelta, suena un aviso de tres
 notas ascendentes y ya estás dentro.
 
 Si lo sueltas antes de los tres segundos no pasa nada: oirás un golpe doble
-grave que significa "cancelado". *(El primer segundo de esa pulsación sí baja la
-sensibilidad, como haría un − normal. Al abrir el menú se deja como estaba.)*
+grave que significa "cancelado". *(La pulsación en sí baja la sensibilidad un
+paso, como haría cualquier −; en cuanto se convierte en cambio de modo, ese paso
+se devuelve.)*
 
 ### Girarla
 
-**Un toque en +** para el modo siguiente, **un toque en −** para el anterior. Es
-una rueda: pasado el último modo se vuelve al primero.
+**Un toque en +** para el nivel siguiente, **un toque en −** para el anterior. Es
+una rueda: pasado el nivel 4 se vuelve al 1. El modo libre **no está en la
+rueda** — es la pulsación larga de **+**, así que girar la rueda nunca te puede
+quitar el instrumento.
 
 Cada parada te dice dónde estás, por partida doble:
 
@@ -114,10 +137,8 @@ Cada parada te dice dónde estás, por partida doble:
 | Nivel 2 | **2** luces, parpadeando | el tema Underworld |
 | Nivel 3 | **3** luces, parpadeando | el tema de la estrella |
 | Nivel 4 | **4** luces, parpadeando | el tema del castillo |
-| **Modo libre** | una luz **recorriendo** la barra | una escala do-re-mi-fa-sol-la-si |
 
-Las luces que parpadean son *una pregunta*; las fijas son *un marcador*. El modo
-libre es el único que se mueve, así que nunca se confunde con "cuatro luces
+Las luces que parpadean son *una pregunta*; las fijas son *un marcador*. "Cuatro luces
 parpadeando".
 
 Si vuelves a pulsar mientras suena una melodía, se corta al momento y pasa a la
@@ -170,10 +191,11 @@ deduce el mejor ajuste con tu dedo de verdad sobre tu fruta de verdad.
 - Un traqueteo descendente = no ha podido distinguir tu contacto del ruido, y
   **no ha cambiado nada**. Comprueba que tienes la pinza en la mano y repite.
 
-> **No confundas las dos pulsaciones largas.** *Los dos* botones un segundo =
-> ajustar. *Sólo* el botón **−** tres segundos = la rueda de modos. No pueden
-> chocar: si vas a por el segundo botón a media carga, la rueda se cancela y le
-> cede el turno al ajuste.
+> **Las tres pulsaciones largas, y cómo no confundirlas.** *Los dos* botones un
+> segundo = ajustar. *Sólo* **+** tres segundos = el interruptor del instrumento.
+> *Sólo* **−** tres segundos = la rueda de niveles. No pueden chocar: si vas a
+> por el segundo botón a media carga, la carga se cancela y le cede el turno al
+> ajuste.
 
 Para empezar del todo de cero, **desenchufa y vuelve a enchufar**. Eso repite la
 calibración y vuelve al nivel 1.
@@ -182,12 +204,12 @@ calibración y vuelve al nivel 1.
 
 | Gesto | Qué hace |
 |---|---|
-| Toque en **+** | Más sensible, un paso |
-| Toque en **−** | Menos sensible, un paso |
-| Mantener **+** o **−** | Recorre los pasos |
-| Mantener **−** **3 s** | **Abre la rueda de modos** |
-| En la rueda: toque en **+** / **−** | Modo siguiente / anterior (da la vuelta) |
-| En la rueda: **los dos botones** | Elegir este modo |
+| Toque en **+** | Más sensible, un paso — **una luz más** |
+| Toque en **−** | Menos sensible, un paso — **una luz menos** |
+| Mantener **+** **3 s** | **Modo libre ⇄ el nivel** |
+| Mantener **−** **3 s** | **Abre la rueda de niveles** |
+| En la rueda: toque en **+** / **−** | Nivel siguiente / anterior (da la vuelta) |
+| En la rueda: **los dos botones** | Elegir este nivel |
 | En la rueda: mantener cualquiera **3 s** | Salir sin cambiar nada |
 | Mantener **los dos** **1 s** tocando un limón | Ajuste inteligente |
 | Mantener **los dos** **1 s** durante la melodía final | Volver al nivel 1 |
@@ -202,7 +224,7 @@ afinado **por encima** de los limones para que nunca se confunda con una nota.
 |---|---|
 | Moneda, una por limón | Calibrando: manos fuera |
 | Champiñón (power-up) | Calibración terminada, adelante |
-| Pitidos que suben | El botón − está cargando la rueda de modos |
+| Pitidos que suben | Un botón está cargando: **+** el interruptor del instrumento, **−** la rueda de niveles |
 | Tres notas ascendentes | La rueda está abierta |
 | Las mismas tres, descendentes | La rueda se cerró sin cambiar nada |
 | Quinta que resuelve en la octava | Has elegido un modo |
