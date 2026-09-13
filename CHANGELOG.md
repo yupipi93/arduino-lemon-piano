@@ -2,6 +2,40 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-13 — SOLVED: R1 at 1 MΩ, 15 clean presses, no ground clip
+
+External 1 MΩ from J2 pin 1 to the Nano's 5V pin, R1 lifted. Baseline **1022,
+noise 2**, so the game's auto-margin would be **4**. Running event detection at
+that real threshold finds **15 presses on channel 1**, and the operator's account
+of the session falls straight out of the timestamps:
+
+| phase | presses | dip |
+|---|---|---|
+| no ground, shod | 5 | **132–200** |
+| gripping ground | 5 | **255–291** |
+| barefoot on the floor | 5 | **166–258** |
+
+Worst of the fifteen: **132 counts against a margin of 4 — 33× headroom.** Best:
+72×. Presses last 300–1500 ms and return cleanly to 1023. **Channels 2–7 stayed
+at exactly 1023 for all 90 s** — no crosstalk, no phantom notes, no stuck keys.
+
+Barefoot does matter and does not matter: the floor is a partial return to
+earth, better than isolated and worse than a hand on circuit ground, and the
+three phases measure it cleanly. All three clear the threshold thirty times over.
+
+**What the three-day zero actually was.** Not a broken board, not a bad netlist,
+not flux, not the fruit header — a **220 Ω pull-up used as a body-resistance
+sensor**. It needs the whole hand → body → fruit path under ~56 kΩ; a clipless
+touch on this board measures **5–10 MΩ**. Four orders of magnitude, which is why
+no assembly fault could have explained it and every intermediate theory missed.
+The breadboard was the same design working on **2 counts** of headroom (§2f);
+the PCB simply fell off that edge. 1 MΩ turns 2 counts into 33×.
+
+Next: swap R2–R7 to 1 MΩ, then re-run the probe with all seven high-impedance —
+the one thing this capture cannot predict, because channels 2–7 are still 220 Ω
+and therefore immune to the coupling a MΩ neighbour could induce. Fallback if
+ghosting appears: 470 kΩ, still ~65–145 counts on the measured contact.
+
 ## 2026-09-13 (night) — `readKey()` discards its first conversion, with a test that proves it
 
 Firmware, V5.5 only. `readKey()` now throws away one conversion on each channel

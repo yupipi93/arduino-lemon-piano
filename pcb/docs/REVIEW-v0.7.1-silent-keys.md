@@ -449,6 +449,62 @@ has doing real work. That is a design change (V5.6+), not a repair, and it trade
 sensitivity for ghost notes. With the 10 kΩ + a GND clip the instrument is
 rock-solid today; clipless is the next version's question.
 
+## 2h. SOLVED — R1 at 1 MΩ, 15 clean presses, clipless
+
+Log: `pcb/validation/probe-v0.7.1-R1-1M-SOLVED-2026-09-13.txt`, header
+`label: pcb`. R1 replaced by an external 1 MΩ from J2 pin 1 to the Nano's 5V
+pin. Baseline **1022, noise 2** → the game's auto-margin would be **4**.
+
+Event detection run at that real threshold finds **15 presses on channel 1**,
+and the operator's own account of the session falls out of the timestamps:
+
+| phase | presses | dip |
+|---|---|---|
+| 0–20 s, no ground, shod | 5 | **132–200** |
+| 20–36 s, gripping ground | 5 | **255–291** |
+| 44–56 s, barefoot on the floor | 5 | **166–258** |
+
+Worst press of the fifteen: **132 counts against a margin of 4 — 33× headroom.**
+Best: 291, i.e. 72×. Presses last 300–1500 ms and return cleanly to 1023 between
+them. **Channels 2–7 sat at exactly 1023 for the whole 90 s**: no crosstalk, no
+phantom notes, no stuck keys.
+
+### Barefoot matters, and it does not matter
+
+The operator noticed mid-session that he was barefoot on the floor and asked
+whether it counted. It does, and the three phases measure it: standing on the
+building's floor gives a **partial** return to earth — better than isolated
+(132–200), worse than a hand on circuit ground (255–291), landing in between
+(166–258). Exactly what the physics predicts, measured by accident.
+
+But every one of the three conditions clears the threshold by more than thirty
+times over, so in practice it is irrelevant: shoes, bare feet or a rug all play.
+
+### What this closes
+
+The three-day zero was never a broken board and never a wrong netlist. It was a
+**220 Ω pull-up used as a body-resistance sensor**: it needs the whole hand →
+body → fruit path under ~56 kΩ, and a clipless touch on this board measures
+**5–10 MΩ**. That is four orders of magnitude, which is why every intermediate
+theory — routing, bridges, flux, the fruit header, the buzzer — was chasing a
+number that no assembly fault could have produced. §2f's breadboard reading (6–8
+counts clipless) was the same design one bad contact away from the same silence;
+it worked on 2 counts of headroom and the PCB fell off the edge. **1 MΩ replaces
+2 counts of headroom with 33×.**
+
+### Remaining work, in order
+
+1. **Swap R2…R7 to 1 MΩ** (R1 is already done, externally). Keep R18 out of it —
+   it is the SENS− pull-up and 220 Ω there is harmless (§2c).
+2. **Re-run the probe with all seven high-impedance.** This is the one thing the
+   current capture cannot predict: channels 2–7 are still 220 Ω, which makes them
+   immune to the coupling a 1 MΩ neighbour could induce. If ghosting appears,
+   **470 kΩ** is the fallback — it still yields ~65–145 counts on the measured
+   contact, with a quarter of the impedance.
+3. Flash the game firmware, which already discards its first ADC conversion (that
+   change is what makes a MΩ front end readable at all) and play it on fruit.
+4. Then, and only then, decide whether V5.6 exists as a board revision.
+
 ## 3. The buzzer branch — CLOSED 2026-09-12, it works (kept for the reasoning)
 
 "The notes do not sound" and "the keys do not detect" are not the same fault,
