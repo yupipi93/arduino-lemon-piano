@@ -2,6 +2,38 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-14 — the event poster, stored byte for byte
+
+Sergio made a poster with Gemini to stand behind the lemon piano at a private
+event, so people come over and play it, and asked for it in the repo with no
+loss of quality. It is at `docs/poster/super-limon-piano-cartel.png`, copied
+**byte for byte** — never opened and re-saved, never re-encoded:
+
+```
+sha256  b8db4412b7b9a77b31b51f8a2a371763dbf7a310eab1b599980af863dad18f26
+bytes   1 010 859
+848 x 1264 px, 8-bit RGB
+```
+
+`cmp` against the original returns identical. The hash is written into
+`docs/poster/README.md` so a later "compress this PNG" is detectable rather than
+silent.
+
+**What it can be printed at**, measured rather than assumed: the file is pixel
+art in style only — **102 156 distinct colours** with soft anti-aliased edges —
+so nearest-neighbour enlargement, which is lossless on real pixel art, would
+only magnify the softness. 300 dpi is 72 × 107 mm; full A4 works out at about
+**102 dpi**, soft up close and fine from a metre away, which is normal for
+large-format printing. Its aspect is 1:1.49 against A4's 1:1.41, so "fit to
+page" leaves ~10 mm of white down each side and "fill page" would crop ~16 mm
+off the top and bottom, into the wordmark.
+
+Also built, and NOT chosen: an A4 poster composed here in HTML and rendered
+through headless Chrome at a true 2480 × 3508 px (300 dpi) — the Super Mario 256
+wordmark with a hand-built acute accent the font does not ship, seven
+photographed lemons cut out by chroma, and the same four levels. It is outside
+git at `~/Pictures/piano-limones/` on quantumpc.
+
 ## 2026-09-13 — a repeated lemon is not a mistake: it sounds, and the bar says so
 
 Sergio, after the four changes above landed: the locked-key rattle reads as

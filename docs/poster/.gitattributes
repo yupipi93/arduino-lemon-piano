@@ -1,0 +1,4 @@
+# The poster is stored byte for byte and its sha256 is published in README.md.
+# `binary` = never diffed, never merged, and never passed through a text filter
+# (eol/autocrlf/clean-smudge), any of which would rewrite the bytes silently.
+*.png binary
