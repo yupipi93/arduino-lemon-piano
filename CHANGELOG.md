@@ -2,6 +2,48 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-13 (later) — the board is good, and a wire proved it in thirty seconds
+
+A bare wire from J2 pin 1, then pin 2, to J2 pin 8 (GND), probe running:
+
+| channel | range over 176 s | bridged? |
+|---|---|---|
+| 1, 2 | **1023 → 0**, full scale | yes |
+| 3–7 | 1023 → 1022 at worst | no |
+
+Full-scale swing on exactly the two bridged channels and nothing on the other
+five. It proves end to end that `J2.n → Rn → A(n-1)` is continuous, that
+`J2.8 → GND` is continuous, that the ADC resolves the whole range, and that the
+channels do not cross-talk. Log in
+`pcb/validation/probe-v0.7.1-jumper-2026-09-13.txt`.
+
+**Every hypothesis that blamed the board is now dead** — routing, buzzer, stuck
+buttons, missing pull-ups, bridged pull-ups, shorted key nets, an unsoldered
+fruit header. The meter cleared the last of them: all seven key resistors read
+220 Ω, and key-to-key reads ~440 Ω, which is R+R through the shared rail, i.e.
+exactly the *expected* value for a healthy pull-up bank. (That ~440 Ω is also,
+measured, the same observation the owner made on day one: "all the resistors
+look joined to each other". They are, and correctly.)
+
+Two incidental faults found and confirmed irrelevant: **R18 fitted as 220 Ω
+instead of 10 kΩ** (only touches `/SENS_MINUS` and `/+5V`; identical behaviour
+with the button up, and the button works), and **LED4 dead** (anode on D5, a
+digital output sharing nothing with A0–A6).
+
+**The method lesson, which is the expensive part.** This wire test costs thirty
+seconds and should have been the first thing done — before any theory about
+pull-up values, skin impedance or earth references. It substitutes a known
+resistance for the human and turns an argument into a number. Instead two days
+went into arithmetic that was correct and aimed at the wrong question: *is the
+board able to see a key at all?* was never asked. Worse, every test that WAS run
+used a finger, and a dry finger is ~1 MΩ — which reads 1023 on a perfectly
+working board. Every one of those tests was incapable of producing a signal, so
+none of them could ever have been evidence.
+
+What remains is not on the board: the path from the header pin to the hand — the
+fruit, the clips, the wire, the return to GND. And the one comparison never made
+in three days is the probe on the **breadboard**.
+
 ## 2026-09-13 — the probe records to a file at last, and the board's answer
 
 `pio device monitor` wraps pySerial's **miniterm**, which is an interactive

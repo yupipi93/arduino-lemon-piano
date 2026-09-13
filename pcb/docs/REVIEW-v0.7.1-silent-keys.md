@@ -244,6 +244,61 @@ two lines.
 
 That trio is V5.6. Nothing about it re-fabricates the board.
 
+## 2e. THE BOARD IS GOOD — proven 2026-09-13 with a piece of wire
+
+A bare wire from J2 pin 1 (and then pin 2) to J2 pin 8 (GND), probe running.
+Log: `pcb/validation/probe-v0.7.1-jumper-2026-09-13.txt`.
+
+| channel | range over 176 s | bridged? |
+|---|---|---|
+| 1 | **1023 → 0** (220 samples below 900) | yes |
+| 2 | **1023 → 0** (31 samples below 900) | yes |
+| 3, 6 | 1023 → 1023 | no |
+| 4, 5, 7 | 1023 → 1022 | no |
+
+**Full-scale swing on exactly the two channels that were bridged, and nothing on
+the other five.** A cleaner result is not available. It proves, end to end:
+
+- `J2.1 → R1 → A0` and `J2.2 → R2 → A1` are continuous and functional;
+- `J2.8 → GND pour` is continuous and functional;
+- the ADC resolves the whole 1023-count range on these nets;
+- there is no crosstalk — the five untouched channels stayed put.
+
+**So the PCB is not broken, and it is not mis-designed in any way that stops a
+key working.** Every hypothesis in §2, §2b, §2c and §2d that blamed the board is
+now dead:
+
+| Hypothesis | Status |
+|---|---|
+| Copper routing / netlist error | dead (§1, independent re-derivation) |
+| Buzzer / J5 / stuck SENS buttons | dead (§2b — they all work) |
+| R1–R7 missing or unpopulated | dead (§2c — pinned 1023 is a working pull-up) |
+| R1–R7 bridged to +5 V | dead (meter: 220 Ω on all seven) |
+| KEY nets shorted to each other | dead (meter: ~440 Ω key-to-key, which is R+R through the rail — the *expected* value) |
+| J2 not soldered through | dead (continuity on all 8 pins, and this wire test) |
+| **220 Ω too stiff for skin** | **still standing, but it must then be true of the breadboard too** |
+
+Two incidental faults found on the way, both confirmed irrelevant to this: **R18
+fitted as 220 Ω instead of 10 kΩ** (it only touches `/SENS_MINUS` and `/+5V`; with
+the button up it behaves identically, and the button demonstrably works), and
+**LED4 dead** (its anode is D5, a digital output sharing nothing with A0–A6).
+
+### What is left, and it is not on the board
+
+The fault is in the path from the header pin to the player's hand: the fruit, the
+clips, the wire, or the return to GND. And the decisive comparison has still
+never been made — **the probe has never been run on the breadboard.** That is now
+the entire remaining question, because everything the board can be blamed for has
+been measured and cleared.
+
+> A note on method, for next time. This wire test costs thirty seconds and it
+> should have been the FIRST thing done, before any theory about pull-up values,
+> body impedance or earth references. It substitutes a known resistance for the
+> human and turns an argument into a number. Instead the review spent two days
+> reasoning from a table of skin resistances — correct arithmetic, aimed at the
+> wrong question, because "is the board able to see a key at all?" was never
+> asked. See [[la-resistencia-conocida-antes-que-la-teoria]].
+
 ## 3. The buzzer branch — CLOSED 2026-09-12, it works (kept for the reasoning)
 
 "The notes do not sound" and "the keys do not detect" are not the same fault,
