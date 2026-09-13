@@ -2,6 +2,51 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-13 (late) — R1 → 10 kΩ, twice: a floating node, then the real number
+
+R1 lifted, a 10 kΩ through-hole resistor hung externally from J2 pin 1.
+
+**Run 1, 10 kΩ to J1 ("5V IN").** Channel 1 swung 512 counts (383…895), the
+other six flat. It looked like a triumph and was a floating pin: baseline **735**
+(≈ 3.6 V) not 1023, the channel rose **160 counts above its own baseline** —
+which no pull-up can do — and noise 10 with slow drift. J1 is the power input;
+with the board on the Nano's USB the 1N5817 isolates J1 from the rail, so the
+resistor was tied to a node held only by two diodes' reverse leakage: a 10 kΩ
+antenna on an open pin, swung by a hand *near* it. That is the V4 floating
+keyboard of July, called unreadable then. *It moved* is not *it worked*. (Log
+not preserved — overwritten before it was copied; the numbers are from the
+analysis at the time.)
+
+**Run 2, 10 kΩ to the Nano's 5V pin.** Baseline **1023, noise 0**, all seven.
+Channel 1 best dip **14 counts**, typical 1–2. Log
+`pcb/validation/probe-v0.7.1-R1-10k-on-rail-2026-09-13.txt`, first log with the
+new self-describing header (`label: pcb`).
+
+Solving the divider for the finger's contact resistance, per capture:
+
+| rig / condition | pull-up | dip | contact |
+|---|---|---|---|
+| breadboard, "no ground" | 220 Ω | 8 | **28 kΩ** |
+| breadboard, gripping USB shell | 220 Ω | 40 | **5.4 kΩ** |
+| PCB, 10 kΩ on rail, best | 10 kΩ | 14 | **721 kΩ** |
+| PCB, 10 kΩ on rail, typical | 10 kΩ | 1–2 | **5–10 MΩ** |
+
+**Same finger, same grip: 5 kΩ on the breadboard, 0.7–10 MΩ on the PCB.** With
+that contact, 220 Ω yields 0.02–0.3 counts — the zero of the last three days,
+finally with a cause attached. The circuit and the value are no longer in
+question; the contact at the header pin is. Two consequences: the breadboard's
+"clipless" 28 kΩ cannot be capacitive at DC, so there was an accidental return
+path (a finger on an exposed GND jumper tip — a breadboard has dozens), and the
+finished piano in its box will behave like the PCB, not the breadboard; and with
+the return path held equal, the 100× gap left is at the pin surface — J2 was
+hand-soldered from below and rosin flux wicks up pins as an insulating varnish.
+
+Next test is how the instrument is actually played: **alligator clips** on J2
+pin 1 and pin 8, which bite through any film. Expected with 10 kΩ: ~660 counts
+with a 5.4 kΩ body, ~270 with 28 kΩ. Review §2g has the full table and the
+honest route to a clipless version (MΩ pull-ups + first-conversion discard +
+the adaptive baseline the firmware already has — a V5.6 design, not a repair).
+
 ## 2026-09-13 (night) — a log that cannot say what it measured is not evidence
 
 A capture arrived that could have come from either rig, and the two readings of

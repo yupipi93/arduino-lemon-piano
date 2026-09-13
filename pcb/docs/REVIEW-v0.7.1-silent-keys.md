@@ -356,6 +356,99 @@ proposed that from arithmetic; the breadboard's own numbers now support it. It
 stays queued behind the back-to-back, because a fix applied before the cause is
 known is a coincidence, not a repair.
 
+## 2g. R1 → 10 kΩ, measured twice — and the difference is finally a number
+
+R1 was lifted and a 10 kΩ through-hole resistor hung externally from J2 pin 1.
+Two runs, because the first one taught something on its own.
+
+### Run 1: 10 kΩ to J1 ("5V IN") — a floating node, not a pull-up
+
+Capture of 13:02 — **not preserved**: `~/sonda-pcb.txt` was overwritten by the next two runs before it was copied into `pcb/validation/`. The numbers below are from the analysis made at the time (766 samples, 86.4 s); the CHANGELOG entry of that hour carries them too. Every later run IS archived. Channel 1
+swung **512 counts** (383…895); channels 2–7 flat. It looked like a triumph. It
+was not a pull-up working — it was a pin left floating, and the file says so
+three times:
+
+1. **baseline 735** (≈ 3.6 V), not 1023 — nothing held the node at the rail;
+2. the channel went **160 counts ABOVE its own baseline** — a pull-up can never
+   push a pin above its rail, so the node was not held at all;
+3. **noise 10 and a slow drift 732…744** — diode leakage moving with temperature.
+
+J1 is the power *input*. Current flows `J1 → D2 (1N5817) → filter → rail`, and
+when the board is powered from the Nano's USB with nothing in J1, the Schottky
+isolates J1 from the rail — which is precisely what the 1N5817 is there for (`HARDWARE.md`, powering rule 2). So
+the 10 kΩ was tied to a node held only by the reverse leakage of D1 and D2: a
+10 kΩ antenna on an open pin. A floating node swings hundreds of counts when a
+hand comes *near* it, through capacitive coupling, without any good galvanic
+contact. That is the V4 "floating keyboard" the repo measured in July and called
+unreadable. *It moved* is not *it worked*: the game needs a stable baseline and a
+downward dip, and this went both ways.
+
+### Run 2: 10 kΩ to the Nano's 5V pin — a real pull-up, and the real number
+
+Log: `probe-v0.7.1-R1-10k-on-rail-2026-09-13.txt`, header `label: pcb`.
+Baseline **1023, noise 0** on all seven — the resistor is on the rail now.
+Channel 1's best dip: **14 counts** (1009); typical touches 1–2 counts. Channels
+2–7 flat.
+
+Solving `reading = 1023·Rc/(Rc+Rpu)` for the contact resistance, per capture:
+
+| rig / condition | pull-up | reading | dip | **contact** |
+|---|---|---|---|---|
+| breadboard, "no ground" | 220 Ω | 1015 | 8 | **28 kΩ** |
+| breadboard, gripping USB shell | 220 Ω | 983 | 40 | **5.4 kΩ** |
+| PCB, 10 kΩ on rail, best touch | 10 kΩ | 1009 | 14 | **721 kΩ** |
+| PCB, 10 kΩ on rail, typical | 10 kΩ | 1021 | 2 | **5.1 MΩ** |
+| PCB, 10 kΩ on rail, weak | 10 kΩ | 1022 | 1 | **10 MΩ** |
+
+**Same finger, same USB-shell grip: 5 kΩ on the breadboard, 0.7–10 MΩ on the
+PCB.** Twenty-five to four hundred times worse. With that contact a 220 Ω
+pull-up gives 0.02–0.3 counts, i.e. the exact 0 measured for three days — and
+even 10 kΩ only buys 14. **The circuit and the value are no longer the question.
+The contact at the header pin is.**
+
+Two things the same table settles:
+
+- The breadboard's "clipless" 28 kΩ is not physically possible through
+  capacitance at DC; there was a real return path — most likely a neighbouring
+  finger or the palm on an exposed GND jumper tip, of which a breadboard has
+  dozens. The PCB, with solder mask everywhere and eight isolated pins, offers
+  no accidental ground, and its "no ground" reading (1–2 counts, 5–10 MΩ) is
+  what genuinely clipless touch looks like. **The finished piano, in a box, will
+  behave like the PCB, not like the breadboard.**
+- With the finger gripping the USB shell on both rigs, the return path is the
+  same; the remaining 100× gap is **at the pin surface**: J2 was hand-soldered
+  from below and rosin flux wicks up header pins as a hard insulating varnish;
+  the breadboard's pins and jumper tips are bare tinned metal.
+
+### The decisive test is also how the piano is actually played
+
+Nobody plays this instrument with a fingertip on a 0.64 mm header pin. The
+fruit reaches the board through an **alligator clip**, which bites through any
+film and offers a large contact area. So:
+
+1. Alligator clip on **J2 pin 1**, another on **J2 pin 8** (GND). Hold the pin-8
+   clip's metal in one hand; touch the pin-1 clip's metal — or a lemon clipped
+   to it — with the other. Probe running. Expected with the 10 kΩ and a 5.4 kΩ
+   body: **~660 counts**. With 28 kΩ: **~270**.
+2. Optionally, wipe the J2 pins with isopropyl alcohol and repeat the fingertip
+   test — separates "flux" from "contact area".
+
+If (1) gives hundreds of counts, the case is closed: board correct, 10 kΩ
+correct, ground clip required, pins were varnished. If it still gives ~10, the
+remaining suspect is the clip/wire path itself, and it is measured with the
+meter in ohms in ten seconds.
+
+### What "clipless" would actually take
+
+The floating-node run accidentally built the clipless piano the owner wants — and
+showed why it is hard: no baseline, drift, movement both ways. The controlled
+version is the MaKey-MaKey arrangement: pull-ups in the **1–5 MΩ** range (so a
+5–10 MΩ body-to-earth path still yields 100–500 counts), `readKey()` discarding
+the first conversion, and the adaptive `trackBaselines()` the firmware already
+has doing real work. That is a design change (V5.6+), not a repair, and it trades
+sensitivity for ghost notes. With the 10 kΩ + a GND clip the instrument is
+rock-solid today; clipless is the next version's question.
+
 ## 3. The buzzer branch — CLOSED 2026-09-12, it works (kept for the reasoning)
 
 "The notes do not sound" and "the keys do not detect" are not the same fault,
