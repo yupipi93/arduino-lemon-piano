@@ -2,6 +2,46 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-13 — the probe records to a file at last, and the board's answer
+
+`pio device monitor` wraps pySerial's **miniterm**, which is an interactive
+console: point its stdout at a pipe or a file and it writes **nothing**. So the
+second run produced a **zero-byte log from a correctly flashed board** — the
+board was printing perfectly and the recorder was the broken part, for the
+second round trip running.
+
+- **`probe/capture.py`** — reads the port with pySerial directly, timestamps
+  every line, flushes per line (a killed run still leaves a usable log), and
+  toggles DTR first so the log always opens on the boot block with the seven
+  baselines in it.
+- `probe/run.sh` uses it instead of `pio device monitor`.
+
+**First real reading from the assembled board**, taken over SSH with the Nano
+plugged into quantumpc:
+
+```
+  key 1  baseline=1023  noise=0
+  key 2  baseline=1023  noise=0     ... all seven identical
+keys:  1023(-0)  1023(-0)  1023(-0)  1023(-0)  1023(-0)  1023(-0)  1023(-0)
+```
+
+All seven channels **pinned at 1023 with exactly zero counts of noise**, held
+flat for the whole window. Two things follow immediately, and the second one
+closes a question this review had left open:
+
+1. **R1–R7 are populated and connected.** A floating analog pin does not read a
+   rock-steady 1023 — it wanders, and it drags the previous mux channel's
+   residue with it (that is precisely what the V4 keyboard measurements looked
+   like: "gradient ramps", 76–104 counts of noise, 170 counts of drift). Seven
+   identical, immovable 1023s are the signature of a stiff pull-up doing its
+   job. So "the resistors or the rail are missing" is dead, positively rather
+   than by inference.
+2. **Zero noise means the auto-margin is at its floor of 4**, which is the
+   best case the firmware can offer. Nothing is mis-calibrated. The margin was
+   never the problem.
+
+The board is doing exactly what it was designed to do. That is the finding.
+
 ## 2026-09-12 (fix) — the probe flashed fine and printed to nobody
 
 First real run on the board: upload SUCCESS on `/dev/ttyUSB0`, and then nothing.

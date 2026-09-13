@@ -6,15 +6,20 @@
 #   ./run.sh proto        # the working breadboard
 #   ./run.sh pcb 120      # ...for 120 s instead of the default 75
 #
-# Written because doing this by hand cost a round trip on 2026-09-12: the upload
-# succeeded, a second environment then failed, the `&&` chain broke, and the
-# monitor never ran — so a correctly flashed board printed to nobody.
+# Two bugs are pinned here, both found the hard way on 2026-09-12:
+#   - the upload used to run for BOTH environments, the second failed out of
+#     sync against a just-reset board, and the `&&` chain broke before the
+#     monitor ever started (fixed by default_envs in platformio.ini);
+#   - recording used `pio device monitor`, i.e. miniterm, which writes NOTHING
+#     when its stdout is a pipe or a file. It produced a zero-byte log from a
+#     correctly flashed board. capture.py talks to pySerial directly instead.
 set -u
 
 NAME="${1:-probe}"
 SECS="${2:-75}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PIO="${PIO:-$HOME/.local/venvs/pio/bin/pio}"
+PY="${PY:-$HOME/.local/venvs/pio/bin/python}"
 OUT="$HOME/sonda-$NAME.txt"
 
 [ -x "$PIO" ] || { echo "No PlatformIO at $PIO — set PIO=/path/to/pio"; exit 1; }
@@ -25,15 +30,16 @@ if [ -z "$PORT" ]; then
   echo "(/dev/ttyS0 is the motherboard's own serial port, not the board.)"
   exit 1
 fi
-echo "Board on $PORT — recording ${SECS}s into $OUT"
+echo "Board on $PORT"
 
 "$PIO" run -t upload -d "$HERE" || { echo "Upload failed."; exit 1; }
 
 echo
-echo ">>> TOUCH THE FRUIT NOW, the way you normally play. ${SECS} seconds. <<<"
+echo "=================================================================="
+echo ">>> TOUCH THE FRUIT NOW, the way you normally play. ${SECS} s. <<<"
+echo "=================================================================="
 echo
-timeout "$SECS" "$PIO" device monitor -d "$HERE" --port "$PORT" --quiet \
-  2>/dev/null | tee "$OUT"
+"$PY" "$HERE/capture.py" "$SECS" "$OUT" "$PORT" >/dev/null || exit 1
 
 echo
 echo "================ saved to $OUT ================"
