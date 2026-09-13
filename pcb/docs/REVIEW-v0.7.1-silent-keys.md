@@ -299,6 +299,63 @@ been measured and cleared.
 > wrong question, because "is the board able to see a key at all?" was never
 > asked. See [[la-resistencia-conocida-antes-que-la-teoria]].
 
+## 2f. The breadboard, measured at last — and it works by 2 counts
+
+Same probe, same Nano socket, same body, same supply, same USB cable into
+quantumpc. Log: `pcb/validation/probe-breadboard-2026-09-13.txt`. The three
+phases the operator described are visible in the timestamps without being told:
+touch, a 20 s pause, then touch again while gripping the Nano's USB shell.
+
+| phase | ch1 | ch2 | ch3–7 (never touched) |
+|---|---|---|---|
+| touching, **no ground** (4–24 s) | 1015 → **8 counts** | 1017 → **6 counts** | 1021–1023 |
+| pause (24–36 s) | 1023 | 1023 | 1023 |
+| touching, **holding GND** (36–60 s) | 994 → **29 counts** | 983 → **40 counts** | 1023 |
+
+### The comparison, finally
+
+| | breadboard | v0.7.1 board |
+|---|---|---|
+| touching, no ground | **6–8 counts** | 0 |
+| touching, holding GND | **29–40 counts** | 0 |
+| game's auto-margin | 4 | 4 |
+
+**The working rig fires without a ground clip by a margin of two to four
+counts.** That is the headline, and it reframes the whole investigation: this was
+never a robust design that the PCB broke. It is a design with ~2 counts of
+headroom, and on the PCB it fell off the edge.
+
+The arithmetic from §2 was right and its conclusion was wrong in one specific
+way: 220 Ω does give a usable signal — but only 6 counts of it, from a **28 kΩ**
+contact (bare fingertip pressed on a bare pin). Holding ground drops the contact
+to **5.4 kΩ** and buys 40 counts. Neither number is a dry finger's megohm,
+because a fingertip pressed hard on metal is not a dry finger.
+
+### Why this does not yet convict the PCB
+
+The same finger cannot be 5 kΩ on one rig and >250 kΩ on the other. So either
+the boards differ in some way not yet found, or **the gestures were not the
+same** — on the breadboard it was a fingertip pressed on bare pin metal while
+gripping the USB shell; the PCB runs were "fruit, the pin, before and after the
+resistor" over 156 s, and may never have included that exact grip on bare J2
+metal.
+
+So the last experiment is a **back-to-back with one variable**: the identical
+gesture on the v0.7.1 board, same finger, same USB shell, probe running.
+
+- **~40 counts** → the board was always fine; the piano plays as soon as the
+  player is grounded, and nothing needs desoldering.
+- **0 counts** → there is something, and it is now isolated to a single
+  repeatable difference with everything else held constant.
+
+### Either way, one thing is now justified by data instead of by theory
+
+**R1–R7 at 220 Ω leave 2 counts of headroom on the rig that works.** Raising them
+turns 6–8 counts into hundreds and removes the ground clip from the equation. §2d
+proposed that from arithmetic; the breadboard's own numbers now support it. It
+stays queued behind the back-to-back, because a fix applied before the cause is
+known is a coincidence, not a repair.
+
 ## 3. The buzzer branch — CLOSED 2026-09-12, it works (kept for the reasoning)
 
 "The notes do not sound" and "the keys do not detect" are not the same fault,

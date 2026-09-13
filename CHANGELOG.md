@@ -2,6 +2,43 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-13 (evening) — the breadboard, measured: it works by two counts
+
+The comparison never made in three days. Same probe, same body, same supply,
+same USB cable. The three phases the operator described are visible in the
+timestamps without being told: touch, a 20 s pause, touch again gripping the
+Nano's USB shell.
+
+| phase | ch1 | ch2 | ch3–7 (untouched) |
+|---|---|---|---|
+| touching, no ground | 1015 → **8 counts** | 1017 → **6 counts** | 1021–1023 |
+| pause | 1023 | 1023 | 1023 |
+| touching, holding GND | 994 → **29 counts** | 983 → **40 counts** | 1023 |
+
+Against the v0.7.1 board's **0 counts in both conditions**, and a game margin of 4.
+
+**The working rig fires without a ground clip by a margin of two counts.** That
+reframes everything: this was never a robust design that the PCB broke. It is a
+design with ~2 counts of headroom, and on the PCB it fell off the edge.
+
+§2's arithmetic was right and its conclusion wrong in one specific way. 220 Ω
+does give a usable signal — 6 counts, from a **28 kΩ** contact, because a
+fingertip pressed hard on bare pin metal is not the megohm of a "dry finger".
+Holding ground drops the contact to **5.4 kΩ** and buys 40 counts.
+
+It does not convict the PCB yet: the same finger cannot be 5 kΩ on one rig and
+>250 kΩ on the other, so either the boards differ in a way still unfound, or the
+**gestures** were not the same — the PCB runs were "fruit, the pin, before and
+after the resistor", and may never have included that exact grip on bare J2
+metal. So the last experiment is a back-to-back with one variable: identical
+gesture, identical finger, identical USB shell, on the board.
+
+And one recommendation moves from theory to evidence: **220 Ω leaves 2 counts of
+headroom on the rig that works.** Raising R1–R7 turns 6–8 counts into hundreds
+and removes the ground clip from the equation. Still queued behind the
+back-to-back, because a fix applied before the cause is known is a coincidence,
+not a repair.
+
 ## 2026-09-13 (later) — the board is good, and a wire proved it in thirty seconds
 
 A bare wire from J2 pin 1, then pin 2, to J2 pin 8 (GND), probe running:
