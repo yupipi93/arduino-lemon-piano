@@ -718,8 +718,13 @@ Proof, in both directions:
 - Flashed and verified on the board; it boots and calibrates all seven at
   baseline 1023 / noise 0 / margin 4.
 
-**Still unverified: the board with a finger on the button.** The host
-reproduction is a model of the chip, not the chip. The competing hypothesis —
-his body capacitively coupling into a 1 MΩ node while he holds the button — is
-not ruled out by any of the above, only made unlikely by his own report that the
-**+** button, pressed by the same hand at the same distance, does nothing.
+### Verified on the board (2026-09-13)
+
+Sergio pressed the **−** button on the real rig, repeatedly, with the fixed
+firmware on it: **no key sounds.** Asked and answered through
+`qpc-approvals piano/boton-menos-a7` → *approved: "Ya NO suena"*.
+
+That also settles the competing hypothesis. If the note had been his body
+capacitively coupling into a 1 MΩ node while he held the button, a firmware
+change to how many times a channel is converted could not have removed it. It
+was the multiplexer.

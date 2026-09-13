@@ -40,11 +40,12 @@ Evidence:
 - Flashed and verified on the board: boots, calibrates all seven at baseline 1023
   / noise 0 / margin 4, Level 1.
 
-**Not yet verified with a finger on the button** — the host reproduction is a
-model of the chip, not the chip. Waiting on the operator. The competing theory
-(his body coupling into a 1 MΩ node while holding the button) is not excluded by
-any of this, only made unlikely by the **+** button — same hand, same distance,
-digital pin, no symptom.
+**Verified on the board the same day:** Sergio pressed **−** repeatedly on the
+real rig with this firmware on it — **no key sounds**
+(`qpc-approvals piano/boton-menos-a7` → approved). That also kills the competing
+theory: if the note had been his body coupling into a 1 MΩ node while he held
+the button, changing how many times a channel is converted could not have
+removed it. It was the multiplexer.
 
 Full write-up: `pcb/docs/REVIEW-v0.7.1-silent-keys.md` §3.
 
