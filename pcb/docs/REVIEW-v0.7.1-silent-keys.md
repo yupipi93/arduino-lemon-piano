@@ -645,3 +645,81 @@ The firmware is unambiguous and agrees with the board:
 
 Fixed in this commit. Ground truth for the front end is **`main.cpp` + the copper**,
 in that order.
+
+---
+
+## §3. The SENS − button played a note (2026-09-13)
+
+All seven pull-ups are now 1 MΩ and R18 is a real 10 kΩ. Every key sounds; the
+dead LED 4 came back with it. Sergio then reported a new symptom:
+
+> pressing the **−** button beeps like a key, and holding it on gives the error
+> sound, as if a lemon had been touched. At the bottom of the LED bar every
+> press sounds a key; past the fifth LED it stops and the button behaves.
+
+### Why the − button and not the +
+
+| | pin | how it is read | on the ADC mux |
+|---|---|---|---|
+| SENS **+** | D12 | `digitalRead` | no |
+| SENS **−** | **A7** | **`analogRead(A7) < 512`** | **yes** |
+
+A7 is analog-in only — it has no internal pull-up, which is why R18 exists at
+all — and it is **channel 7 of the same multiplexer that carries the seven
+keys**. `serviceButtons()` reads it at the top of every `loop()`, immediately
+before the key scan starts at A0.
+
+While the button is held, **A7 sits at 0 V**. The ATmega's sample-and-hold cap is
+therefore handed to key 1 holding **zero**, not 5 V.
+
+### Why 1 MΩ turned that into a note
+
+The cap refills through whatever drives the pin:
+
+| pull-up | τ = R × 14 pF | against the 12 µs sampling window | one conversion closes |
+|---|---|---|---|
+| 220 Ω | 3 ns | 4000 τ | **all of the gap** |
+| 1 MΩ | 14 µs | 0.86 τ | **≈ 57 % of the gap** |
+
+At 220 Ω the residue was gone before the first conversion finished, so this bug
+could not exist on the board as fabricated. At 1 MΩ a single conversion is not a
+reading, it is a step towards one — and `readKey()`'s single discarded
+conversion, the fix from §2h, is only the first step.
+
+Reproduced on the host, no hardware involved
+(`firmware/test/piano_sim_test.cpp`, section 14, the ADC model in
+`test/arduino/Arduino.h` now settling exponentially at 0.575 per conversion):
+
+```
+readKey(0) = 944   threshold = 1016
+```
+
+**72 counts below the trigger point.** A phantom key 1, every loop, for as long
+as the button is down. Which also explains the LED bar: the droop is finite, so
+a margin wide enough — about halfway up the bar — simply hides it. That was
+never the button behaving, it was the margin covering it.
+
+### The fix
+
+`readKey()` converts the channel **until two readings agree** (≤ 1 count apart,
+hard stop at 12), then averages four. Not a bigger constant: a settled 220 Ω
+channel breaks out on the second conversion and costs 112 µs, the 0 V → 5 V
+worst case on 1 MΩ takes eight and costs 0.9 ms, and **nothing in it is tuned to
+a particular pull-up value** — which matters, because these resistors have now
+changed twice.
+
+Proof, in both directions:
+
+- Tests 13 + 14 green, 68 checks, 0 failed.
+- **Mutation control:** put the single discard back and test 14 fails 3 of its
+  6 checks, including `readKey(0)` against its threshold.
+- `pio run` clean on `nanoatmega328`, `nanoatmega328new` and `emulation`;
+  15492 B.
+- Flashed and verified on the board; it boots and calibrates all seven at
+  baseline 1023 / noise 0 / margin 4.
+
+**Still unverified: the board with a finger on the button.** The host
+reproduction is a model of the chip, not the chip. The competing hypothesis —
+his body capacitively coupling into a 1 MΩ node while he holds the button — is
+not ruled out by any of the above, only made unlikely by his own report that the
+**+** button, pressed by the same hand at the same distance, does nothing.

@@ -132,7 +132,7 @@ is the same component on the board. Ground truth: [`pcb/docs/NETLIST.md`](../../
 | C3 ‖ C4 | 470 µF ‖ 100 nF | output reservoir on `+5V` (the rail = AVcc) |
 | **R1–R7** | 220 Ω | key pull-ups — **R1 = A0 = KEY1** … R7 = A6 = KEY7 |
 | **R8–R17** | 220 Ω | LED series — LED *n* uses **R(n+7)** |
-| R18 | 10 kΩ | `SENS_MINUS` pull-up on A7 (A7 has no internal one) |
+| R18 | 10 kΩ | `SENS_MINUS` pull-up on **A7 — see the warning below** |
 | **D3–D12** | 3 mm LED | the bar — LED *n* is **D(n+2)**, driven by pin **D(n+1)** |
 | BUZ1 | passive buzzer | `/BUZZER` on D13 |
 | SW1 / SW2 | SENS + / SENS − | D12 → GND · A7 → GND |
@@ -142,6 +142,21 @@ is the same component on the board. Ground truth: [`pcb/docs/NETLIST.md`](../../
 | J5 | `SPK` aux header (PCB only) | in parallel with BUZ1 — where the amp plugs in |
 | R19, R20, C5 | 10 kΩ, 1 kΩ, 1 µF | **off-board** amp divider, D13 → LM386 |
 | H1–H4 | M2 mounting holes (PCB only) | mechanical, nothing to wire |
+
+> **R1–R7 are 220 Ω as fabricated, and 1 MΩ on the board Sergio is playing.**
+> Swapped by hand on 2026-09-13 after the fabricated value was proved 4 orders of
+> magnitude too low for a clipless touch (`pcb/docs/REVIEW-v0.7.1-silent-keys.md`
+> §2h). A value change is a hardware change, so the swap belongs in a **V5.6**
+> that does not exist yet. This table still describes v0.7.1 as made.
+
+> **A7 IS ON THE SAME ADC MULTIPLEXER AS THE SEVEN KEYS.** SENS − is not a
+> digital button: it is ADC channel 7, read with `analogRead(A7) < 512`, and it
+> sits at 0 V while held. Whatever key channel is converted next inherits that
+> 0 V on the sample-and-hold cap. Through 220 Ω that is invisible; through 1 MΩ
+> it made the button play a note until `readKey()` learned to convert a channel
+> until it stops moving (§3, and test 14). **Anything added to A7, or any change
+> to how often it is read, has to be thought about as part of the keyboard.**
+> SENS + on D12 has no such coupling — it is a plain digital pin.
 
 Two things differ **physically** between the diagram and the board, and both
 are called out on the drawing itself:

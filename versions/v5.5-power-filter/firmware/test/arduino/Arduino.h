@@ -89,33 +89,40 @@ struct FakeBoard {
     noiseSeed = noiseSeed * 1103515245u + 12345u;
     return (int) ((noiseSeed >> 16) % (uint32_t) (noiseSpan + 1));
   }
-  // ── mux residue, off by default (2026-09-13) ────────────────────────────
-  // A real ATmega's sample-and-hold charges through the source. Above the
-  // datasheet's 10 kOhm ceiling the FIRST conversion on a newly selected
-  // channel has not settled and mostly carries the previous channel's level.
-  // With `muxResidue` on, this board models exactly that, so a test can prove
-  // readKey() throws its first conversion away instead of merely not crashing.
-  // Off by default: every other test measures the settled front end.
-  bool muxResidue = false;
-  int lastChannel = -1;
-  int lastSettled = 1023;
+  // ── ADC settling on a high-impedance source (2026-09-13) ────────────────
+  // A real ATmega's sample-and-hold cap charges through whatever is driving the
+  // pin, and it starts each conversion holding the PREVIOUS channel's level.
+  // How much of that gap one conversion closes depends on the source impedance:
+  //
+  //   220 Ohm  -> tau = 3 ns against a 12 us sampling window: instant (1.0)
+  //   1 MOhm   -> tau = 14 us against the same window: 0.575 of the gap
+  //
+  // So on a 1 MOhm keyboard a single conversion is not a reading, it is a step
+  // on the way to one, and readKey() must keep converting until the channel
+  // stops moving. `adcSettle` is that fraction; 1.0 (the default) is the old
+  // 220 Ohm board, where every other test lives and the bug cannot show.
+  //
+  // A7 (the SENS - button) is on the SAME multiplexer as the keys and is NOT
+  // high impedance: a 10 kOhm pull-up, or a closed switch straight to GND. It
+  // settles in one conversion and therefore poisons the keys without ever being
+  // poisoned by them -- which is the whole asymmetry this models.
+  static constexpr double SETTLE_1M = 0.575;
+  double adcSettle = 1.0;
+  double sampleHeld = 1023.0;             // what the S/H cap carries right now
+
+  int convert(int target, double settle) {
+    advanceUs(ADC_TIME_US);
+    sampleHeld += settle * ((double) target - sampleHeld);
+    return (int) (sampleHeld + 0.5);
+  }
 
   int settledValue(int k) {
     int v = baseline[k] - nextNoise();
     if (touched[k]) v -= touchDepth;
     return v < 0 ? 0 : v;
   }
-  int readChannel(int k) {
-    advanceUs(ADC_TIME_US);
-    int v = settledValue(k);
-    if (muxResidue && k != lastChannel) {
-      lastChannel = k;
-      return lastSettled;          // unsettled: the PREVIOUS channel's level
-    }
-    lastChannel = k;
-    lastSettled = v;
-    return v;
-  }
+  int readChannel(int k)      { return convert(settledValue(k), adcSettle); }
+  int readButtonChannel()     { return convert(minusDown ? 0 : 1023, 1.0); }
 };
 
 extern FakeBoard board;
@@ -138,8 +145,7 @@ inline int digitalRead(uint8_t pin) {
 }
 inline int analogRead(uint8_t pin) {
   if (pin < FakeBoard::KEY_COUNT_) return board.readChannel(pin);
-  if (pin == A7) { board.advanceUs(FakeBoard::ADC_TIME_US);
-                   return board.minusDown ? 0 : 1023; }
+  if (pin == A7) return board.readButtonChannel();
   board.advanceUs(FakeBoard::ADC_TIME_US);
   return 0;
 }

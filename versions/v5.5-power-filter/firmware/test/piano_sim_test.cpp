@@ -298,20 +298,24 @@ static void test_open_and_accept_is_a_no_op() {
   eqInt(level, 1, "it opened on level 1 and accepted level 1");
 }
 
-// ── 13. The discarded first conversion (2026-09-13) ─────────────────────────
-// POSITIVE CONTROL for the high-impedance keyboard. With `muxResidue` on, the
-// first conversion on a newly selected channel returns the PREVIOUS channel's
-// level. readKey() must throw it away; if it does not, a single key held down
-// smears across the scan and the wrong key -- or no key -- is seen.
+// ── 13. A held key does not smear across its neighbours (2026-09-13) ────────
+// POSITIVE CONTROL for the high-impedance keyboard. At 1 MOhm a conversion
+// closes only 57 % of the gap to the real level, so the first reads on a newly
+// selected channel mostly carry the PREVIOUS channel's. readKey() must keep
+// converting until the channel stops moving; if it does not, a single key held
+// down smears across the scan and the wrong key -- or no key -- is seen.
 //
-// Delete the `analogRead(i);` discard in readKey() and this section fails.
-// That is the point of it: the other 56 checks pass either way, because a
-// 220 Ohm front end settles instantly and cannot show the bug.
+// This section guards the FIRST step only: cut readKey() down to a single
+// conversion with no discard at all and it fails. One discard is enough for a
+// 200-count touch between two idle neighbours, and is NOT enough for the 1023
+// count drop the SENS - button makes -- that is test 14's job, and the two
+// together are what pin the settling loop. The other 56 checks pass either way,
+// because a 220 Ohm front end settles instantly and cannot show any of it.
 static void test_first_conversion_is_discarded() {
-  section("13. The first ADC conversion after a mux switch is discarded");
+  section("13. A held key does not smear across its neighbours");
 
   board = FakeBoard();
-  board.muxResidue = true;          // model a high-impedance keyboard
+  board.adcSettle = FakeBoard::SETTLE_1M;  // model a 1 MOhm keyboard
   board.touchDepth = 200;           // 1 MOhm pull-up territory, not 4 counts
   setup();
 
@@ -344,6 +348,67 @@ static void test_first_conversion_is_discarded() {
   eqInt(strongestKey(), -1, "and it releases cleanly");
 }
 
+
+// ── 14. The SENS - button must not press a key (2026-09-13) ─────────────────
+// REGRESSION for what the real v0.7.1 board did the day its pull-ups went to
+// 1 MOhm: pressing the - button played a note, and in the game that note was
+// scored as a wrong guess. Reported by Sergio, 2026-09-13.
+//
+// The cause is entirely inside the chip. SENS - is A7, which is an ADC channel,
+// on the SAME multiplexer as the seven keys, and serviceButtons() reads it at
+// the top of every loop() -- immediately before the key scan starts at A0.
+// While the button is held A7 sits at 0 V, so the sample-and-hold cap is handed
+// to key 1 holding zero. Through 220 Ohm that was refilled before the first
+// conversion finished; through 1 MOhm it is not, and key 1 reads far enough
+// below its baseline to look touched.
+//
+// Which is also why it stopped happening once the margin was raised past the
+// middle of the LED bar: the droop is finite, so a wide enough margin hides it.
+// This test pins the fix instead of the workaround -- no phantom at margin 4.
+static void test_minus_button_does_not_press_a_key() {
+  section("14. Holding SENS - does not press a key");
+
+  board = FakeBoard();
+  board.adcSettle = FakeBoard::SETTLE_1M;   // the 1 MOhm keyboard he now has
+  setup();
+
+  eqInt(touchMargin, 4, "it calibrates to the tight margin the quiet board earns");
+  runFor(300);
+  eqInt(strongestKey(), -1, "nothing is pressed with both buttons up");
+
+  // Exactly what loop() does: read A7 with the button down, then scan the keys.
+  board.minusDown = true;
+  analogRead(SENS_DOWN);
+  int first = readKey(0);
+  ok(first >= thresholdFor(0),
+     "key 1 read straight after A7 is still above its threshold",
+     "readKey(0)=" + std::to_string(first) +
+     " threshold=" + std::to_string(thresholdFor(0)));
+  analogRead(SENS_DOWN);        // poison it again: strongestKey() is what loop()
+                                // actually calls first, straight after the button
+  eqInt(strongestKey(), -1, "and no key is seen as pressed");
+
+  // End to end: hold - for a full nudge and make sure the buzzer only ever
+  // says "sensitivity", never a note from the keyboard.
+  board = FakeBoard();
+  board.adcSettle = FakeBoard::SETTLE_1M;
+  setup();
+  runFor(300);
+  size_t mark = toneMark();
+  for (int i = 0; i < 6; i++) tapMinus();
+  std::vector<int> heard = tonesSince(mark);
+  bool anyKeyNote = false;
+  for (size_t i = 0; i < heard.size(); i++)
+    for (uint8_t k = 0; k < KEY_COUNT; k++)
+      if (heard[i] == keys[k + (level - 1) * KEY_COUNT]) anyKeyNote = true;
+  ok(!anyKeyNote, "six taps on - produce no key note at all",
+     std::to_string(heard.size()) + " tones heard, one of them a key note");
+
+  // And the margin really did move, so the taps were not simply ignored.
+  ok(touchMargin > 4, "the taps did reach the sensitivity knob",
+     "margin=" + std::to_string(touchMargin));
+}
+
 int main(int argc, char **argv) {
   if (argc > 1 && std::string(argv[1]) == "-v") board.traceSerial = true;
   printf("\n\033[1mLemon Piano V5.5 — firmware on a fake board\033[0m\n");
@@ -362,6 +427,7 @@ int main(int argc, char **argv) {
   test_winning_never_lands_on_free_play();
   test_open_and_accept_is_a_no_op();
   test_first_conversion_is_discarded();
+  test_minus_button_does_not_press_a_key();
 
   printf("\n%d checks, \033[%sm%d failed\033[0m\n\n",
          checks, failures ? "31" : "32", failures);

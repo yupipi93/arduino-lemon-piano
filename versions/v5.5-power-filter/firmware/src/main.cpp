@@ -853,26 +853,45 @@ void allLedsOn() {
 // Four-sample average, as the 2019 rig did: cheap noise rejection on a signal
 // only a few counts wide. Key 7 is a digital button in the browser build.
 //
-// THE FIRST CONVERSION AFTER A MUX SWITCH IS THROWN AWAY (2026-09-13). The
-// ATmega328P's sample-and-hold charges through the source; the datasheet's
-// recommended ceiling is a 10 kOhm source impedance, above which the first
-// conversion on a newly selected channel has not settled and mostly carries the
-// PREVIOUS channel's residue. With the original 220 Ohm pull-ups that never
-// mattered. It matters the moment the pull-ups are raised -- and raising them is
-// the whole point: measured on the real v0.7.1 board, a clipless touch is a
-// 5-10 MOhm path, which yields 1-2 counts through 220 Ohm and 91-168 counts
-// through 1 MOhm. Without this discard, a high-impedance keyboard reads as the
-// "gradient ramps" the V4 front end was rejected for in July.
+// THE CHANNEL IS CONVERTED UNTIL IT STOPS MOVING (2026-09-13). The ATmega328P's
+// sample-and-hold cap charges through whatever drives the pin, and it starts
+// every conversion still holding the PREVIOUS channel's level. The datasheet's
+// recommended ceiling is a 10 kOhm source; how much of the gap one conversion
+// closes falls off fast above it:
 //
-// It costs one extra conversion per key (~112 us) and is harmless at any
-// impedance, so it is unconditional rather than a build flag.
+//     220 Ohm   tau = 3 ns  against a 12 us sampling window -> all of it
+//     1 MOhm    tau = 14 us against the same window         -> about 57 %
+//
+// So on the 1 MOhm keyboard the v0.7.1 board now carries, ONE conversion is not
+// a reading, it is a step towards one -- and a single discarded conversion, this
+// function's first fix, is only the first step. Worst case is the SENS - button:
+// it is A7, an ADC channel on the SAME multiplexer, read at the top of every
+// loop() and sitting at 0 V while it is held. That handed key 1 a cap holding
+// zero and made the button play a note (Sergio, 2026-09-13; test 14).
+//
+// Converting until two readings agree is the only form of this that survives
+// the resistors changing again: a settled 220 Ohm channel breaks out on the
+// second conversion and costs 112 us, a 0 V -> 5 V worst case on 1 MOhm takes
+// eight and costs 0.9 ms. Nothing here is tuned to a particular pull-up.
+const uint8_t SETTLE_MAX = 12;   // hard stop, so a noisy channel cannot stall the scan
+const int     SETTLE_EPS = 1;    // counts: settled once two in a row are this close
+
 int readKey(uint8_t i) {
 #ifdef VELXIO_EMULATION
   if (i == 6) {
     return digitalRead(KEY_PINS[6]) == LOW ? 0 : 1023;
   }
 #endif
-  analogRead(i);                 // settle the S/H on this channel, discard
+  // Select the channel and keep converting until it holds still. Every one of
+  // these is thrown away: they are the S/H cap filling up, not a measurement.
+  int prev = analogRead(i);
+  for (uint8_t n = 0; n < SETTLE_MAX; n++) {
+    int v = analogRead(i);
+    int d = v - prev;
+    if (d < 0) d = -d;
+    prev = v;
+    if (d <= SETTLE_EPS) break;
+  }
   long sum = 0;
   for (uint8_t n = 0; n < 4; n++) {
     sum += analogRead(i);

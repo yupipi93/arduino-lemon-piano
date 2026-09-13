@@ -2,6 +2,52 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-13 — the SENS − button played a note: A7 is on the key multiplexer
+
+With all seven pull-ups swapped to 1 MΩ and R18 finally a real 10 kΩ, every key
+sounds and the dead LED 4 came back. A new symptom arrived with them: pressing
+the **−** button beeped like a key and, held on, scored a wrong guess.
+
+**Cause, and it is entirely inside the chip.** SENS − is **A7**, which is
+analog-in only (hence R18) and is **channel 7 of the same ADC multiplexer that
+carries the seven keys**. `serviceButtons()` reads it at the top of every
+`loop()`, immediately before the key scan starts at A0 — and while the button is
+held A7 sits at **0 V**, so the sample-and-hold cap is handed to key 1 holding
+zero. Through 220 Ω that refilled 4000 τ before the conversion finished; through
+1 MΩ one conversion closes only **57 %** of the gap, and `readKey()`'s single
+discarded conversion (2026-09-13, earlier today) is only the first step.
+
+Reproduced on the host with no hardware: `readKey(0) = 944` against a threshold
+of 1016 — **72 counts below the trigger point**, every loop, for as long as the
+button is down. Which also explains why it stopped past the middle of the LED
+bar: the droop is finite, so a wide enough margin hides it. That was the margin
+covering the bug, not the button behaving.
+
+**Fix:** `readKey()` now converts the channel **until two readings agree**
+(≤ 1 count apart, hard stop at 12) before averaging four. Not a bigger constant —
+a settled 220 Ω channel breaks out on the second conversion and costs 112 µs, the
+0 V → 5 V worst case on 1 MΩ takes eight and costs 0.9 ms, and nothing in it is
+tuned to a particular pull-up. These resistors have changed twice already.
+
+Evidence:
+
+- `test/arduino/Arduino.h`: the binary mux-residue model replaced by an
+  exponential one (0.575 of the gap per conversion at 1 MΩ), with A7 on the same
+  multiplexer and settling instantly, which is the asymmetry that causes the bug.
+- New **test 14**, `Holding SENS − does not press a key`. 68 checks, 0 failed.
+- **Mutation control:** restore the single discard and test 14 fails 3 of 6.
+- `pio run` clean on `nanoatmega328`, `nanoatmega328new`, `emulation`; 15492 B.
+- Flashed and verified on the board: boots, calibrates all seven at baseline 1023
+  / noise 0 / margin 4, Level 1.
+
+**Not yet verified with a finger on the button** — the host reproduction is a
+model of the chip, not the chip. Waiting on the operator. The competing theory
+(his body coupling into a 1 MΩ node while holding the button) is not excluded by
+any of this, only made unlikely by the **+** button — same hand, same distance,
+digital pin, no symptom.
+
+Full write-up: `pcb/docs/REVIEW-v0.7.1-silent-keys.md` §3.
+
 ## 2026-09-13 — quiet-rest control: 1 MΩ does not ghost, and the game is loaded
 
 The V5.5 game firmware (with the first-conversion discard) was flashed to the
