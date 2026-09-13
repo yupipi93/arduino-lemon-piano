@@ -298,6 +298,52 @@ static void test_open_and_accept_is_a_no_op() {
   eqInt(level, 1, "it opened on level 1 and accepted level 1");
 }
 
+// ── 13. The discarded first conversion (2026-09-13) ─────────────────────────
+// POSITIVE CONTROL for the high-impedance keyboard. With `muxResidue` on, the
+// first conversion on a newly selected channel returns the PREVIOUS channel's
+// level. readKey() must throw it away; if it does not, a single key held down
+// smears across the scan and the wrong key -- or no key -- is seen.
+//
+// Delete the `analogRead(i);` discard in readKey() and this section fails.
+// That is the point of it: the other 56 checks pass either way, because a
+// 220 Ohm front end settles instantly and cannot show the bug.
+static void test_first_conversion_is_discarded() {
+  section("13. The first ADC conversion after a mux switch is discarded");
+
+  board = FakeBoard();
+  board.muxResidue = true;          // model a high-impedance keyboard
+  board.touchDepth = 200;           // 1 MOhm pull-up territory, not 4 counts
+  setup();
+
+  ok(touchMargin >= 4, "it still calibrates with residue present",
+     "margin=" + std::to_string(touchMargin));
+
+  // Every channel idle: a residue-contaminated read would still be ~baseline,
+  // so this only checks nothing drifted into a false press.
+  runFor(300);
+  eqInt(strongestKey(), -1, "nothing is pressed while every channel is idle");
+
+  // Hold key 5 (index 4) and scan. Its neighbours are idle, so an undiscarded
+  // first conversion would hand key 4's or key 6's level to key 5 and back.
+  board.touched[4] = true;
+  for (int i = 0; i < 20; i++) runFor(10);
+  eqInt(strongestKey(), 4, "the held key is the one seen, not its neighbour");
+
+  int held = readKey(4);
+  ok(held <= 1023 - 150,
+     "the held channel reads its own settled level, not the previous channel's",
+     "readKey(4)=" + std::to_string(held));
+
+  int neighbour = readKey(5);
+  ok(neighbour >= 1023 - 30,
+     "an idle neighbour is not dragged down by the held channel",
+     "readKey(5)=" + std::to_string(neighbour));
+
+  board.touched[4] = false;
+  for (int i = 0; i < 20; i++) runFor(10);
+  eqInt(strongestKey(), -1, "and it releases cleanly");
+}
+
 int main(int argc, char **argv) {
   if (argc > 1 && std::string(argv[1]) == "-v") board.traceSerial = true;
   printf("\n\033[1mLemon Piano V5.5 — firmware on a fake board\033[0m\n");
@@ -315,6 +361,7 @@ int main(int argc, char **argv) {
   test_opening_the_menu_gives_the_knob_back();
   test_winning_never_lands_on_free_play();
   test_open_and_accept_is_a_no_op();
+  test_first_conversion_is_discarded();
 
   printf("\n%d checks, \033[%sm%d failed\033[0m\n\n",
          checks, failures ? "31" : "32", failures);

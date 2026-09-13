@@ -852,12 +852,27 @@ void allLedsOn() {
 // digital-low on D12 for key 7).
 // Four-sample average, as the 2019 rig did: cheap noise rejection on a signal
 // only a few counts wide. Key 7 is a digital button in the browser build.
+//
+// THE FIRST CONVERSION AFTER A MUX SWITCH IS THROWN AWAY (2026-09-13). The
+// ATmega328P's sample-and-hold charges through the source; the datasheet's
+// recommended ceiling is a 10 kOhm source impedance, above which the first
+// conversion on a newly selected channel has not settled and mostly carries the
+// PREVIOUS channel's residue. With the original 220 Ohm pull-ups that never
+// mattered. It matters the moment the pull-ups are raised -- and raising them is
+// the whole point: measured on the real v0.7.1 board, a clipless touch is a
+// 5-10 MOhm path, which yields 1-2 counts through 220 Ohm and 91-168 counts
+// through 1 MOhm. Without this discard, a high-impedance keyboard reads as the
+// "gradient ramps" the V4 front end was rejected for in July.
+//
+// It costs one extra conversion per key (~112 us) and is harmless at any
+// impedance, so it is unconditional rather than a build flag.
 int readKey(uint8_t i) {
 #ifdef VELXIO_EMULATION
   if (i == 6) {
     return digitalRead(KEY_PINS[6]) == LOW ? 0 : 1023;
   }
 #endif
+  analogRead(i);                 // settle the S/H on this channel, discard
   long sum = 0;
   for (uint8_t n = 0; n < 4; n++) {
     sum += analogRead(i);

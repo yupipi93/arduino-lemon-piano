@@ -89,11 +89,32 @@ struct FakeBoard {
     noiseSeed = noiseSeed * 1103515245u + 12345u;
     return (int) ((noiseSeed >> 16) % (uint32_t) (noiseSpan + 1));
   }
-  int readChannel(int k) {
-    advanceUs(ADC_TIME_US);
+  // ── mux residue, off by default (2026-09-13) ────────────────────────────
+  // A real ATmega's sample-and-hold charges through the source. Above the
+  // datasheet's 10 kOhm ceiling the FIRST conversion on a newly selected
+  // channel has not settled and mostly carries the previous channel's level.
+  // With `muxResidue` on, this board models exactly that, so a test can prove
+  // readKey() throws its first conversion away instead of merely not crashing.
+  // Off by default: every other test measures the settled front end.
+  bool muxResidue = false;
+  int lastChannel = -1;
+  int lastSettled = 1023;
+
+  int settledValue(int k) {
     int v = baseline[k] - nextNoise();
     if (touched[k]) v -= touchDepth;
     return v < 0 ? 0 : v;
+  }
+  int readChannel(int k) {
+    advanceUs(ADC_TIME_US);
+    int v = settledValue(k);
+    if (muxResidue && k != lastChannel) {
+      lastChannel = k;
+      return lastSettled;          // unsettled: the PREVIOUS channel's level
+    }
+    lastChannel = k;
+    lastSettled = v;
+    return v;
   }
 };
 

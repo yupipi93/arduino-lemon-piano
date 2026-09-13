@@ -2,6 +2,39 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-13 (night) — `readKey()` discards its first conversion, with a test that proves it
+
+Firmware, V5.5 only. `readKey()` now throws away one conversion on each channel
+before averaging its four samples.
+
+**Why now.** The ATmega328P's sample-and-hold charges through the source; the
+datasheet's ceiling is a **10 kΩ** source impedance, above which the first
+conversion on a newly selected channel has not settled and mostly carries the
+*previous* channel's level. At 220 Ω that never mattered. It matters the moment
+the pull-ups go up — and the bench numbers say they must: measured on the real
+v0.7.1 board, a **clipless touch is a 5–10 MΩ path**, which is 1–2 counts through
+220 Ω and **91–168 counts through 1 MΩ**. Without the discard, a high-impedance
+keyboard reads as the "gradient ramps" the V4 front end was rejected for in July.
+One extra conversion per key, ~112 µs, harmless at any impedance, so it is
+unconditional rather than a build flag.
+
+**And a positive control, because 56 green checks proved nothing here.** The fake
+board gained an optional `muxResidue` model: with it on, the first conversion on
+a newly selected channel returns the previous channel's level — the textbook
+description of an unsettled S/H. New section 13 holds key 5 down and asserts the
+held channel reads its own level and the idle neighbour is not dragged with it.
+
+Verified by mutation: **delete the discard and section 13 fails**, with the idle
+neighbour reading **971 instead of 1023** — 52 counts of smear against a margin
+of 4, i.e. a phantom note. Every other check passes either way, which is exactly
+why the test had to be written: a 220 Ω front end settles instantly and cannot
+show the bug.
+
+97 + 62 checks green, AVR build clean (15454 B flash).
+
+Still not applied to the board: the resistor swap is the owner's call and the
+measurement that justifies swapping all seven has not been taken yet.
+
 ## 2026-09-13 (late) — R1 → 10 kΩ, twice: a floating node, then the real number
 
 R1 lifted, a 10 kΩ through-hole resistor hung externally from J2 pin 1.
