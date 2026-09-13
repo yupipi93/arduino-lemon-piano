@@ -2,6 +2,27 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-13 (night) — a log that cannot say what it measured is not evidence
+
+A capture arrived that could have come from either rig, and the two readings of
+it were **opposite conclusions**: either the v0.7.1 board now has a correct 1023
+baseline but a finger that cannot reach its pin at all, or it is a recording of
+an untouched breadboard and means nothing. The file name (`pcb` / `proto`) is
+only a label — `run.sh` records whatever is on `/dev/ttyUSB0`, and both Nanos
+here are indistinguishable CH340s (`1a86:7523`, no serial number), so nothing in
+the log identified the rig.
+
+- `capture.py` now writes a header into every log: the **label the operator
+  chose**, the timestamp, the port, the USB path (`ID_PATH`) and the window.
+- `run.sh` passes the label through and shouts it before recording — *"RECORDING
+  AS: 'pcb' — is THAT the rig on /dev/ttyUSB0?"* — with the warning that the
+  filename is only a label and a mislabelled log proves nothing.
+
+The USB path is the one thing that is at least *physically* meaningful: if the
+two rigs live in two different sockets, two logs from the same socket are
+provably the same rig. It does not identify the board, but it can falsify a
+claim that two captures came from different ones.
+
 ## 2026-09-13 (evening) — the breadboard, measured: it works by two counts
 
 The comparison never made in three days. Same probe, same body, same supply,

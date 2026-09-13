@@ -36,10 +36,15 @@ echo "Board on $PORT"
 
 echo
 echo "=================================================================="
+echo ">>> RECORDING AS: '$NAME'  -- is THAT the rig on $PORT?"
+echo ">>> The filename is only a LABEL. This script records whatever is"
+echo ">>> plugged in; both Nanos are identical CH340s and cannot be told"
+echo ">>> apart. Mislabel it and the log proves nothing."
+echo ">>>"
 echo ">>> TOUCH THE FRUIT NOW, the way you normally play. ${SECS} s. <<<"
 echo "=================================================================="
 echo
-"$PY" "$HERE/capture.py" "$SECS" "$OUT" "$PORT" >/dev/null || exit 1
+"$PY" "$HERE/capture.py" "$SECS" "$OUT" "$PORT" "$NAME" >/dev/null || exit 1
 
 echo
 echo "================ saved to $OUT ================"
