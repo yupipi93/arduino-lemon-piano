@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<style>
+@font-face { font-family:'PS'; src:url('fonts/PressStart2P-Regular.ttf') format('truetype'); }
+@font-face { font-family:'BD'; src:url('fonts/body.ttf') format('truetype'); font-weight:400; }
+@font-face { font-family:'BD'; src:url('fonts/body-bold.ttf') format('truetype'); font-weight:700; }
+
+@page { size: A4 landscape; margin: 0; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'BD'; color:#000; background:#fff; -webkit-print-color-adjust:exact; }
+
+/* One A4 landscape side = two A5 portrait panels, split by the fold.
+   PRESS START 2P HAS NO ACCENTED CAPITALS - it draws "Í" as "í". So the pixel
+   face is used ONLY where Spanish needs no accent (the cover title, NIVEL n,
+   the code digits) and everything else is the body face in caps. */
+.sheet { width:297mm; height:210mm; display:flex; page-break-after:always;
+         position:relative; overflow:hidden; }
+.sheet:last-child { page-break-after:auto; }
+.panel { width:148.5mm; height:210mm; padding:11mm 10mm 8mm; position:relative; overflow:hidden; }
+.fold { position:absolute; left:148.5mm; top:0; bottom:0; width:0; border-left:0.4mm dashed #999; }
+.foldtag { position:absolute; left:148.5mm; bottom:2.5mm; transform:translateX(-50%);
+           font-size:6.5pt; color:#888; letter-spacing:.18em; background:#fff; padding:0 2.5mm; }
+
+.bar { background:#000; color:#fff; font-weight:700; font-size:11.5pt;
+       letter-spacing:.13em; padding:2.6mm 3mm 2.8mm; margin-bottom:4.2mm;
+       text-align:center; }
+
+.row { display:flex; align-items:flex-start; gap:4mm; margin-bottom:4.2mm; }
+.row .ico { flex:none; width:30mm; padding-top:.4mm; }
+.row .tx  { flex:1; font-size:9.4pt; line-height:1.33; }
+.row .tx .h { font-weight:700; letter-spacing:.05em; display:block; margin-bottom:.6mm; }
+
+hr.s { border:0; border-top:0.7mm solid #000; margin:4.6mm 0 4.4mm; }
+
+/* the LED bar — the piano's whole vocabulary, and what they will actually see */
+.leds { display:flex; gap:0.5mm; }
+.leds i { display:block; width:2.5mm; height:3.6mm; border:0.4mm solid #000; }
+.leds i.on { background:#000; }
+
+/* the ten-key code */
+.code { display:flex; gap:1.4mm; }
+.code b { flex:1; font-family:'PS'; font-size:12pt; text-align:center; font-weight:400;
+          border:0.6mm solid #000; padding:2.5mm 0 2.1mm; }
+.lvhead { display:flex; align-items:center; gap:3mm; margin-bottom:2mm; }
+.lvhead .n { font-family:'PS'; font-size:10.5pt; background:#000; color:#fff; padding:2mm 3mm 2.2mm; }
+.lvhead .t { font-size:8.6pt; font-weight:700; letter-spacing:.1em; }
+.lvblock { margin-bottom:4.6mm; }
+
+/* the button table */
+.btab { width:100%; border-collapse:collapse; font-size:8.9pt; }
+.btab td { border-bottom:0.3mm solid #000; padding:2.1mm 1mm; vertical-align:middle; }
+.btab td.g { width:33mm; font-weight:700; letter-spacing:.06em; font-size:8.4pt; line-height:1.3; }
+.btn { display:inline-block; font-family:'PS'; font-size:9.5pt; border:0.6mm solid #000;
+       border-radius:50%; width:7.4mm; height:7.4mm; line-height:6.3mm; text-align:center;
+       vertical-align:middle; }
+.btn.s { width:5.4mm; height:5.4mm; line-height:4.3mm; font-size:7pt; }
+.hold { font-weight:700; font-size:7.6pt; letter-spacing:.06em; }
+
+.note { border:0.6mm solid #000; padding:2.8mm 3.2mm; font-size:8.7pt; line-height:1.36; }
+
+/* cover */
+.cover { text-align:center; display:flex; flex-direction:column;
+         justify-content:space-between; height:100%; padding-bottom:2mm; }
+.cover .t1 { font-family:'PS'; font-size:21pt; line-height:1.45; margin-top:8mm; }
+.cover .t2 { font-weight:700; font-size:11pt; background:#000; color:#fff;
+             display:inline-block; padding:3mm 5mm 3.2mm; letter-spacing:.14em; }
+.cover .foot { font-size:8pt; letter-spacing:.22em; font-weight:700; }
+</style></head>
+<body>
+
+<!-- ═════════ SIDE 1 — outside: back cover | front cover ═════════ -->
+<div class="sheet">
+  <div class="fold"></div><div class="foldtag">DOBLA AQUÍ</div>
+
+  <!-- ── BACK COVER ── -->
+  <div class="panel">
+    <div class="bar">LOS DOS BOTONES</div>
+    <table class="btab">
+      <tr><td class="g"><span class="btn">+</span></td>
+          <td><b>Más sensible.</b> Enciende una luz más en la barra.</td></tr>
+      <tr><td class="g"><span class="btn">&minus;</span></td>
+          <td><b>Menos sensible.</b> Apaga una luz.</td></tr>
+      <tr><td class="g"><span class="btn">+</span> <span class="hold">3 SEG</span></td>
+          <td><b>MODO LIBRE &#8646; JUEGO.</b> En modo libre los 7 limones son
+              <b>do re mi fa sol la si</b>: no hay clave, ni fallos, ni nada que ganar.</td></tr>
+      <tr><td class="g"><span class="btn">&minus;</span> <span class="hold">3 SEG</span></td>
+          <td><b>Elegir nivel.</b> Gira con <span class="btn s">+</span>
+              <span class="btn s">&minus;</span> y acepta pulsando <b>LOS DOS A LA VEZ</b>.</td></tr>
+      <tr><td class="g"><span class="btn">+</span><span class="btn">&minus;</span> <span class="hold">1 SEG</span></td>
+          <td><b>Ajuste automático.</b> Hazlo <b>con el dedo puesto en un limón</b>:
+              mide ese dedo y se ajusta solo.</td></tr>
+    </table>
+
+    <p style="font-size:8.4pt; margin-top:3mm; line-height:1.35">
+      Al mantener un botón, la barra <b>se va llenando</b> y suena un pitido que
+      sube: eso avisa de que va a cambiar algo. <b>Suéltalo y no pasa nada.</b></p>
+
+    <hr class="s">
+
+    <div class="bar">SI ALGO VA MAL</div>
+    <table class="btab">
+      <tr><td class="g">NO SUENA NADA</td>
+          <td>Comprueba que está enchufado. Al encender <b>pita y recorre las
+              luces</b>: eso es que está calibrando.</td></tr>
+      <tr><td class="g">MIENTRAS CALIBRA</td>
+          <td><b>Nadie toca la fruta.</b> Si alguien la toca mientras calibra,
+              ese limón se queda mal ajustado.</td></tr>
+      <tr><td class="g">SE DISPARA SOLO</td>
+          <td>Toca <span class="btn s">&minus;</span> dos o tres veces.</td></tr>
+      <tr><td class="g">NO COGE EL DEDO</td>
+          <td>Toca <span class="btn s">+</span> dos o tres veces. Y que apriete
+              con <b>toda la yema</b>, no con la uña.</td></tr>
+      <tr><td class="g">SE HACE UN LÍO</td>
+          <td><b>Desenchufa y enchufa.</b> Vuelve al nivel 1 y calibra de nuevo.
+              No se rompe nada.</td></tr>
+    </table>
+  </div>
+
+  <!-- ── FRONT COVER ── -->
+  <div class="panel">
+   <div class="cover">
+    <div class="t1">PIANO<br>DE<br>LIMONES</div>
+
+    <svg viewBox="0 0 300 132" style="width:100%">
+      <!-- a note over each lemon -->
+      <g stroke="#000" stroke-width="2.6" fill="none">
+        <g transform="translate(26,40)"><path d="M0 0 v-15 h9"/><ellipse cx="-3.4" cy="0" rx="3.6" ry="2.8" fill="#000"/></g>
+        <g transform="translate(65,31)"><path d="M0 0 v-15 h9"/><ellipse cx="-3.4" cy="0" rx="3.6" ry="2.8" fill="#000"/></g>
+        <g transform="translate(104,38)"><path d="M0 0 v-15 h9"/><ellipse cx="-3.4" cy="0" rx="3.6" ry="2.8" fill="#000"/></g>
+        <g transform="translate(143,24)"><path d="M0 0 v-15 h9"/><ellipse cx="-3.4" cy="0" rx="3.6" ry="2.8" fill="#000"/></g>
+        <g transform="translate(182,38)"><path d="M0 0 v-15 h9"/><ellipse cx="-3.4" cy="0" rx="3.6" ry="2.8" fill="#000"/></g>
+        <g transform="translate(221,31)"><path d="M0 0 v-15 h9"/><ellipse cx="-3.4" cy="0" rx="3.6" ry="2.8" fill="#000"/></g>
+        <g transform="translate(260,40)"><path d="M0 0 v-15 h9"/><ellipse cx="-3.4" cy="0" rx="3.6" ry="2.8" fill="#000"/></g>
+      </g>
+      <!-- seven lemons: an ellipse with the two little points -->
+      <g fill="none" stroke="#000" stroke-width="3">
+        <g transform="translate(24,78)"><ellipse cx="0" cy="0" rx="13" ry="11"/><path d="M-13 -1.5 l-3.4 -2 M13 1.5 l3.4 2"/></g>
+        <g transform="translate(63,78)"><ellipse cx="0" cy="0" rx="13" ry="11"/><path d="M-13 -1.5 l-3.4 -2 M13 1.5 l3.4 2"/></g>
+        <g transform="translate(102,78)"><ellipse cx="0" cy="0" rx="13" ry="11"/><path d="M-13 -1.5 l-3.4 -2 M13 1.5 l3.4 2"/></g>
+        <g transform="translate(141,78)"><ellipse cx="0" cy="0" rx="13" ry="11"/><path d="M-13 -1.5 l-3.4 -2 M13 1.5 l3.4 2"/></g>
+        <g transform="translate(180,78)"><ellipse cx="0" cy="0" rx="13" ry="11"/><path d="M-13 -1.5 l-3.4 -2 M13 1.5 l3.4 2"/></g>
+        <g transform="translate(219,78)"><ellipse cx="0" cy="0" rx="13" ry="11"/><path d="M-13 -1.5 l-3.4 -2 M13 1.5 l3.4 2"/></g>
+        <g transform="translate(258,78)"><ellipse cx="0" cy="0" rx="13" ry="11"/><path d="M-13 -1.5 l-3.4 -2 M13 1.5 l3.4 2"/></g>
+      </g>
+      <rect x="2" y="96" width="278" height="9"/>
+      <g font-family="PS" font-size="10" text-anchor="middle">
+        <text x="24" y="124">1</text><text x="141" y="124">4</text><text x="258" y="124">7</text>
+      </g>
+    </svg>
+
+    <div><span class="t2">GUÍA DEL ORGANIZADOR</span></div>
+
+    <div style="font-size:9pt; line-height:1.4; padding:0 3mm">
+      Para que cualquiera lo ponga en marcha y sepa explicarlo.<br>
+      <b>Dentro están las 4 claves.</b>
+    </div>
+
+    <div class="foot">MULTITEC UA</div>
+   </div>
+  </div>
+</div>
+
+<!-- ═════════ SIDE 2 — the inside spread ═════════ -->
+<div class="sheet">
+  <div class="fold"></div>
+
+  <!-- ── INSIDE LEFT ── -->
+  <div class="panel">
+    <div class="bar">CÓMO SE JUEGA</div>
+
+    <div class="row">
+      <div class="ico"><svg viewBox="0 0 84 30" style="width:30mm">
+        <g fill="none" stroke="#000" stroke-width="3">
+          <ellipse cx="26" cy="19" rx="15.5" ry="11.5"/>
+          <path d="M10.5 18 l-4.5 -2.5 M41.5 20 l4.5 2.5"/>
+          <path d="M26 2 v9"/></g>
+        <path d="M26 15 l-5 -7 h10z"/>
+        <g font-family="BD" font-weight="700" font-size="13"><text x="55" y="24">7</text></g>
+        <g fill="none" stroke="#000" stroke-width="3"><path d="M70 12 v-9 h6"/></g>
+        <ellipse cx="67.5" cy="12" rx="3.4" ry="2.6"/></svg></div>
+      <div class="tx"><span class="h">TOCA LA FRUTA</span>
+        7 limones = 7 notas. Hay que tocar <b>el limón</b>, no el cable.</div>
+    </div>
+
+    <div class="row">
+      <div class="ico"><div class="leds"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="tx">Cada nivel esconde una <b>clave de 10 notas</b>.
+        Las 10 luces son los 10 aciertos.</div>
+    </div>
+
+    <div class="row">
+      <div class="ico"><div class="leds"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="tx"><b>ACIERTO</b> &rarr; se enciende <b>una luz más</b>.</div>
+    </div>
+
+    <div class="row">
+      <div class="ico"><div class="leds"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="tx"><b>FALLO</b> &rarr; suena mal y <b>se apagan TODAS</b>.
+        Se empieza la clave otra vez, desde el principio.</div>
+    </div>
+
+    <div class="row">
+      <div class="ico"><div class="leds"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
+      <div class="tx"><b>LAS 10</b> &rarr; suena la fanfarria y <b>pasa solo</b>
+        al nivel siguiente.</div>
+    </div>
+
+    <hr class="s">
+
+    <div class="bar">EL DEDO: LAS DOS DUDAS</div>
+
+    <div class="row">
+      <div class="ico"><svg viewBox="0 0 84 32" style="width:30mm">
+        <g fill="none" stroke="#000" stroke-width="3">
+          <ellipse cx="20" cy="16" rx="15.5" ry="11.5"/>
+          <path d="M4.5 15 l-4.5 -2.5 M35.5 17 l4.5 2.5"/></g>
+        <rect x="44" y="12" width="38" height="8"/>
+        <g font-family="BD" font-weight="700" font-size="11" text-anchor="middle">
+          <text x="63" y="32">1 NOTA</text></g></svg></div>
+      <div class="tx"><span class="h">SI MANTIENE EL DEDO</span>
+        Suena <b>una sola nota</b>, y dura todo el rato que aguante.
+        Cuenta <b>una vez</b>. No pasa nada malo.</div>
+    </div>
+
+    <div class="row">
+      <div class="ico">
+        <svg viewBox="0 0 84 12" style="width:30mm; display:block; margin-bottom:1mm">
+          <g fill="none" stroke="#000" stroke-width="3"><path d="M82 6 H6 M16 1 L6 6 l10 5"/></g></svg>
+        <div class="leds"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="tx"><span class="h">SI REPITE EL MISMO LIMÓN</span>
+        <b>Suena</b> igual de bien, pero <b>NO cuenta</b>: una luz recorre la
+        barra <b>hacia atrás</b> y el marcador <b>se queda igual</b>.
+        <b>No es un fallo y no quita nada.</b>
+        Para avanzar hay que tocar <b>otro</b> limón.</div>
+    </div>
+
+    <hr class="s">
+
+    <div class="note" style="line-height:1.42">
+      <b>LO QUE SE OYE</b><br>
+      Monedas, una por limón &rarr; está calibrando, manos fuera &middot;
+      Ruido corto y feo &rarr; nota equivocada &middot;
+      Fanfarria &rarr; nivel superado
+    </div>
+  </div>
+
+  <!-- ── INSIDE RIGHT ── -->
+  <div class="panel">
+    <div class="bar">LAS 4 CLAVES</div>
+
+    <div class="note" style="margin-bottom:4.4mm">
+      <b>¿CUÁL ES EL LIMÓN 1?</b> El que suena <b>más grave</b>; de ahí van
+      subiendo hasta el 7. Para comprobarlo, mantén <span class="btn s">+</span>
+      3 seg (modo libre) y tócalos en orden: <b>do re mi fa sol la si</b>.
+    </div>
+
+    <div class="lvblock" id="lv1"></div>
+    <div class="lvblock" id="lv2"></div>
+    <div class="lvblock" id="lv3"></div>
+    <div class="lvblock" id="lv4"></div>
+
+    <div class="note">
+      <b>El nivel se elige</b> manteniendo <span class="btn s">&minus;</span>
+      3 seg. Cada nivel <b>se anuncia con su propia música</b> y enseña
+      <b>tantas luces como su número</b>.<br>
+      Al superar el 4 vuelve al 1.
+    </div>
+  </div>
+</div>
+
+<script>
+const CODES = __CODES__;
+const NAMES = { 1:'TEMA PRINCIPAL', 2:'SUBSUELO', 3:'ESTRELLA', 4:'CASTILLO' };
+for (const lv of [1,2,3,4]) {
+  document.getElementById('lv' + lv).innerHTML =
+    '<div class="lvhead"><span class="n">NIVEL ' + lv + '</span>' +
+    '<span class="t">' + NAMES[lv] + '</span></div>' +
+    '<div class="code">' + CODES[lv].keys.map(k => '<b>' + k + '</b>').join('') + '</div>';
+}
+</script>
+</body></html>

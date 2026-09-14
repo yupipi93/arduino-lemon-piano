@@ -2,6 +2,46 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-14 — the organiser's booklet, built and printed
+
+One A4 sheet, black and white, both sides, folding down the middle into an A5.
+It exists so someone who has never seen the lemon piano can switch it on,
+explain it and rescue it with Sergio not in the room. `docs/cartilla/`, and it
+went to the laser on job `laser-9`.
+
+Four panels: the cover; what the two buttons do plus **si algo va mal**; how the
+game works plus the two questions everyone asks about the finger; and **the four
+codes**. Almost no prose — nearly every explanation is a drawing of the **LED bar
+itself**, ten boxes filled or empty, because that is the only thing the piano can
+say and the only thing a helper has to read.
+
+**The codes are derived, never typed.** A level's code lives in the firmware as
+note *frequencies*, and which lemon plays a note is different on every level —
+each has its own seven-note row — so the answer a player needs exists nowhere in
+the source. `docs/cartilla/seqs.py` resolves one table against the other and
+**cross-checks level 1 against the sequence hard-coded in the host test**, which
+was written independently. It exits non-zero rather than guess. Change a melody
+in `main.cpp`, re-run `build.sh`, and the booklet is right again:
+
+```
+level 1  6 5 6 7 2 5 2 1 3 4      level 3  2 4 6 1 5 3 7 4 2 6
+level 2  3 6 1 4 2 5 3 6 1 4      level 4  5 1 3 7 2 6 4 1 5 3
+```
+
+The booklet also answers the question those numbers raise on their own — *which
+lemon is number 1?* — physically rather than by wiring diagram: it is the one
+that sounds **lowest**, and free play (hold + for 3 s) plays do re mi fa sol la
+si left to right, so anyone can check it in ten seconds.
+
+Two things caught in review before printing, both visible only once rendered:
+**Press Start 2P has no accented capitals** and drew `CóMO SE JUEGA` and
+`LIMóN`, so the pixel face is now used only where Spanish needs no accent and
+DejaVu carries the rest; and the ten-LED bars were 42 mm wide in a 19 mm column,
+so the text ran straight over them.
+
+Printed duplex **short edge** — the content is landscape, so that is the flip
+that reads like a book; long edge would put the inside spread upside down.
+
 ## 2026-09-14 — the event poster, stored byte for byte
 
 Sergio made a poster with Gemini to stand behind the lemon piano at a private
