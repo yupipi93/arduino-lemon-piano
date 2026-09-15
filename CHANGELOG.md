@@ -2,6 +2,49 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-15 (late) — the power bank switches itself off, and the PD trigger is only half the answer
+
+Natalia asked for the DIP code that gets 5 V out of the PD/QC trigger module in
+the inventory (`mod-pd-trigger-dip100w`), so the V5.5 board can run off a power
+bank instead of a charger — the bank keeps cutting out because the piano does
+not draw enough.
+
+**The code is `1=OFF, 2=OFF, 3=OFF`.** Full table (1=ON, 0=OFF): `000`→5 V,
+`111`→9 V, `110`→12 V, `100`→15 V, `101`→20 V. The module never steps up, so a
+wrong code fails safe downwards to 5 V.
+
+But the premise deserved a second look, and the new
+[docs/POWER-FROM-A-POWER-BANK.md](docs/POWER-FROM-A-POWER-BANK.md) says so in
+full:
+
+- **A trigger set to 5 V does not raise the current draw**, and the draw is what
+  the bank is measuring. The shutdown is a low-load timeout, not a voltage
+  problem.
+- **5 V is the one setting where a decoy may do nothing at all** — a USB-C
+  source offers 5 V by default, so the board may take vSafe5V without ever
+  sending an explicit Request, leaving the bank exactly as unaware of the piano
+  as a bare two-wire pigtail does. Not documented by the seller, not verified
+  here, and the KWS-X1's protocol page answers it in one look.
+- **Three different faults look the same from the couch** and want different
+  fixes: the low-load timeout (raise the draw), inrush into the 940 µF of
+  `C1 ‖ C3` (drop C1 to 220 µF), and no PD contract at all (needs a C-to-C
+  path). Which one it is follows from *when* the output drops.
+- **`D1` makes a wrong DIP code expensive.** The P6KE6.8A is a 600 W part for
+  1 ms, not a shunt: a 9 V contract from a 100 W bank puts it into continuous
+  avalanche, and the ATmega inherits the 9 V when it fails. Hence the rule the
+  doc leads with — measure the screw terminal with the Fluke *before* the wires
+  reach `J1`.
+- **The keep-alive, if it is still needed**, is a plain resistor across the
+  trigger's screw terminal: 150 Ω (33 mA) to start, 2 × 220 Ω in parallel
+  (45 mA) if the meter says so, never a single 100 Ω on a ¼ W part. On the
+  unfiltered side, so it adds no drop across `L1` and cannot move AVcc. The
+  bank's own low-current mode is tried first — it costs nothing.
+
+Nothing on the board changes, so this is not a new version: it is a document,
+linked from V5.5's powering rules and from V6's open-risk table. The current
+figures in it are computed from the schematic, not measured — the measurement
+protocol is step 1 of the doc, and it is what turns the table honest.
+
 ## 2026-09-15 (night) — "play me that tune again" moves off two lemons and onto one
 
 *"Creo que es físicamente imposible detectar correctamente la pulsación de

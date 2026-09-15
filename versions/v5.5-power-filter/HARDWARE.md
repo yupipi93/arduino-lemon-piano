@@ -84,7 +84,10 @@ transient arrives through the *air* rather than the wire.
 
 1. Feed the filter from a **USB wall charger or a bench supply** — a source
    with nothing else hanging off it. The PC's 5 V is the worst source in the
-   house.
+   house. A **power bank** is better still (it breaks the mains common-mode
+   path entirely) but it shuts its output off under the piano's idle draw —
+   the DIP codes, the measurement and the keep-alive are in
+   [docs/POWER-FROM-A-POWER-BANK.md](../../docs/POWER-FROM-A-POWER-BANK.md).
 2. The Nano's **mini-USB stays for flashing only**. It bypasses the filter by
    construction (it lands on the Nano's own 5 V node); the 1N5817 keeps it from
    back-feeding C1–C3. Don't leave the PC attached while playing — USB ground

@@ -61,7 +61,7 @@ merely as quiet.**
 
 | Risk | Why | If it bites |
 |---|---|---|
-| **Low-load auto-shutdown** | the piano idles at 25-35 mA (free play = all ten LEDs dark); IP5356-class modules cut the output below ~45-75 mA | module's low-current mode · a keep-alive LED in firmware · 100 Ω bleeder on `vbus` |
+| **Low-load auto-shutdown** | the piano idles at 25-35 mA (free play = all ten LEDs dark); IP5356-class modules cut the output below ~45-75 mA | module's low-current mode · a keep-alive LED in firmware · 100 Ω bleeder on `vbus` — worked through, with the measurement protocol, in [docs/POWER-FROM-A-POWER-BANK.md](../../docs/POWER-FROM-A-POWER-BANK.md) |
 | **QC/PD overvoltage** | a port that negotiated 9 V would put the P6KE6.8A into continuous conduction (it is a transient part, 600 W for 1 ms) — it burns, then the ATmega does | USB-A only, two-wire pigtail only (no D+/D− → no handshake) |
 | **Inrush into 940 µF** | C1 + C3 look like a short to a boost whose short-circuit protection reacts in < 50 µs | drop C1 to 220 µF — `fc` is set by C3, not C1 |
 | **No battery telemetry** | A0-A7 and D2-D13 are *all* used; there is no free pin | the module's own 2-digit display is the gauge |
