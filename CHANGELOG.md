@@ -2,6 +2,77 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-15 (late, take two) — every theme at three sizes
+
+*"Creo que no me he expresado bien. Hay tres versiones de cada canción. La
+corta, que es para el menú. Una de siete notas y únicamente de las siete notas
+que se tocan. Así es como tiene que ser la canción cuando empieza o cuando el
+usuario toca cinco veces la nota. Y luego la versión ultra completa, full, que
+es ya cuando el nivel es completado y como celebración."*
+
+The entry above this one made the level announcement the **whole** theme. That
+was half of what he meant and the wrong half: a 23-second Castle at the start of
+every level is not an announcement, it is a wait. Corrected here — and the
+result is better than either version, because the three sizes each have a job.
+
+| Size | Where | What it is |
+|---|---|---|
+| **SHORT** | the mode wheel | the first `MENU_PREVIEW_NOTES` (8) entries of the raw theme. Browsing four modes has to be fast above everything else. Unchanged |
+| **PLAYABLE** | the level announcement, and the five-tap reminder | **seven notes, and only notes this level's lemons can make** |
+| **FULL** | the celebration when a level is cleared | the whole piece, 10–23 s |
+
+### The PLAYABLE cut is the interesting one
+
+The announcement **is the clue** — the ten-note code is hidden in the theme — so
+it must not be full of notes the keyboard cannot make. Every theme reaches
+pitches that are on no lemon: the Overworld goes to AS6, F7 and D7, none of
+which is one of level 1's seven keys.
+
+So `playPlayableIntro()` walks the theme and plays only what the level's row
+contains, stopping at seven notes. A pitch outside the row is **not skipped** —
+it is played as silence of the same length, so the rhythm of the hook survives,
+which is most of what makes a hook recognisable. It is a rule rather than four
+hand-written excerpts, it costs no flash (the note data is the theme that is
+already there), and it lands on each theme's actual hook, which is a pleasant
+accident of Mario having written them that way:
+
+| Level | Theme | The seven notes it announces | Time |
+|---|---|---|---|
+| 1 | Overworld | `E7 E7 E7 C7 E7 G7 G6` — the riff, exactly | 2.0 s |
+| 2 | Underworld | `C4 C5 A3 A4 AS3 AS4 C4` | 2.0 s |
+| 3 | Starman | `C6 F5 F5 D5 F5 F5 D5` | 1.4 s |
+| 4 | Castle | `G3 D4 G3 D4 AS3 D4 AS3` — the alternating pedal | 2.0 s |
+
+### …which freed the celebration to be the whole piece
+
+A win used to play the theme's **tail**, from `*_VICTORY_FROM`, for a reason
+that has now evaporated: the level announcement was already playing its head,
+and hearing the whole thing twice in a row would have been too much. The
+announcement is seven notes now, so `playVictory()` plays from the top —
+Overworld 12.2 s, Underworld 13.1 s, Starman 10.4 s, Castle 22.7 s, with the bar
+counting up from empty to all ten across the whole thing. The four
+`*_VICTORY_FROM` constants are gone with it.
+
+### Evidence
+
+- **All five envs build.** 17 998 B flash / 58.6 %, 558 B RAM / 27.2 %.
+- **Host tests: 107 + 174 checks, 0 failed.** New test 26 pins all three sizes,
+  and it can see *which* notes the announcement played because
+  `playPlayableIntro()` now prints them (`theme: 2637 2637 …`) — a theme is
+  bit-banged through `buzz()` rather than `tone()`, so a log line is the only
+  window onto it. The test asserts seven notes on every level, **every one of
+  them on that level's keyboard**, and that the celebration is many times longer
+  than the clue.
+- **Flashed and verified**, and confirmed from the board's own serial:
+
+```
+  5.4s  Level 1
+  7.6s  theme: 2637 2637 2637 2093 2637 3136 1568
+```
+
+  That is E7 E7 E7 C7 E7 G7 G6 — seven notes, 2.2 s from the level being
+  announced to the tune being over, every note playable on a lemon.
+
 ## 2026-09-15 (late) — a level announces itself with its WHOLE theme
 
 *"Tienes que hacer que suene completa la melodía. No solo las primeras notas.

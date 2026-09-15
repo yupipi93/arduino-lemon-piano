@@ -74,6 +74,26 @@ static bool filmHas(const std::vector<std::string> &f, const std::string &shape)
   for (size_t i = 0; i < f.size(); i++) if (f[i] == shape) return true;
   return false;
 }
+// The last "theme: f f f ..." line the firmware printed, as frequencies. A theme
+// is bit-banged (buzz(), not tone()), so this log line is the only way to see
+// WHICH notes an announcement played — and it is the clue, so which notes it
+// plays is exactly the thing worth pinning.
+static std::vector<int> lastThemeLine() {
+  std::vector<int> out;
+  size_t at = board.serial.rfind("theme:");
+  if (at == std::string::npos) return out;
+  size_t end = board.serial.find('\n', at);
+  std::string line = board.serial.substr(at + 6, end - at - 6);
+  size_t i = 0;
+  while (i < line.size()) {
+    while (i < line.size() && line[i] == ' ') i++;
+    size_t j = i;
+    while (j < line.size() && line[j] >= '0' && line[j] <= '9') j++;
+    if (j > i) out.push_back(atoi(line.substr(i, j - i).c_str()));
+    i = j + 1;
+  }
+  return out;
+}
 static size_t serialMark() { return board.serial.size(); }
 static bool serialSince(size_t mark, const char *needle) {
   return board.serial.find(needle, mark) != std::string::npos;
@@ -1008,6 +1028,62 @@ static void test_five_taps_replay_the_theme() {
   eqInt(mi, 8, "  ...they were eight notes, which is what an instrument is for");
 }
 
+// ── 26 ──────────────────────────────────────────────────────────────────────
+// Sergio, 2026-09-15: "hay tres versiones de cada canción. La corta, que es
+// para el menú. Una de siete notas y únicamente de las siete notas que se
+// tocan... y luego la versión ultra completa, full, que es ya cuando el nivel
+// es completado y como celebración."
+//
+// The middle one is the interesting one, because it is the CLUE: the level
+// announcement and the five-tap reminder must be made only of notes the player
+// can answer with. Every theme reaches pitches that are on no lemon.
+static void test_three_sizes_of_every_theme() {
+  section("26. Every theme at three sizes: menu, the playable clue, the whole piece");
+  boot();
+
+  // The announcement is exactly seven notes, and it is the Overworld's riff.
+  std::vector<int> t = lastThemeLine();
+  eqInt((long) t.size(), 7, "level 1 announces itself with exactly seven notes");
+  const int want1[7] = {NOTE_E7, NOTE_E7, NOTE_E7, NOTE_C7, NOTE_E7, NOTE_G7, NOTE_G6};
+  bool same = t.size() == 7;
+  for (size_t i = 0; i < t.size() && i < 7; i++) if (t[i] != want1[i]) same = false;
+  ok(same, "  ...and it is the riff: E7 E7 E7 C7 E7 G7 G6");
+
+  // ...and on EVERY level, every note of it is a note that level's lemons make.
+  for (int lvl = 1; lvl <= LEVEL_COUNT; lvl++) {
+    boot();
+    level = lvl;
+    resetBoard();
+    playLevelIntro();
+    t = lastThemeLine();
+    eqInt((long) t.size(), 7,
+          std::string("level ") + std::to_string(lvl) + ": seven notes announced");
+    std::string strays;
+    for (size_t i = 0; i < t.size(); i++) {
+      bool found = false;
+      for (int k = 0; k < (int) KEY_COUNT; k++)
+        if (keys[(lvl - 1) * KEY_COUNT + k] == t[i]) found = true;
+      if (!found) strays += " " + std::to_string(t[i]);
+    }
+    ok(strays.empty(), "  ...and every one of them is a note its lemons can play",
+       "strays:" + strays);
+  }
+
+  // The CELEBRATION is the whole piece, and is much longer than the clue.
+  boot();
+  const unsigned long announce = board.pinWrites[BUZZER];
+  const int code[10] = {5, 4, 5, 6, 1, 4, 1, 0, 2, 3};
+  const unsigned long beforeWin = board.pinWrites[BUZZER];
+  size_t sm = serialMark();
+  for (int i = 0; i < SEQUENCE_LENGTH; i++) touchKey(code[i]);
+  ok(serialSince(sm, "WIN"), "level 1 is won");
+  const unsigned long celebration = board.pinWrites[BUZZER] - beforeWin;
+  ok(celebration > announce * 4,
+     "  ...and the celebration is the whole piece, many times the clue",
+     std::to_string(celebration) + " edges against the clue's " +
+     std::to_string(announce));
+}
+
 int main(int argc, char **argv) {
   if (argc > 1 && std::string(argv[1]) == "-v") board.traceSerial = true;
   printf("\n\033[1mLemon Piano V5.5 — firmware on a fake board\033[0m\n");
@@ -1038,6 +1114,7 @@ int main(int argc, char **argv) {
   test_level_four_still_wins();
   test_free_play_wave_starts_at_the_key();
   test_five_taps_replay_the_theme();
+  test_three_sizes_of_every_theme();
 
   printf("\n%d checks, \033[%sm%d failed\033[0m\n\n",
          checks, failures ? "31" : "32", failures);

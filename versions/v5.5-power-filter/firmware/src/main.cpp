@@ -364,6 +364,10 @@ const int LED_METER_MS = 700;     // how long the bar shows the sensitivity leve
 // ── The mode wheel (2026-09-09) ─────────────────────────────────────────────
 // Timings for the GESTURES are in include/ui_gestures.h (they are what the host
 // test asserts). What lives here is only how the wheel LOOKS and SOUNDS.
+const uint8_t INTRO_PLAYABLE_NOTES = 7;  // the PLAYABLE cut: seven notes, all of
+                                  // them notes this level's lemons can make.
+                                  // Seven because the keyboard has seven, and
+                                  // because it is long enough to be the hook.
 const uint8_t MENU_PREVIEW_NOTES = 8;    // cap on a preview melody. The level
                                   // intros run 8-16 notes and playSong stretches
                                   // each one to 2.3x its written length, so the
@@ -389,7 +393,7 @@ const bool serialEnabled = true;  // debug log at 9600 baud
 // play on completing the game are just the tail of the full themes, so we keep
 // ONE copy of each and play it from an offset.
 
-// SUPER MARIO BROS — MAIN THEME (full). Victory plays from MARIO_VICTORY_FROM.
+// SUPER MARIO BROS — MAIN THEME (full). The celebration plays all of it.
 const int marioNotes[] PROGMEM = {
   NOTE_E7, NOTE_E7, 0, NOTE_E7,
   0, NOTE_C7, NOTE_E7, 0,
@@ -443,7 +447,7 @@ const int marioTempo[] PROGMEM = {
   12, 12, 12, 12
 };
 
-// SUPER MARIO BROS — UNDERWORLD THEME (full). Victory from UNDER_VICTORY_FROM.
+// SUPER MARIO BROS — UNDERWORLD THEME (full). The celebration plays all of it.
 const int underworldNotes[] PROGMEM = {
   NOTE_C4, NOTE_C5, NOTE_A3, NOTE_A4,
   NOTE_AS3, NOTE_AS4, 0,
@@ -488,9 +492,9 @@ const int underworldTempo[] PROGMEM = {
 };
 
 // SUPER MARIO BROS — CASTLE THEME (full, redesigned 2026-07-29 for
-// recognisability — a player found the first version too generic). Victory
-// from CASTLE_VICTORY_FROM, intro (level-start announce) is the first
-// CASTLE_INTRO_LEN notes. G minor, brisk. No letter-note tab could be sourced
+// recognisability — a player found the first version too generic). The
+// celebration plays all of it; the wheel previews CASTLE_INTRO_LEN notes of it.
+// G minor, brisk. No letter-note tab could be sourced
 // for this one (unlike the others), so it is a 🔨 reconstruction — but this
 // version is built around the two traits every description of the real piece
 // agrees on: a fast alternating "pedal" hook (Super Mario Wiki's own trivia
@@ -532,8 +536,8 @@ const int castleTempo[] PROGMEM = {
   8, 8, 8, 8, 8, 8, 8, 2
 };
 
-// SUPER MARIO BROS — STARMAN / INVINCIBILITY THEME (full, 2026-07-29). Victory
-// from STARMAN_VICTORY_FROM, intro is the first STARMAN_INTRO_LEN notes. The
+// SUPER MARIO BROS — STARMAN / INVINCIBILITY THEME (full, 2026-07-29). The
+// celebration plays all of it; the wheel previews STARMAN_INTRO_LEN notes. The
 // real theme is a short vamp repeated for as long as invincibility lasts, so
 // "full" here means the validated 2026-07-29 excerpt played through TWICE
 // before the closing phrase, rather than inventing new melodic material.
@@ -578,15 +582,31 @@ const int starmanTempo[] PROGMEM = {
 #define UNDER_LEN          (sizeof(underworldNotes) / sizeof(underworldNotes[0]))
 #define CASTLE_LEN         (sizeof(castleNotes) / sizeof(castleNotes[0]))
 #define STARMAN_LEN        (sizeof(starmanNotes) / sizeof(starmanNotes[0]))
-const uint8_t MARIO_VICTORY_FROM = 28;   // full theme is 78 notes; cut = tail 50
-const uint8_t UNDER_VICTORY_FROM = 12;   // full theme is 56 notes; cut = tail 44
-const uint8_t CASTLE_VICTORY_FROM = 32;      // full theme tail (see above)
-const uint8_t STARMAN_VICTORY_FROM = 22;     // full theme tail (see above)
+// The four *_VICTORY_FROM offsets that used to live here are GONE (2026-09-15).
+// A win played the theme's TAIL because the level announcement was already
+// playing its head, and hearing the whole thing twice in a row would have been
+// too much. The announcement is seven notes now, so the celebration plays the
+// piece from the top — see playVictory().
 
-// How much of a theme the MODE WHEEL previews. Since 2026-09-15 this is the
-// only thing these four lengths are used for: the level announcement plays the
-// whole piece (see playLevelIntro), and a wheel you turn five times cannot.
-const uint8_t MARIO_INTRO_LEN = 12;
+// ── EVERY THEME EXISTS AT THREE SIZES (2026-09-15) ─────────────────────────
+// Sergio: "hay tres versiones de cada canción. La corta, que es para el menú.
+// Una de siete notas y únicamente de las siete notas que se tocan... así es
+// como tiene que ser la canción cuando empieza o cuando el usuario toca cinco
+// veces la nota. Y luego la versión ultra completa, full, que es ya cuando el
+// nivel es completado y como celebración."
+//
+//   SHORT     the mode wheel. The first MENU_PREVIEW_NOTES entries of the raw
+//             theme, rests and all — see playMenuPreview(). Browsing four modes
+//             has to be fast above everything else.
+//   PLAYABLE  the level announcement, and the five-tap reminder. Seven notes,
+//             and ONLY notes this level's lemons can make — see
+//             playPlayableIntro(). This is the CLUE, so every note of it has to
+//             be a note the player can answer with.
+//   FULL      the celebration when a level is cleared. The whole piece, 10-23 s
+//             of it — see playVictory().
+//
+// These four lengths are the SHORT size and nothing else now.
+const uint8_t MARIO_INTRO_LEN = 12;   // ...the short (menu) cut of each
 const uint8_t UNDER_INTRO_LEN = 8;
 const uint8_t CASTLE_INTRO_LEN = 16;
 const uint8_t STARMAN_INTRO_LEN = 10;
@@ -800,6 +820,7 @@ void logGame();
 void toggleFreePlay();
 void handleGuess();
 void playVictory();
+void playPlayableIntro(const int *notes, const int *tempos, uint8_t length);
 void playLevelIntro();
 void playEndingLoop();
 bool playSfx(const int *table, bool lightShow = false, bool (*checkAbort)() = nullptr);
@@ -2280,44 +2301,77 @@ void wrongTone() {
 
 void playVictory() {
   silenceKeyNote();          // in case we got here without the win path's hush
-  const int *notes; const int *tempo; uint8_t from, length;
+  const int *notes; const int *tempo; uint8_t length;
   switch (level) {
-    case 1: notes = marioNotes; tempo = marioTempo; from = MARIO_VICTORY_FROM; length = MARIO_LEN; break;
-    case 2: notes = underworldNotes; tempo = underworldTempo; from = UNDER_VICTORY_FROM; length = UNDER_LEN; break;
-    case 3: notes = starmanNotes; tempo = starmanTempo; from = STARMAN_VICTORY_FROM; length = STARMAN_LEN; break;
-    default: notes = castleNotes; tempo = castleTempo; from = CASTLE_VICTORY_FROM; length = CASTLE_LEN; break;
+    case 1: notes = marioNotes; tempo = marioTempo; length = MARIO_LEN; break;
+    case 2: notes = underworldNotes; tempo = underworldTempo; length = UNDER_LEN; break;
+    case 3: notes = starmanNotes; tempo = starmanTempo; length = STARMAN_LEN; break;
+    default: notes = castleNotes; tempo = castleTempo; length = CASTLE_LEN; break;
   }
-  // Progressive fill (2026-07-29): the bar counts up from empty to all ten
-  // LEDs across the whole victory tail, instead of flashing the whole bar per
-  // note — ledTotal = the tail's own note count, so the pace scales with
-  // whichever level's theme is playing (26-50 notes -> ~230-580 ms per LED).
-  playSong(notes, tempo, from, length, (uint16_t) (length - from), 0);
+  // THE WHOLE PIECE, FROM THE TOP (2026-09-15). It used to start at
+  // *_VICTORY_FROM — a tail of 26-50 notes, chosen back when the theme was also
+  // what announced the level and playing all of it twice would have been too
+  // much. The announcement is seven notes now, so the celebration is free to be
+  // the whole thing, which is what Sergio asked for: "la versión ultra
+  // completa, full, que es ya cuando el nivel es completado y como
+  // celebración". 10-23 s depending on the level.
+  //
+  // Progressive fill (2026-07-29): the bar counts up from empty to all ten LEDs
+  // across the whole piece, instead of flashing the whole bar per note —
+  // ledTotal is its note count, so the pace scales with whichever theme plays.
+  playSong(notes, tempo, 0, length, (uint16_t) length, 0);
 }
 
-// Level-start announce: the CURRENT level's own theme, IN FULL — and it is the
-// same call the five-tap reminder makes, so "hear it again" really is the same
-// thing you heard when the level opened.
+// Is this frequency one of the seven notes the CURRENT level's lemons make?
+static bool onKeyboard(int freq) {
+  if (freq <= 0) return false;
+  const int base = (level - 1) * KEY_COUNT;
+  for (uint8_t i = 0; i < KEY_COUNT; i++) {
+    if (keys[base + i] == freq) return true;
+  }
+  return false;
+}
+
+// ── the PLAYABLE cut of a theme (2026-09-15) ───────────────────────────────
+// Seven notes, and only notes the player can answer with. Every theme contains
+// pitches that are on no lemon — the Overworld reaches AS6, F7 and D7, none of
+// which is one of level 1's seven keys — and an announcement that is also the
+// CLUE must not be full of notes the keyboard cannot make. So a note outside
+// the level's row is not skipped, it is played as SILENCE OF THE SAME LENGTH:
+// the rhythm of the hook survives, which is most of what makes it recognisable,
+// and the only thing you hear is something you could play back.
 //
-// IT USED TO BE THE FIRST FEW NOTES ONLY (2026-09-15). Sergio: "tienes que
-// hacer que suene completa la melodía, no solo las primeras notas". The reason
-// is the game itself — the ten-note code is hidden IN the theme, and the codes
-// draw on the whole piece, not on its opening bar. An announcement that stopped
-// after twelve notes was showing the player a twelfth of the clue.
-//
-// What that costs, measured rather than guessed (playSong's own pacing: a note
-// plus 1.3x its length as a gap):
-//
-//     Overworld  78 notes   1.8 s -> 12.2 s
-//     Underworld 56 notes   1.8 s -> 13.1 s
-//     Starman    48 notes   2.1 s -> 10.4 s
-//     Castle     72 notes   4.9 s -> 22.7 s
-//
-// So a win now costs the victory tail, the fanfare and then up to 23 seconds of
-// the next level's theme. That is the trade he asked for and it is worth saying
-// out loud. THE WHEEL DID NOT CHANGE: browsing modes still previews at most
-// MENU_PREVIEW_NOTES notes, because a wheel you turn five times cannot spend
-// two minutes on it — see playMenuPreview(), which still uses the *_INTRO_LEN
-// lengths this function no longer does.
+// It is a rule rather than four hand-written excerpts, and it costs no flash:
+// the note data is the theme that is already there. It also happens to land on
+// each theme's actual hook, which is a pleasant accident of Mario writing them
+// that way — level 1 gives you E7 E7 E7 C7 E7 G7 G6, and that is the riff.
+void playPlayableIntro(const int *notes, const int *tempos, uint8_t length) {
+  uint8_t played = 0;
+  if (serialEnabled) Serial.print(F("theme:"));
+  for (uint8_t i = 0; i < length && played < INTRO_PLAYABLE_NOTES; i++) {
+    const int freq = (int) pgm_read_word(&notes[i]);
+    const int tempo = (int) pgm_read_word(&tempos[i]);
+    const int noteDuration = 1000 / tempo;
+    if (onKeyboard(freq)) {
+      if (serialEnabled) { Serial.print(' '); Serial.print(freq); }
+      allLedsOn();
+      buzz(BUZZER, freq, noteDuration);
+      allLedsOff();
+      played++;
+    } else if (freq > 0) {
+      delay(noteDuration);          // a note we cannot play still takes its turn
+    }
+    delay((unsigned long) (noteDuration * 1.30));   // playSong's own phrasing
+  }
+  // Printed because it is the CLUE and because it is the one thing about this
+  // function worth checking on a real board: every frequency here must be one
+  // of the seven in the level's row. It is also what the host test asserts.
+  if (serialEnabled) Serial.println();
+}
+
+// Level-start announce — the PLAYABLE size (see the note at MARIO_INTRO_LEN),
+// and it is the same call the five-tap reminder makes, so "play me that tune
+// again" really does replay what the level opened with.
 void playLevelIntro() {
   hushBuzzer();               // silence + a beat, safe even if nothing was sounding
   if (freePlay()) {           // not a level: the scale IS the announcement
@@ -2328,10 +2382,10 @@ void playLevelIntro() {
     return;
   }
   switch (level) {
-    case 1: playSong(marioNotes, marioTempo, 0, MARIO_LEN); break;
-    case 2: playSong(underworldNotes, underworldTempo, 0, UNDER_LEN); break;
-    case 3: playSong(starmanNotes, starmanTempo, 0, STARMAN_LEN); break;
-    default: playSong(castleNotes, castleTempo, 0, CASTLE_LEN); break;
+    case 1: playPlayableIntro(marioNotes, marioTempo, MARIO_LEN); break;
+    case 2: playPlayableIntro(underworldNotes, underworldTempo, UNDER_LEN); break;
+    case 3: playPlayableIntro(starmanNotes, starmanTempo, STARMAN_LEN); break;
+    default: playPlayableIntro(castleNotes, castleTempo, CASTLE_LEN); break;
   }
   delay(SFX_TAIL_MS);         // breathing room before free play begins
 }
