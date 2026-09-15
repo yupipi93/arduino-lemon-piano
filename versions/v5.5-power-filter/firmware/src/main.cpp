@@ -583,9 +583,9 @@ const uint8_t UNDER_VICTORY_FROM = 12;   // full theme is 56 notes; cut = tail 4
 const uint8_t CASTLE_VICTORY_FROM = 32;      // full theme tail (see above)
 const uint8_t STARMAN_VICTORY_FROM = 22;     // full theme tail (see above)
 
-// Level-start "announce" — the first few notes of the level's OWN theme,
-// played once when a level begins, so the player recognises which of the
-// four they are on and can place the secret code from the theme alone.
+// How much of a theme the MODE WHEEL previews. Since 2026-09-15 this is the
+// only thing these four lengths are used for: the level announcement plays the
+// whole piece (see playLevelIntro), and a wheel you turn five times cannot.
 const uint8_t MARIO_INTRO_LEN = 12;
 const uint8_t UNDER_INTRO_LEN = 8;
 const uint8_t CASTLE_INTRO_LEN = 16;
@@ -2294,9 +2294,30 @@ void playVictory() {
   playSong(notes, tempo, from, length, (uint16_t) (length - from), 0);
 }
 
-// Level-start announce: the first few notes of the CURRENT level's own theme,
-// so the player hears which level they are on before touching a lemon. Plays
-// once at boot and once every time a level begins (auto-advance or wrap).
+// Level-start announce: the CURRENT level's own theme, IN FULL — and it is the
+// same call the five-tap reminder makes, so "hear it again" really is the same
+// thing you heard when the level opened.
+//
+// IT USED TO BE THE FIRST FEW NOTES ONLY (2026-09-15). Sergio: "tienes que
+// hacer que suene completa la melodía, no solo las primeras notas". The reason
+// is the game itself — the ten-note code is hidden IN the theme, and the codes
+// draw on the whole piece, not on its opening bar. An announcement that stopped
+// after twelve notes was showing the player a twelfth of the clue.
+//
+// What that costs, measured rather than guessed (playSong's own pacing: a note
+// plus 1.3x its length as a gap):
+//
+//     Overworld  78 notes   1.8 s -> 12.2 s
+//     Underworld 56 notes   1.8 s -> 13.1 s
+//     Starman    48 notes   2.1 s -> 10.4 s
+//     Castle     72 notes   4.9 s -> 22.7 s
+//
+// So a win now costs the victory tail, the fanfare and then up to 23 seconds of
+// the next level's theme. That is the trade he asked for and it is worth saying
+// out loud. THE WHEEL DID NOT CHANGE: browsing modes still previews at most
+// MENU_PREVIEW_NOTES notes, because a wheel you turn five times cannot spend
+// two minutes on it — see playMenuPreview(), which still uses the *_INTRO_LEN
+// lengths this function no longer does.
 void playLevelIntro() {
   hushBuzzer();               // silence + a beat, safe even if nothing was sounding
   if (freePlay()) {           // not a level: the scale IS the announcement
@@ -2307,10 +2328,10 @@ void playLevelIntro() {
     return;
   }
   switch (level) {
-    case 1: playSong(marioNotes, marioTempo, 0, MARIO_INTRO_LEN); break;
-    case 2: playSong(underworldNotes, underworldTempo, 0, UNDER_INTRO_LEN); break;
-    case 3: playSong(starmanNotes, starmanTempo, 0, STARMAN_INTRO_LEN); break;
-    default: playSong(castleNotes, castleTempo, 0, CASTLE_INTRO_LEN); break;
+    case 1: playSong(marioNotes, marioTempo, 0, MARIO_LEN); break;
+    case 2: playSong(underworldNotes, underworldTempo, 0, UNDER_LEN); break;
+    case 3: playSong(starmanNotes, starmanTempo, 0, STARMAN_LEN); break;
+    default: playSong(castleNotes, castleTempo, 0, CASTLE_LEN); break;
   }
   delay(SFX_TAIL_MS);         // breathing room before free play begins
 }

@@ -2,6 +2,55 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-15 (late) — a level announces itself with its WHOLE theme
+
+*"Tienes que hacer que suene completa la melodía. No solo las primeras notas.
+En cambio, cuando estamos usando el menú de selección de nivel, sigue teniendo
+que tocar la versión reducida para que no se haga tan largo."*
+
+The reason is the game itself: **the ten-note code is hidden in the theme**, and
+the codes draw on the whole piece rather than its opening bar. An announcement
+that stopped after twelve notes was showing the player a twelfth of the clue —
+and the five-tap reminder, which calls the same function, was handing out that
+same twelfth when someone asked to hear it again.
+
+`playLevelIntro()` now plays `*_LEN` instead of `*_INTRO_LEN`. Both callers get
+it: the level start (boot, a win, accepting from the wheel, coming back from
+free play) and the five-tap reminder. Free play is unchanged — its announcement
+was always the whole scale.
+
+**What it costs, measured rather than guessed** (playSong's own pacing: a note,
+then 1.3× its length as a gap):
+
+| Level | Theme | Notes | Was | Now |
+|---|---|---|---|---|
+| 1 | Overworld | 78 | 1.8 s | **12.2 s** |
+| 2 | Underworld | 56 | 1.8 s | **13.1 s** |
+| 3 | Starman | 48 | 2.1 s | **10.4 s** |
+| 4 | Castle | 72 | 4.9 s | **22.7 s** |
+
+So a win now costs the victory tail, the flagpole fanfare and then up to 23
+seconds of the next level's theme. That is the trade he asked for, and it is
+worth having written down next to the numbers.
+
+**The wheel did not change.** Browsing modes still previews at most
+`MENU_PREVIEW_NOTES` (8) notes, because a wheel you turn five times cannot spend
+two minutes on it — which is exactly the second half of what he asked for. The
+four `*_INTRO_LEN` constants now exist for that one caller and nothing else,
+and say so.
+
+### Evidence
+
+- **All five envs build.** Unchanged at 17 806 B flash / 58.0 %, 562 B RAM /
+  27.4 % — the lengths were already constants, so this costs nothing.
+- **Host tests: 107 + 162 checks, 0 failed.** Test 25's edge-for-edge assertion
+  is what covers this without a single change: it compares the five-tap replay
+  against the boot announcement through `pinWrites[BUZZER]`, so "the reminder
+  plays what the level opened with" stays true whichever length that is.
+- **Flashed and verified**: `/dev/ttyUSB0`, 17 806 bytes written and verified.
+  Boot log timed over serial: banner at 1.5 s, seven baselines by 5.1 s, margin
+  30, `Level 1` at 5.4 s — and then twelve seconds of Overworld.
+
 ## 2026-09-15 (later) — the bank says `ICP`, and the fault flipped from too little current to too much
 
 Natalia took the trigger to the bench and came back with two facts that move the
