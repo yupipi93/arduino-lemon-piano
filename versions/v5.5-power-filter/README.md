@@ -87,14 +87,20 @@ piano said that by going silent and then playing `sfxKeyStuck`, a low rattle —
 and a rattle reads as "you got it wrong". Sergio asked for both halves to go.
 
 Now the repeat **sounds its note at full voice** (a piano before it is a game),
-scores nothing, costs nothing, and is marked in **light**: one LED runs from the
-right end of the bar to the left, and the progress bar snaps back exactly as it
-was. Three deliberate choices make that readable across the room:
+scores nothing, costs nothing, and is marked in **light**.
 
-- it **moves**, and the game's bar is otherwise perfectly steady — motion is
-  already this piano's word for "neither a score nor a question";
-- it runs **right to left**, against the direction progress fills, so it reads
-  as "that took you nowhere";
+**That light changed on 2026-09-15.** From 09-13 until then it was one LED
+running right to left — a flick of motion. Motion is now what free play's wave
+uses, on the same ten LEDs, and two moving cues on one bar is one too many. So
+Sergio asked for this one to stand still: *"se encienden todos los LEDs a la vez
+y cuando la suelta se apagan"*. **The whole bar lights, for exactly as long as
+the lemon is held, and goes back to the score when you let go.** Which is a
+better shape anyway:
+
+- ten lit LEDs is the one thing this bar does that is **not a count** — a score
+  of ten is a win, and a win never leaves you still holding the lemon;
+- it lasts **as long as the finger does**, so it reads as "this is about what
+  you are doing right now", not as an event that happened;
 - it **ends on the identical bar it started from**, which is the actual message.
   A wrong note, by contrast, blanks the bar and *leaves* it blank.
 
@@ -118,9 +124,17 @@ breaks for a few milliseconds at a time without the finger moving — so a relea
 is only believed after `RELEASE_CONFIRM_MS` (90 ms) of silence. Let go properly
 and touch again and it sounds again; four deliberate taps are still four notes.
 
-The LED bar changes job with it: while a note sounds it is a **pitch meter**
-(key 1 lights one LED, key 7 lights all ten), and when nothing is sounding it is
-**dark** (2026-09-15). It used to show its two ends lit, as a badge for the mode
+**Every note breaks a wave** (2026-09-15). Touching a lemon sends a wavefront
+out from that lemon's own place on the bar: key 1 runs 1 → 7, key 7 runs 7 → 1,
+and key 4 opens in **both directions at once** — *"como un efecto ola hacia
+ambos lados"*. One shape, seven readings of it: the end keys only have one side
+to travel down, which is why they read as a run across the whole bar, and no key
+is special-cased. It is the motion that used to mark a repeated lemon in the
+game, moved to where an instrument can use it.
+
+The LED bar changes job with it: once the wave has passed, while the note sounds
+it is a **pitch meter** (key 1 lights one LED, key 7 lights all ten), and when
+nothing is sounding it is **dark** (2026-09-15). It used to show its two ends lit, as a badge for the mode
 — but that badge never went away: it sat inside every pitch reading, looking
 like part of it. Now every LED that is lit was lit by a finger, and the mode
 announces itself **once, as an animation**: on the way in, two lights walk in
@@ -140,10 +154,22 @@ what is left is simply the note that is left.
 The hard part is not the sound, it is **deciding that there really are two
 fingers**: the channels are coupled, so one finger already drags its neighbours
 part of the way down, and a single note that warbles like two would ruin every
-note anyone plays. So the second lemon has to pass three gates — an absolute dip
-deeper than a normal touch, a dip at least 70 % of the one the first finger is
-making, and being the *only* key that does both (three lemons' worth of signal
-is a hand laid across the fruit, not a chord) — and then hold still for 24 ms.
+note anyone plays. So the second lemon has to pass three gates — it must be a
+touch at all, its dip must be at least 70 % of the one the first finger is
+making, and it must be the *only* key that does both (three lemons' worth of
+signal is a hand laid across the fruit, not a chord) — and then hold still for
+24 ms.
+
+**Gate 1 was stricter for half a day and that was wrong.** It asked the second
+finger to dip *deeper* than a lone touch has to, and Sergio played it and
+reported the chord barely came — *"puede ser que sea una limitación de
+hardware"*. It is a fact about the return path rather than a limitation: every
+lemon's current goes home through **one shared element**, the player's body and
+the GND clip in their other hand. Two fingers are pulling that same node up
+together, so each of them sits **shallower** than a single touch would. Asking
+the second one to dip deeper was asking for the one thing two fingers cannot do.
+The ratio gate is untouched by any of that — both dips shrink together, so their
+ratio does not move — which is exactly why it is the gate that does the work.
 The free-play log prints both dips every time a chord opens, so the real ratio
 on real fruit can be read off a serial monitor rather than guessed at twice.
 The game is deliberately untouched: it recognises a guess by comparing one

@@ -69,18 +69,6 @@ static std::vector<std::string> framesSince(size_t mark) {
   }
   return out;
 }
-// Was there a single LED walking from the right end towards the left?
-static bool sawBackwardsSweep(const std::vector<std::string> &f) {
-  int lastLone = -1, steps = 0;
-  for (size_t i = 0; i < f.size(); i++) {
-    int lit = -1, n = 0;
-    for (int j = 0; j < (int) f[i].size(); j++) if (f[i][j] == '#') { lit = j; n++; }
-    if (n != 1) continue;                       // only interested in lone LEDs
-    if (lastLone >= 0 && lit == lastLone - 1) steps++;
-    lastLone = lit;
-  }
-  return steps >= LED_COUNT - 2;                // it walked most of the bar
-}
 // Did the bar ever wear this exact shape during the film?
 static bool filmHas(const std::vector<std::string> &f, const std::string &shape) {
   for (size_t i = 0; i < f.size(); i++) if (f[i] == shape) return true;
@@ -262,13 +250,15 @@ static void test_free_play_pitch_bar() {
   toggleFreePlayByHold();
   ok(ledPattern() == "..........", "idle: nothing is lit at all", ledPattern());
 
-  board.touched[0] = true; runFor(150);
-  eqInt(litLeds(), 1, "the lowest lemon lights one LED");
-  board.touched[0] = false; runFor(200);
+  // Each note opens with the wave (playKeyWave), so the pitch bar is what the
+  // bar settles on a moment later, not what it shows instantly.
+  board.touched[0] = true; runFor(400);
+  eqInt(litLeds(), 1, "the lowest lemon settles on one LED");
+  board.touched[0] = false; runFor(300);
 
-  board.touched[6] = true; runFor(150);
-  eqInt(litLeds(), 10, "the highest lights all ten");
-  board.touched[6] = false; runFor(200);
+  board.touched[6] = true; runFor(400);
+  eqInt(litLeds(), 10, "the highest settles on all ten");
+  board.touched[6] = false; runFor(300);
   ok(ledPattern() == "..........", "  ...and it goes dark again, every time", ledPattern());
 }
 
@@ -602,20 +592,22 @@ static void test_repeat_sounds_but_scores_nothing() {
   // The old scolding noise is gone: the ONLY sound was the note itself.
   eqInt((long) heard.size(), 1, "  ...and the locked-key rattle is gone: one sound, the note");
 
-  // ...and the cue really is the BACKWARDS sweep. The bar starts and ends the
-  // same, so only the film in between can prove the player was told anything.
+  // ...and the cue is the WHOLE BAR, lit for exactly as long as the lemon is
+  // held (2026-09-15 — it was a backwards sweep between 09-13 and today, and
+  // the motion moved to free play's wave). The bar starts and ends on the same
+  // score, so the only proof the player was told anything is what it does in
+  // between, while the finger is still down.
   boot();
   touchKey(code[0]);
   touchKey(code[1]);
-  size_t fm = frameMark();
-  touchKey(code[1]);                   // the repeat
-  std::vector<std::string> film = framesSince(fm);
-  ok(sawBackwardsSweep(film),
-     "  ...and the cue is one LED running RIGHT TO LEFT across the bar",
-     std::to_string(film.size()) + " frames, none of them a backwards run");
-  ok(!film.empty() && film.back() == before,
-     "  ...landing back on the score it started from",
-     film.empty() ? "no frames" : before + " -> " + film.back());
+  board.touched[code[1]] = true; runFor(300);        // ...and HOLD the repeat
+  ok(ledPattern() == "##########",
+     "  ...and the cue is every LED at once, while the lemon is held",
+     ledPattern());
+  board.touched[code[1]] = false; runFor(400);
+  ok(ledPattern() == before,
+     "  ...and letting go puts the score straight back",
+     before + " -> " + ledPattern());
 
   // ...and the game carries on normally from there: the NEXT correct lemon
   // scores, so a repeat really did cost nothing.
@@ -771,6 +763,153 @@ static void test_one_finger_is_never_a_chord() {
   board.touched[0] = board.touched[2] = board.touched[4] = false; runFor(300);
 }
 
+// ── 22 ──────────────────────────────────────────────────────────────────────
+// Sergio, 2026-09-15: on level 4 "suena la melodía, pero cuando yo toco las
+// notas no están en la tonalidad correcta de ese nivel". He was right, and it
+// was a whole design gap rather than a bug: levels 1 and 2 had always drawn
+// their seven key notes out of their own themes, levels 3 and 4 were given
+// plain C major runs. Level 4's theme is in G minor around G3-G4, so its lemons
+// answered it a C major scale an octave up.
+//
+// This is the test that makes it impossible to reintroduce: EVERY lemon on
+// EVERY level has to be a note that level's own theme actually plays.
+static bool themeHas(const int *notes, size_t len, int freq) {
+  for (size_t i = 0; i < len; i++) if ((int) pgm_read_word(&notes[i]) == freq) return true;
+  return false;
+}
+static void test_every_level_plays_in_its_own_key() {
+  section("22. Every level's seven lemons are notes from that level's own theme");
+  boot();
+  struct Row { const char *name; const int *notes; size_t len; int row; };
+  const Row L[4] = {
+    {"1 Overworld",  marioNotes,      MARIO_LEN,   0},
+    {"2 Underworld", underworldNotes, UNDER_LEN,   1},
+    {"3 Starman",    starmanNotes,    STARMAN_LEN, 2},
+    {"4 Castle",     castleNotes,     CASTLE_LEN,  3},
+  };
+  for (int l = 0; l < 4; l++) {
+    const int *row = &keys[L[l].row * KEY_COUNT];
+    std::string strays;
+    for (int k = 0; k < (int) KEY_COUNT; k++)
+      if (!themeHas(L[l].notes, L[l].len, row[k]))
+        strays += " key" + std::to_string(k + 1) + "=" + std::to_string(row[k]);
+    ok(strays.empty(), std::string("level ") + L[l].name +
+       ": every lemon is a note the theme plays", "strays:" + strays);
+    int dup = 0;
+    for (int a = 0; a < (int) KEY_COUNT; a++)
+      for (int b = a + 1; b < (int) KEY_COUNT; b++) if (row[a] == row[b]) dup++;
+    eqInt(dup, 0, "  ...and no two lemons share a note (they must be tellable apart)");
+  }
+
+  // ...and the CODES are untouched by the retuning. They are written down as
+  // key numbers — the organiser's booklet prints them on paper — so changing
+  // which note a lemon plays must not change which lemons a player presses.
+  const int want[4][SEQUENCE_LENGTH] = {
+    {6,5,6,7,2,5,2,1,3,4},
+    {3,6,1,4,2,5,3,6,1,4},
+    {2,4,6,1,5,3,7,4,2,6},
+    {5,1,3,7,2,6,4,1,5,3},
+  };
+  const int *seq[4] = {sequence_1, sequence_2, sequence_3, sequence_4};
+  for (int l = 0; l < 4; l++) {
+    const int *row = &keys[l * KEY_COUNT];
+    std::string got, bad;
+    for (int i = 0; i < SEQUENCE_LENGTH; i++) {
+      int num = 0;
+      for (int k = 0; k < (int) KEY_COUNT; k++) if (row[k] == seq[l][i]) num = k + 1;
+      got += std::to_string(num);
+      if (num != want[l][i]) bad = "wrong at step " + std::to_string(i + 1);
+      if (i > 0 && seq[l][i] == seq[l][i - 1])
+        bad = "step " + std::to_string(i + 1) + " repeats the note before it";
+    }
+    ok(bad.empty(), std::string("level ") + std::to_string(l + 1) +
+       "'s code is still " + got, bad + " (got " + got + ")");
+  }
+}
+
+// ── 23 ──────────────────────────────────────────────────────────────────────
+// The retuned levels are not just in tune, they are still PLAYABLE: level 4's
+// code, typed on the lemons it names, still wins.
+static void test_level_four_still_wins() {
+  section("23. Level 4, chosen from the wheel, is won by the code on paper");
+  boot();
+  openMenu();
+  tapPlus(); runFor(2600);            // level 2
+  tapPlus(); runFor(2600);            // level 3
+  tapPlus(); runFor(2600);            // level 4
+  acceptSelection();
+  eqInt(level, 4, "the wheel put us on level 4");
+
+  // ...and the lemons it hands you are the Castle's own, low and in G minor.
+  size_t tm = toneMark();
+  touchKey(0);
+  std::vector<int> t = tonesSince(tm);
+  ok(!t.empty() && t[0] == NOTE_G3, "lemon 1 plays G3 - the theme's own pedal note",
+     t.empty() ? "silence" : "got " + std::to_string(t[0]));
+
+  // Winning LEVEL 3 is the end-to-end proof, and it is the one that can be run:
+  // clearing level 4 is clearing the last level, which drops into the ending
+  // loop — a piece that only stops for a button gesture and therefore never
+  // returns on a fake board (see playEndingLoop).
+  boot();
+  level = 3; resetBoard(); runFor(50);
+  size_t sm = serialMark();
+  const int code3[SEQUENCE_LENGTH] = {2,4,6,1,5,3,7,4,2,6};
+  for (int i = 0; i < SEQUENCE_LENGTH; i++) touchKey(code3[i] - 1);
+  ok(serialSince(sm, "WIN"), "the printed code wins the retuned level 3");
+  eqInt(level, 4, "  ...and it advances to level 4");
+
+  // ...and on level 4 the same code takes the bar to nine of ten, with the
+  // tenth lemon holding the note the sequence is waiting for. That is the whole
+  // code proven without letting the ending loop start.
+  sm = serialMark();
+  const int code4[SEQUENCE_LENGTH] = {5,1,3,7,2,6,4,1,5,3};
+  for (int i = 0; i < SEQUENCE_LENGTH - 1; i++) touchKey(code4[i] - 1);
+  ok(serialSince(sm, "OK 9/10"), "level 4's code scores nine notes out of ten");
+  eqInt(keys[3 * KEY_COUNT + code4[SEQUENCE_LENGTH - 1] - 1],
+        sequence_4[SEQUENCE_LENGTH - 1],
+        "  ...and the tenth lemon plays exactly the note it is waiting for");
+}
+
+// ── 24 ──────────────────────────────────────────────────────────────────────
+// The wave breaks outward FROM the lemon: an end key sends one light the length
+// of the bar, a middle key sends two lights parting. Asserted from the film,
+// because by the time the note settles the wave has been and gone.
+static void test_free_play_wave_starts_at_the_key() {
+  section("24. FREE PLAY: the wave breaks outward from the lemon played");
+  boot();
+  toggleFreePlayByHold();
+
+  size_t fm = frameMark();
+  board.touched[0] = true; runFor(400);
+  std::vector<std::string> film = framesSince(fm);
+  ok(filmHas(film, "#........."), "key 1: the wave starts at the left end");
+  ok(filmHas(film, ".........#"), "  ...and reaches the right one");
+  board.touched[0] = false; runFor(300);
+
+  fm = frameMark();
+  board.touched[6] = true; runFor(400);
+  film = framesSince(fm);
+  size_t atRight = 0, atLeft = 0;
+  for (size_t i = 0; i < film.size(); i++) {
+    if (film[i] == ".........#" && atRight == 0) atRight = i + 1;
+    if (film[i] == "#........." && atLeft == 0) atLeft = i + 1;
+  }
+  ok(atRight && atLeft && atRight < atLeft,
+     "key 7: the wave runs the other way, right to left",
+     "right at " + std::to_string(atRight) + ", left at " + std::to_string(atLeft));
+  board.touched[6] = false; runFor(300);
+
+  // Key 4 sits at LED 5 of ten, so its wave opens in BOTH directions at once —
+  // two lit LEDs, symmetric about the middle, which no end key ever produces.
+  fm = frameMark();
+  board.touched[3] = true; runFor(400);
+  film = framesSince(fm);
+  ok(filmHas(film, "...#.#...."), "key 4: the wave parts in both directions");
+  ok(filmHas(film, "#........#"), "  ...and both fronts reach the ends together");
+  board.touched[3] = false; runFor(300);
+}
+
 int main(int argc, char **argv) {
   if (argc > 1 && std::string(argv[1]) == "-v") board.traceSerial = true;
   printf("\n\033[1mLemon Piano V5.5 — firmware on a fake board\033[0m\n");
@@ -797,6 +936,9 @@ int main(int argc, char **argv) {
   test_free_play_opens_with_a_sweep();
   test_two_lemons_sound_as_two_notes();
   test_one_finger_is_never_a_chord();
+  test_every_level_plays_in_its_own_key();
+  test_level_four_still_wins();
+  test_free_play_wave_starts_at_the_key();
 
   printf("\n%d checks, \033[%sm%d failed\033[0m\n\n",
          checks, failures ? "31" : "32", failures);

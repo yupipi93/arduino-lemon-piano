@@ -62,10 +62,11 @@ oído.
 cuenta.** La nota suena igual de bien; el juego no la está escuchando, porque ya
 está esperando un limón *distinto*.
 
-Y se ve que no ha contado: **una luz recorre la barra hacia atrás**, del extremo
-derecho al izquierdo, y después tu marcador vuelve exactamente como estaba. Hacia
-atrás porque no te ha llevado a ningún sitio. No pierdes nada, no se te resta
-nada, y ya no hay sonido de regañina: ese traqueteo se ha quitado (13-09-2026).
+Y se ve que no ha contado: **se encienden todas las luces a la vez** mientras
+tienes ese limón tocado, y en cuanto lo sueltas tu marcador vuelve exactamente
+como estaba. Diez luces encendidas nunca son un marcador: diez es ganar, y al
+ganar no te quedas con el dedo puesto. No pierdes nada, no se te resta nada, y
+ya no hay sonido de regañina: ese traqueteo se ha quitado (13-09-2026).
 Compáralo con una nota equivocada, que **apaga la barra y la deja apagada**: no
 se pueden confundir.
 
@@ -89,8 +90,12 @@ En modo libre los siete limones son sencillamente las notas de toda la vida:
 - **Si mantienes el limón, la nota se mantiene: una nota, no un tartamudeo.**
   Suelta de verdad y vuelve a tocar para que suene otra vez. Tocar rápido sigue
   funcionando; sólo ignora el parpadeo de un dedo que nunca se fue.
-- Las luces pasan a ser un **medidor de altura**: las notas graves encienden
-  poca barra, las agudas la encienden entera.
+- **Cada nota rompe una ola.** Al tocar un limón sale una ola de luz desde el
+  sitio que ese limón ocupa en la barra: el limón 1 la manda de izquierda a
+  derecha, el 7 de derecha a izquierda, y uno del medio la abre hacia los dos
+  lados a la vez.
+- Cuando la ola ha pasado, las luces son un **medidor de altura**: las notas
+  graves encienden poca barra, las agudas la encienden entera.
 - **Dos limones a la vez suenan como dos notas.** Mantén un segundo limón junto
   al primero y suena el intervalo, con la barra enseñando dos luces separadas,
   una por nota. Suelta cualquiera de los dos y el otro sigue sonando. Hacen

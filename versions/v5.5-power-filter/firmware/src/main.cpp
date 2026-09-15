@@ -233,13 +233,35 @@ const unsigned long RELEASE_CONFIRM_MS = 90;
 // warbles like two is much worse than a chord that occasionally fails to
 // trigger. Hence THREE independent gates, all of which the second key must pass:
 //
-//   1. an ABSOLUTE floor stricter than a normal touch: touchMargin +
-//      CHORD_EXTRA_COUNTS. Coupling crumbs sit just over the plain margin.
+//   1. it must be a TOUCH by the ordinary definition: a dip of at least
+//      touchMargin, the same bar the first finger had to clear.
 //   2. a RATIO against the finger already down: a second finger makes a dip of
 //      the same ORDER as the first, while coupling is a fraction of it. This is
 //      the gate that actually separates the two cases.
 //   3. EXACTLY ONE key may pass 1 and 2. Three lemons' worth of signal is a
 //      hand laid across the fruit, not a chord — refuse the lot.
+//
+// GATE 1 USED TO BE STRICTER (touchMargin + 2) AND THAT WAS A MISTAKE, 
+// 2026-09-15. Sergio played it and the chord barely came: "no ha funcionado
+// especialmente bien... puede ser que sea una limitación de hardware". Think
+// about the return path and it is not a limitation so much as a fact about this
+// keyboard. Every lemon's current goes back through ONE shared element: the
+// player's body and the GND clip in their other hand. One finger, and the whole
+// of a key's 220 Ohm pull-up current flows down that one path. TWO fingers, and
+// the two channels are pulling the SAME body node up together, so each of them
+// sits shallower than a single touch would — the fingers are in each other's
+// way. Asking the second one to dip DEEPER than a lone finger has to was asking
+// for the one thing two fingers cannot do.
+//
+// So gate 1 is now just "is this a touch at all", and the discrimination is
+// left entirely to gate 2 — which the shared path does not affect AT ALL, and
+// that is the point: both dips shrink TOGETHER, so their ratio stays near 1
+// while a shadow's stays low. Gate 2 was briefly lowered with it and put
+// straight back when the host test caught what that costs: model a shadow at
+// 42 % of a finger and a 60 % gate has almost no room left under it, while a
+// 70 % gate sits squarely between "a shadow" and "another finger", which is
+// where a threshold belongs. The number is still measurable rather than
+// arguable — see the DEBUG_TOUCH dip dump, which exists to end the guessing.
 //
 // ...and then the survivor has to hold still for CHORD_CONFIRM_MS, so a spike
 // on the way into a single touch cannot open a second voice for one scan.
@@ -248,7 +270,6 @@ const unsigned long RELEASE_CONFIRM_MS = 90;
 // the free-play log prints the dip of BOTH voices every time a chord opens, so
 // the real ratio on real fruit can be read off a serial monitor rather than
 // guessed at a second time.
-const int CHORD_EXTRA_COUNTS = 2;      // gate 1: deeper than a single touch needs
 const int CHORD_MIN_RATIO_PCT = 70;    // gate 2: share of the first finger's dip
 // ...and the ratio it takes to KEEP a voice, which is lower than the one it took
 // to open it — a Schmitt trigger, for the same reason TOUCH_HYSTERESIS is one.
@@ -269,11 +290,12 @@ const unsigned long CHORD_SWAP_MS = 10;      // buzzer handover, per voice
 const int FREE_ENTRY_STEP_MS = 34;   // one frame of the entry animation
 const int FREE_ENTRY_HOLD_MS = 90;   // the full bar's beat before it goes dark
 
-// A repeated lemon SOUNDS and says "that did not count" with light instead.
-// One LED from the right end to the left, at this pace, then the progress bar
-// snaps back — see showRepeatSweep(). Faster than the menu's entry sweep on
-// purpose: this one has to read as a flick, not as an announcement.
-const int REPEAT_SWEEP_MS = 20;
+// ── the free-play WAVE (2026-09-15) ────────────────────────────────────────
+// One frame of the wave that breaks outward from the lemon being played. The
+// longest wave is nine frames (an end key, running the length of the bar), so
+// this number times nine is how long a note is delayed before the bar settles
+// on its pitch — keep it small enough that fast playing does not feel syrupy.
+const int FREE_WAVE_STEP_MS = 14;
 
 // UI chirps sit ABOVE every game note (game 1 reaches G7 = 3136 Hz, game 2 runs
 // 220..587 Hz), so a state sound can never be mistaken for the piano. 3.3-4.8 kHz
@@ -557,15 +579,42 @@ const uint8_t MENU_ITEM_COUNT = LEVEL_COUNT;   // the four levels. Free play is 
 const int keys[(LEVEL_COUNT + 1) * KEY_COUNT] = {
   // level 1 — Overworld (the 2019 set)
   NOTE_E6, NOTE_G6, NOTE_A6, NOTE_B6, NOTE_C7, NOTE_E7, NOTE_G7,
-  // level 2 — Underworld (the 2019 set)
-  NOTE_A3, NOTE_AS3, NOTE_C4, NOTE_A4, NOTE_AS4, NOTE_C5, NOTE_D5,
-  // level 3 — Starman theme (moved here from level 4, same day): a plain C
-  // major run (unchanged since the 2026-07-29 Underwater->Castle swap and the
-  // later level 3/4 theme swap — only which theme plays here has ever changed)
-  NOTE_C5, NOTE_CS5, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_G5, NOTE_A5,
-  // level 4 — Castle theme (moved here from level 3, same day: makes more
-  // sense as the last level): a plain C major run, for the hammered figure
+  // level 2 — Underworld. The 2019 set, with ONE note corrected on 2026-09-15:
+  // its top lemon was D5, which the Underworld theme never plays (the tune's
+  // highest note is C5). The other six are the octave pairs the theme
+  // alternates — A3/A4, AS3/AS4, C4/C5 — and they are untouched; D5 became the
+  // D4 the melody does play, moved up the row so the keyboard still ascends
+  // left to right and the pitch bar keeps telling the truth. Found by the test
+  // written for Sergio's level-4 report, which is the point of writing it as a
+  // rule rather than as four assertions.
+  NOTE_A3, NOTE_AS3, NOTE_C4, NOTE_D4, NOTE_A4, NOTE_AS4, NOTE_C5,
+  // ── EVERY LEVEL'S SEVEN NOTES COME OUT OF ITS OWN THEME (2026-09-15) ────
+  // Levels 1 and 2 always did — their rows are notes lifted straight from the
+  // Overworld and the Underworld, which is why playing the lemons on those
+  // levels sounds like the tune that just announced them. Levels 3 and 4 were
+  // given plain C major runs instead, and on level 4 that was audibly wrong:
+  // the Castle theme is in **G minor, around G3-G4**, and the lemons answered
+  // it with a C major scale an octave above. Sergio, 2026-09-15: "suena la
+  // melodía, pero cuando yo toco las notas no están en la tonalidad correcta
+  // de ese nivel". He is right, and it was true of level 3 too — its row
+  // carried a C# that appears nowhere in the Starman theme.
+  //
+  // THE CODES DID NOT CHANGE. They are written down as KEY NUMBERS (the
+  // booklet in docs/cartilla/ prints them, and they are on paper in a folder
+  // someone carries to an event), so retuning the keyboard means recomputing
+  // the frequencies the sequence stores while leaving the numbers a player
+  // types alone. docs/cartilla/seqs.py re-derives them from this file and will
+  // say so if that ever stops being true.
+  //
+  // level 3 — Starman: the theme is C5 D5 E5 F5 G5 A5 B5 C6 and nothing else.
+  // Seven of those eight, keeping the C6 the melody opens every phrase on and
+  // dropping the B5 that appears once in the tail.
   NOTE_C5, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_G5, NOTE_A5, NOTE_C6,
+  // level 4 — Castle: G natural minor, in the octave the theme actually plays
+  // in. Every one of these is a note the melody hammers — G3 and D4 are its
+  // alternating pedal, AS3 opens the second bar, and C4/DS4/F4/G4 are the
+  // chromatic answer's landing points.
+  NOTE_G3, NOTE_AS3, NOTE_C4, NOTE_D4, NOTE_DS4, NOTE_F4, NOTE_G4,
   // FREE PLAY — one octave of the plain white-key scale: do re mi fa sol la si
   // (C5..B5), left to right. Deliberately NOT one of the level rows above:
   // those are puzzle alphabets picked to make ten-note codes work (level 3
@@ -582,9 +631,11 @@ const int keys[(LEVEL_COUNT + 1) * KEY_COUNT] = {
 //   level 3: 2,4,6,1,5,3,7,4,2,6      (new)
 //   level 4: 5,1,3,7,2,6,4,1,5,3      (new)
 const int sequence_1[SEQUENCE_LENGTH] = {NOTE_E7, NOTE_C7, NOTE_E7, NOTE_G7, NOTE_G6, NOTE_C7, NOTE_G6, NOTE_E6, NOTE_A6, NOTE_B6};
-const int sequence_2[SEQUENCE_LENGTH] = {NOTE_C4, NOTE_C5, NOTE_A3, NOTE_A4, NOTE_AS3, NOTE_AS4, NOTE_C4, NOTE_C5, NOTE_A3, NOTE_A4};
-const int sequence_3[SEQUENCE_LENGTH] = {NOTE_CS5, NOTE_E5, NOTE_G5, NOTE_C5, NOTE_F5, NOTE_D5, NOTE_A5, NOTE_E5, NOTE_CS5, NOTE_G5};
-const int sequence_4[SEQUENCE_LENGTH] = {NOTE_G5, NOTE_C5, NOTE_E5, NOTE_C6, NOTE_D5, NOTE_A5, NOTE_F5, NOTE_C5, NOTE_G5, NOTE_E5};
+const int sequence_2[SEQUENCE_LENGTH] = {NOTE_C4, NOTE_AS4, NOTE_A3, NOTE_D4, NOTE_AS3, NOTE_A4, NOTE_C4, NOTE_AS4, NOTE_A3, NOTE_D4};
+// Levels 3 and 4 were retuned on 2026-09-15 (see the note above `keys`); these
+// two lines are the SAME key numbers as before, resolved against the new rows.
+const int sequence_3[SEQUENCE_LENGTH] = {NOTE_D5, NOTE_F5, NOTE_A5, NOTE_C5, NOTE_G5, NOTE_E5, NOTE_C6, NOTE_F5, NOTE_D5, NOTE_A5};
+const int sequence_4[SEQUENCE_LENGTH] = {NOTE_DS4, NOTE_G3, NOTE_C4, NOTE_G4, NOTE_AS3, NOTE_F4, NOTE_D4, NOTE_G3, NOTE_DS4, NOTE_C4};
 
 //################################
 //#########  STATE ###############
@@ -621,6 +672,7 @@ unsigned long chordCandidateSince = 0;
 unsigned long chordReleaseSeenAt = 0;   // same confirmed-release rule as activeKey
 unsigned long chordSwapAt = 0;          // last buzzer handover
 bool chordOnSecond = false;             // which voice has the buzzer right now
+bool repeatBarOn = false;               // the whole bar is lit for a repeated lemon
 int  chordLeaving = -1;                 // 0 = the first voice looks gone, 1 = the second
 
 int  baseline[KEY_COUNT];      // each key's resting level (measured, then tracked)
@@ -678,6 +730,9 @@ void showPitchBar(int key);
 void showChordBar(int a, int b);
 void playFreePlayEntrySweep();
 int  keyDip(uint8_t i);
+#ifdef DEBUG_TOUCH
+void dumpDips();
+#endif
 int  chordPartnerFor(int a);
 void serviceChord();
 void serviceChordTone();
@@ -697,7 +752,8 @@ void soundLearnBlip();
 void soundLearnOk();
 void soundLearnFail();
 void soundStuck();
-void showRepeatSweep();
+void showRepeatHold();
+void playKeyWave(int key);
 void resetBoard();
 void logGame();
 void toggleFreePlay();
@@ -793,6 +849,9 @@ void loop() {
   // channels are coupled, so a single finger lifts several of them over their
   // thresholds and any "first index wins" scan would flip between them.
   if (activeKey >= 0) {
+#ifdef DEBUG_TOUCH
+    dumpDips();          // four times a second, what every channel is doing
+#endif
     // TWO LEMONS SOUNDING: the chord answers for both of them, including which
     // one was let go. It cannot be decided here, because keyStillDown() is an
     // absolute threshold and a lifted finger does not cross one while the other
@@ -817,7 +876,11 @@ void loop() {
     if (remaining > 0) delay(remaining);
     stopKeyTone();
     activeKey = -1;
-    if (freePlay() && !ledMeterUntil) showFreePlayIdle();
+    // The bar goes back to whatever this mode shows when no finger is on it:
+    // the progress count in the game, darkness in free play. That one line also
+    // ends the repeat cue, which is lit for exactly as long as the lemon is.
+    repeatBarOn = false;
+    if (!ledMeterUntil) restoreIdleDisplay();
     return;
   }
 
@@ -834,8 +897,9 @@ void loop() {
     // short road — sound the note, show the pitch, and stop.
     if (freePlay()) {
       startKeyTone(pressedNote);
-      showPitchBar(justPressed);
       ledMeterUntil = 0;             // the note owns the bar now, not the meter
+      playKeyWave(justPressed);      // a wave breaking outward from that lemon
+      showPitchBar(justPressed);     // ...settling on the note's own height
       if (serialEnabled) {
         Serial.print(F("~ key ")); Serial.print(justPressed + 1);
         Serial.print(F("  ")); Serial.print(pressedNote); Serial.println(F(" Hz"));
@@ -870,7 +934,7 @@ void loop() {
       lastCountedKey = justPressed;
       handleGuess();
     } else {
-      showRepeatSweep();
+      showRepeatHold();
       if (serialEnabled) {
         Serial.print(F("    key ")); Serial.print(justPressed + 1);
         Serial.println(F(" again - sounds, scores nothing (play a different lemon)"));
@@ -1567,30 +1631,22 @@ void showMarginOnBar() {
 // noise reads as a mistake, and pressing the same lemon twice is not a mistake.
 // It is simply not a move.
 //
-// So the bar runs BACKWARDS: one LED from the right end to the left, then the
-// progress bar snaps back exactly as it was. Three things make that readable
-// across the room, and each is deliberate:
+// IT IS THE WHOLE BAR NOW, HELD (2026-09-15). From 2026-09-13 until today it
+// was one LED running right to left, a flick of motion — and motion is what the
+// free-play wave uses as of today, on the very same bar. Two moving cues on one
+// ten-LED strip is one cue too many, and Sergio asked for this one to stop
+// moving: "se encienden todos los LEDs a la vez y cuando la suelta se apagan".
 //
-//   - it MOVES, and this bar is otherwise perfectly steady while playing.
-//     Motion is already this piano's word for "neither a score nor a question"
-//     (it is what the wheel used to mark free play), so it cannot be read as
-//     either of them.
-//   - it runs RIGHT TO LEFT, against the direction progress fills, so it reads
-//     as "that took you nowhere" and never as a step forward.
-//   - it ENDS on the identical bar it started from. The score is visibly
-//     untouched, which is the whole message. A wrong note, by contrast, blanks
-//     the bar and LEAVES it blank — the two can never be confused.
-//
-// It is not the menu's entry sweep either: that one goes out AND back, is
-// slower, and arrives with a three-note cue. This is one flick, under a note
-// that is already sounding.
-void showRepeatSweep() {
-  for (int8_t i = LED_COUNT - 1; i >= 0; i--) {
-    allLedsOff();
-    digitalWrite(LED_PINS[i], HIGH);
-    delay(REPEAT_SWEEP_MS);
-  }
-  restoreIdleDisplay();      // …and the score is exactly where it was
+// Which is a better shape anyway. It is the ONLY thing this bar ever does that
+// is not a count of something — ten lit LEDs cannot be a score of ten, because
+// a score of ten is a win and a win never leaves you holding the lemon. It
+// lasts exactly as long as the finger does, so it reads as "this is about what
+// you are doing right now", and it ends on the identical bar it started from:
+// the score is visibly untouched, which is the whole message. A wrong note, by
+// contrast, blanks the bar and LEAVES it blank.
+void showRepeatHold() {
+  repeatBarOn = true;
+  allLedsOn();
 }
 
 // ── What the bar means in FREE PLAY ─────────────────────────────────────────
@@ -1695,17 +1751,37 @@ int keyDip(uint8_t i) {
   return d < 0 ? 0 : d;
 }
 
+#ifdef DEBUG_TOUCH
+// THE MEASUREMENT THE GATES ACTUALLY WANT, and the one thing a host test cannot
+// give: what a second finger's dip really is next to the first one's, on fruit,
+// on this rig. Every 250 ms while anything is held, the margin and all seven
+// dips. Press one lemon and read a column; press two and read two — the ratio
+// between them is `CHORD_MIN_RATIO_PCT` measured instead of argued about.
+//
+//   pio run -e nanoatmega328-debug -t upload && pio device monitor
+void dumpDips() {
+  static unsigned long nextAt = 0;
+  if ((long) (millis() - nextAt) < 0) return;
+  nextAt = millis() + 250;
+  Serial.print(F("dips margin=")); Serial.print(touchMargin);
+  for (uint8_t i = 0; i < KEY_COUNT; i++) {
+    Serial.print(' '); Serial.print(i + 1); Serial.print(':'); Serial.print(keyDip(i));
+  }
+  Serial.print(F("  active=")); Serial.print(activeKey + 1);
+  Serial.print(F(" chord=")); Serial.println(chordKey + 1);
+}
+#endif
+
 // Is exactly one OTHER lemon being held as deliberately as the one already
 // sounding? Returns it, or -1 for "no, that is one finger and its shadows".
 int chordPartnerFor(int a) {
   const int dipA = keyDip((uint8_t) a);
   if (dipA <= 0) return -1;
-  const int floorCounts = touchMargin + CHORD_EXTRA_COUNTS;   // gate 1
   int best = -1, bestDip = 0, passed = 0;
   for (uint8_t i = 0; i < KEY_COUNT; i++) {
     if ((int) i == a) continue;
     const int d = keyDip(i);
-    if (d < floorCounts) continue;                            // gate 1
+    if (d < touchMargin) continue;                            // gate 1
     if ((long) d * 100 < (long) dipA * CHORD_MIN_RATIO_PCT) continue;   // gate 2
     passed++;
     if (d > bestDip) { bestDip = d; best = (int) i; }
@@ -1848,6 +1924,34 @@ void clearChord() {
   chordReleaseSeenAt = 0;
   chordSwapAt = 0;
   chordOnSecond = false;
+}
+
+// ── the wave a played lemon makes (2026-09-15) ─────────────────────────────
+// Sergio wanted the motion that left the game's repeat cue to turn up here
+// instead, and to start FROM the lemon rather than from an end of the bar: key
+// 1 runs 1 -> 7, key 7 runs 7 -> 1, and key 4 opens both ways at once "como un
+// efecto ola hacia ambos lados".
+//
+// So it is one wavefront expanding from the note's own place on the bar — a
+// stone dropped where the finger is. The end keys give a single light crossing
+// the whole strip (their wave only has one side to travel down, which is
+// exactly the run he described), and the middle keys give two lights parting.
+// One shape, seven readings of it, and nothing special-cased per key.
+//
+// It runs to the FAR end, not for a fixed number of frames, so the wave from
+// key 4 is shorter than the wave from key 1. That is the honest version: the
+// light stops when it runs out of bar, the way a wave does when it runs out of
+// pond. The note is already sounding underneath it.
+void playKeyWave(int key) {
+  const int8_t centre = (int8_t) ledForKey(key);
+  const int8_t reach = (centre > (int8_t) (LED_COUNT - 1 - centre))
+                     ? centre : (int8_t) (LED_COUNT - 1 - centre);
+  for (int8_t r = 0; r <= reach; r++) {
+    allLedsOff();
+    if (centre - r >= 0)               digitalWrite(LED_PINS[centre - r], HIGH);
+    if (centre + r < (int8_t) LED_COUNT) digitalWrite(LED_PINS[centre + r], HIGH);
+    delay(FREE_WAVE_STEP_MS);
+  }
 }
 
 // Whatever the bar should be showing when nothing is sounding and no meter is

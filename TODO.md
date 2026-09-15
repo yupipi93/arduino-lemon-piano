@@ -93,18 +93,25 @@ named. New hardware belongs in a new version directory, not in this list — see
   without the owner asking, since "it forgets" may well be the right behaviour
   for a toy that lives on a shelf.
 
-- [ ] **21. Tune the chord gates on real fruit** (2026-09-15). Two lemons at
-  once now sound as two notes in free play, and the whole difficulty is telling
-  two fingers from one finger and the shadow it casts on its neighbours. The
-  gates were chosen from the physics and pinned by a host test that models the
-  coupling (`test_one_finger_is_never_a_chord`), but the real ratio between a
-  finger's dip and a shadow's has never been measured on the fruit. It does not
-  have to be guessed at either: `startChord()` prints **both dips** every time a
-  chord opens, so a serial monitor and ten minutes of playing give the number.
-  The knobs are `CHORD_MIN_RATIO_PCT` (70 %, opening), `CHORD_HOLD_RATIO_PCT`
-  (55 %, letting go) and `CHORD_EXTRA_COUNTS` (2). **A false chord is much worse
-  than a missed one** — a single note that warbles like two ruins every note —
-  so if anything moves, it moves up.
+- [ ] **21. Measure the chord gates on real fruit** (2026-09-15, still open
+  after the first playtest). Sergio played the chord the day it shipped and it
+  barely came. One cause was found and fixed the same day — gate 1 asked the
+  second finger to dip *deeper* than a lone finger has to, which the shared
+  return path makes impossible (see the CHANGELOG) — but whether **gate 2** is
+  in the right place is still unmeasured. It does not have to stay that way:
+  - `pio run -e nanoatmega328-debug -t upload && pio device monitor` now prints
+    **`dips margin=N 1:.. 2:.. … 7:..`** four times a second while any lemon is
+    held. Press one lemon and read a column; press two and read two. The ratio
+    between them **is** `CHORD_MIN_RATIO_PCT`, measured instead of argued about.
+  - `startChord()` also prints both dips every time a chord does open.
+  - The knobs: `CHORD_MIN_RATIO_PCT` (70 %, opening) and `CHORD_HOLD_RATIO_PCT`
+    (55 %, letting go). **A false chord is much worse than a missed one** — a
+    single note that warbles like two ruins every note — so a shadow measured
+    near the gate means the gate goes up, not the guard comes down.
+  - If the measurement says two fingers genuinely cannot both clear
+    `touchMargin` on this fruit, that IS the hardware limitation Sergio
+    suspected, and the answer is a lower margin (the + button) or a better clip
+    contact, not a looser gate.
 - [ ] **22. Does the chord swap rate sound right?** `CHORD_SWAP_MS` is 10 ms,
   chosen so the alternation sits above the ~20 Hz where the ear stops hearing
   two notes taking turns, while still giving C5 five whole cycles per turn. On a

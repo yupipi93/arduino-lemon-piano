@@ -2,6 +2,162 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-15 (later) — the levels play in their own key, and the light moves where it should
+
+Four reports from Sergio after playing the morning's build, all in
+`versions/v5.5-power-filter/firmware/`.
+
+### 1. Level 4's lemons were in the wrong key — and so were level 3's and one of level 2's
+
+*"En el nivel 4 suena la melodía, pero cuando yo toco las notas no están en la
+tonalidad correcta de ese nivel. Revisa todos los niveles y las melodías."*
+
+He is right, and it was a design gap rather than a bug. A level announces itself
+by playing the first bars of its theme and then hands the player seven lemons,
+so those seven have to belong to the same piece of music. **Levels 1 and 2 were
+built that way in 2019** — their rows are notes lifted straight out of the
+Overworld and the Underworld, which is why playing them sounds like the tune
+that just played. **Levels 3 and 4 were given plain C major runs.** On level 4
+that is audible from across the room: the Castle theme is in **G minor around
+G3-G4**, and the lemons answered it a C major scale an octave above.
+
+| Level | Theme | The seven lemons, low to high |
+|---|---|---|
+| 1 | Overworld | E6 G6 A6 B6 C7 E7 G7 — unchanged |
+| 2 | Underworld | A3 AS3 C4 **D4** A4 AS4 C5 |
+| 3 | Starman | C5 D5 E5 F5 G5 A5 **C6** |
+| 4 | Castle | **G3 AS3 C4 D4 DS4 F4 G4** |
+
+- **Level 4** was rebuilt in the theme's own key and octave: G natural minor,
+  every note one the melody hammers (G3 and D4 are its alternating pedal, AS3
+  opens the second bar, and C4/DS4/F4/G4 are where the chromatic answer lands).
+- **Level 3** lost a C# that appears nowhere in the Starman theme and gained the
+  **C6** the melody opens every phrase on. The theme uses exactly eight pitches;
+  the row is seven of them, dropping the B5 that turns up once in the tail.
+- **Level 2 was not on his list and turned out to be wrong too.** Its top lemon
+  played **D5, a note the Underworld never plays** — the tune's highest note is
+  C5. That was inherited from 2019. It is the D4 the melody does play now, moved
+  up the row so the keyboard still ascends left to right and the pitch bar keeps
+  telling the truth; the three octave pairs the theme alternates (A3/A4, AS3/AS4,
+  C4/C5) are untouched.
+
+The fourth case was found because the test was written as a **rule**, not as
+four assertions: *every lemon on every level must be a note that level's theme
+actually plays*. It is `test_every_level_plays_in_its_own_key`, and it also
+checks the seven are distinct (two lemons sharing a note would be
+indistinguishable to the guess comparison).
+
+**THE CODES DID NOT CHANGE.** They are written down as key NUMBERS — the
+organiser's booklet prints them on paper, in a folder someone carries to an
+event — so retuning the keyboard means recomputing the frequencies the sequences
+store and leaving the numbers alone. Proven, not asserted:
+
+```
+$ python3 docs/cartilla/seqs.py
+cross-check against the host test, level 1: OK
+level 1: 6  5  6  7  2  5  2  1  3  4      level 3: 2  4  6  1  5  3  7  4  2  6
+level 2: 3  6  1  4  2  5  3  6  1  4      level 4: 5  1  3  7  2  6  4  1  5  3
+```
+
+### 2. A repeated lemon: the whole bar, held, instead of a sweep
+
+*"Se encienden todos los LEDs a la vez y cuando la suelta se apagan."* The
+backwards sweep shipped on 2026-09-13 and lasted two days, for a good reason:
+motion is now what free play's wave uses, on the same ten LEDs, and two moving
+cues on one bar is one too many.
+
+It is a better shape anyway. Ten lit LEDs is the one thing this bar does that is
+**not a count of something** — a score of ten is a win, and a win never leaves
+you still holding the lemon. It lasts exactly as long as the finger does, so it
+reads as "this is about what you are doing right now" rather than as an event
+that has already happened, and it still ends on the identical bar it started
+from, which was always the message. `showRepeatSweep()` and `REPEAT_SWEEP_MS`
+are gone; `showRepeatHold()` and one `repeatBarOn` flag replace them, and the
+release path now restores the bar for **both** modes through one call to
+`restoreIdleDisplay()` instead of two special cases.
+
+### 3. Free play: every note breaks a wave, from the lemon that made it
+
+*"Si toca la tecla 1, el efecto tiene que ser de la tecla 1 hasta la 7. Si toca
+la 7, de la 7 a la 1. Pero si toca una intermedia, por ejemplo la 4, tiene que
+ser de la 4 hacia ambos lados. Como un efecto ola hacia ambos lados."*
+
+That is one shape with seven readings of it, so `playKeyWave()` is one loop and
+no special cases: a wavefront expands from the note's own place on the bar, one
+LED further out each frame, until it runs out of bar. The end keys have only one
+side to travel down — which is exactly the run across the whole strip he
+described — and the middle keys give two lights parting. The wave from key 4 is
+shorter than the wave from key 1, deliberately: the light stops when it runs out
+of pond. The note is already sounding underneath it, and the bar settles on the
+pitch meter afterwards, which is the part he said he liked.
+
+Asserted from the LED **film** rather than the final pin states
+(`test_free_play_wave_starts_at_the_key`), because by the time the note settles
+the wave has been and gone: key 1's film contains `#.........` before
+`.........#`, key 7's contains them in the opposite order, and key 4's contains
+`...#.#....` and then `#........#` — a symmetry no end key can produce.
+
+### 4. The chord barely came, and the reason is the return path
+
+*"No ha funcionado especialmente bien la doble pulsación... puede ser que sea
+una limitación de hardware. Piénsalo."*
+
+Thought about, and it is a fact about this keyboard rather than a limitation of
+it. Every lemon's pull-up current goes home through **one shared element**: the
+player's body and the GND clip in their other hand. With one finger down, all of
+a key's 220 Ω current flows through that single path. With **two** fingers down,
+the two channels are pulling the *same* body node up together — so each of them
+sits **shallower** than a single touch would. The fingers are in each other's way.
+
+Gate 1 asked the second finger for a dip of `touchMargin + 2`, i.e. **deeper
+than a lone finger has to manage**. That is the one thing two fingers cannot do.
+It is now just "is this a touch at all" (`>= touchMargin`), and the
+discrimination is left entirely to gate 2, the ratio — which the shared path
+does not affect at all, because both dips shrink *together* and their ratio
+stays near 1 while a shadow's stays low. That is why the ratio is the gate that
+does the work.
+
+Gate 2 was lowered with it (70 → 60 %) and put straight back, because the host
+test showed what that costs: with a shadow modelled at 42 % of a finger, a 60 %
+gate has almost no room under it and a 45 % *hold* ratio would not let a chord
+go at all — the released lemon stays shadowed by the one still down, so the
+chord never ended. 70/55 sits squarely between "a shadow" and "another finger".
+
+**And the guessing has an end now.** `-DDEBUG_TOUCH` prints
+`dips margin=N 1:.. 2:.. … 7:..` four times a second while any lemon is held:
+
+```
+pio run -e nanoatmega328-debug -t upload && pio device monitor
+```
+
+Press one lemon and read a column; press two and read two. The ratio between
+them **is** `CHORD_MIN_RATIO_PCT`, measured rather than argued about — TODO 21.
+If the numbers say two fingers genuinely cannot both clear `touchMargin` on this
+fruit, that is the hardware limitation he suspected, and the answer is a lower
+margin or a better clip contact, not a looser gate.
+
+### Evidence
+
+- **All five envs build.** `nanoatmega328` 17 384 B flash / 56.6 %, 555 B RAM /
+  27.1 %; `nanoatmega328-debug` 17 738 B (the dip dump); emulation builds 12 480
+  and 12 492 B.
+- **Host tests: 107 + 145 checks, 0 failed**, up from 107 + 122. Three new
+  scenarios (22 levels-in-key, 23 level 4 chosen and level 3 won, 24 the wave),
+  and test 18 rewritten around the held bar.
+  - 23 wins **level 3** end to end rather than level 4 on purpose: clearing
+    level 4 clears the last level, which drops into `playEndingLoop()` — a piece
+    that only stops for a button gesture and therefore never returns on a fake
+    board. Level 4 is proven to nine notes of ten plus the tenth lemon's pitch,
+    which is the whole code with no infinite loop.
+- **`docs/cartilla/seqs.py` exits 0** and prints the four codes unchanged, which
+  is what says the printed booklet is still correct.
+- **Flashed and verified**: `/dev/ttyUSB0`, env `nanoatmega328`, 17 384 bytes
+  written and verified by avrdude; the board boots, calibrates seven baselines
+  and announces `Level 1`.
+- **Still needs fingers on fruit**: whether the chord now comes reliably, and
+  whether `FREE_WAVE_STEP_MS` (14 ms/frame, so 140 ms for an end key) makes fast
+  playing feel syrupy. Both are single constants.
+
 ## 2026-09-15 — free play opens with a sweep, and two lemons sound as two notes
 
 Two asks from Sergio, both about FREE PLAY, both in

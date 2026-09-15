@@ -54,10 +54,11 @@ Each level hides a **secret ten-note melody**. Your job is to find it by ear.
 count.** The note sounds exactly as it should; the game simply is not listening
 for it, because it is already waiting for a *different* lemon.
 
-You can see that it did not count: **one light runs backwards across the bar**,
-from the right end to the left, and then your score comes back exactly as it
-was. Backwards, because it took you nowhere. Nothing is lost, nothing is
-deducted, and there is no telling-off noise — that rattle is gone (2026-09-13).
+You can see that it did not count: **the whole bar lights up** while you are
+holding that lemon, and the moment you let go your score comes back exactly as
+it was. Ten lit lights are never a score — ten is a win, and a win does not
+leave you holding a lemon. Nothing is lost, nothing is deducted, and there is no
+telling-off noise — that rattle is gone (2026-09-13).
 Compare it with a wrong note, which **blanks the bar and leaves it blank**: the
 two can never be confused.
 
@@ -80,8 +81,11 @@ In free play the seven lemons are simply the notes you were taught at school:
 - **Hold a lemon and the note holds with it — one note, not a stutter.** Let go
   properly and touch it again for a second note. Playing fast still works; it
   only ignores the flicker of a finger that never left.
-- The lights become a **pitch meter**: low notes light a little of the bar, high
-  notes light all of it.
+- **Every note breaks a wave.** Touch a lemon and a wave of light runs out from
+  that lemon's own place on the bar: lemon 1 sends it left to right, lemon 7
+  sends it right to left, and a lemon in the middle opens it both ways at once.
+- Once the wave has passed, the lights are a **pitch meter**: low notes light a
+  little of the bar, high notes light all of it.
 - **Two lemons at once sound as two notes.** Hold a second lemon along with the
   first and you get the interval, with the bar showing two separate lights, one
   for each note. Let either one go and the other keeps sounding. It takes two

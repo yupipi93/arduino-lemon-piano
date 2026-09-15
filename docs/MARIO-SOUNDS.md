@@ -316,7 +316,7 @@ notes.
 | Smart adjust failed | **Death** (short) | it did not work, and nothing changed |
 | Key stuck / re-baselined (noise, not a finger) | **Fireball** | something odd happened, keep going |
 | Wrong note in the game | **Mistake** (short Death excerpt) | the game's own "no" — unmistakably Mario, distinct from the UI chirps |
-| Locked key pressed again | **Key Stuck** (low rattle) | V1–V5 only. **Retired in V5.5 on 2026-09-13**: the repeat now sounds its own note and is marked by a backwards LED sweep, because pressing the same lemon twice is not a mistake |
+| Locked key pressed again | **Key Stuck** (low rattle) | V1–V5 only. **Retired in V5.5 on 2026-09-13**: the repeat sounds its own note and is marked in light, because pressing the same lemon twice is not a mistake. The light was a backwards LED sweep until 2026-09-15 and is now the whole bar, lit for as long as the lemon is held |
 | **A level (re)starts** | the first few notes of **that level's own theme** | so the player recognises which of the four they landed on before touching a lemon |
 | **Level complete** | the level's own theme, **then** the Level-clear fanfare | the theme is the pay-off; the fanfare punctuates it |
 | **All levels complete** | fanfare, **then** the Game-complete/castle-clear piece **on a loop** | keeps celebrating until the player resets (both sensitivity buttons, 1 s) |
@@ -367,10 +367,43 @@ measured delay this adds before free play actually starts.
 used to gate the Key Stuck cue: a repeat press within 500 ms stayed silent, one
 after it played `sfxKeyStuck`. All of it is gone from V5.5, at Sergio's request
 after playing the board — a repeated lemon **sounds its note like any other
-press**, scores nothing, costs nothing, and is marked by a **backwards LED
-sweep** instead of a noise. Pressing the same lemon twice is not a mistake, and
+press**, scores nothing, costs nothing, and is marked in **light** instead of
+noise — a backwards LED sweep until 2026-09-15, the whole bar held lit since.
+Pressing the same lemon twice is not a mistake, and
 a scolding sound said it was. `sfxKeyStuck` stays in `mario_sfx.h` (nothing else
 was built on it) but **V5.5 no longer plays it**; earlier versions still do.
+
+**Every level's seven lemons come out of its own theme (2026-09-15).** A level
+announces itself by playing the first bars of its theme, and then hands the
+player seven lemons — so those seven had better belong to the same piece of
+music. Levels 1 and 2 always did. Levels 3 and 4 were given plain C major runs,
+and on level 4 that was audible: the Castle theme is in **G minor around
+G3-G4** and the lemons answered it a **C major scale an octave above**. Sergio,
+playing it: *"suena la melodía, pero cuando yo toco las notas no están en la
+tonalidad correcta de ese nivel."*
+
+| Level | Theme | The seven lemons, low to high |
+|---|---|---|
+| 1 | Overworld | E6 G6 A6 B6 C7 E7 G7 |
+| 2 | Underworld | A3 AS3 C4 **D4** A4 AS4 C5 |
+| 3 | Starman | C5 D5 E5 F5 G5 A5 **C6** |
+| 4 | Castle | **G3 AS3 C4 D4 DS4 F4 G4** |
+
+Bold is what changed on 2026-09-15. Level 3 lost a C# the Starman theme never
+plays and gained the C6 it opens every phrase on; level 4 was rebuilt from
+scratch in the theme's own key and octave; and level 2 — which nobody had
+complained about — turned out to have a **D5 on its top lemon that the
+Underworld never plays** (the tune's highest note is C5). The test written for
+level 4 found it, because it was written as a rule rather than as four
+assertions: *every lemon on every level must be a note that level's theme
+actually plays.*
+
+**The codes did not change.** They are written down as key NUMBERS — the
+organiser's booklet prints them on paper — so retuning the keyboard means
+recomputing the frequencies the sequences store and leaving the numbers alone.
+`docs/cartilla/seqs.py` re-derives them from the firmware and still prints
+`6 5 6 7 2 5 2 1 3 4`, `3 6 1 4 2 5 3 6 1 4`, `2 4 6 1 5 3 7 4 2 6`,
+`5 1 3 7 2 6 4 1 5 3`.
 
 **Ending loop + reset gesture (2026-07-29):** `playEndingLoop()` plays
 `sfxEnding` repeatedly via `playSfx()`'s new optional `checkAbort` callback
