@@ -99,18 +99,22 @@ In free play the seven lemons are simply the notes you were taught at school:
 
 ### Forgotten how the tune went? Ask for it again
 
-**Hold lemon 1 and lemon 7 at the same time for two seconds.** The bar fills up
-like a charge meter, a chirp climbs with it, and then the level plays you its
-theme again — the same one it opened with. The melody is where the secret code
-is hidden, so this is the hint button.
+**Press the same lemon five times in a row** and the level plays you its theme
+again — the same one it opened with. The melody is where the secret code is
+hidden, so this is the hint button.
 
-It costs you nothing. Touching both ends at once is never a move: neither lemon
-sounds, neither is counted, and if you had already touched lemon 1 a moment
-before lemon 7 arrived, that press is given back to you. Let go before the two
-seconds and nothing happens at all.
+**The note you just played counts as the first one**, so in practice it is four
+more taps on the lemon already under your finger. Press, let go, press again;
+don't dawdle, because leaving more than a second and a half between two taps
+starts the count over.
 
-In free play it replays the mode's own opening instead — the sweep and the
-scale.
+It does not disturb the game: the lights come back exactly as they were and you
+carry on from where you were. And there is a free way to do it — **drum the
+lemon the game has just accepted.** Playing the same lemon twice never counts
+for anything, so done that way the hint costs you nothing at all.
+
+Not available in free play, on purpose: playing one lemon over and over is what
+free play is *for*.
 
 ## 5. Choosing a mode
 

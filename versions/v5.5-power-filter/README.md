@@ -202,47 +202,48 @@ brought back as a gesture:
 A preview is cut off the instant the wheel turns again, so browsing runs at the
 speed of the hand, not of the tunes.
 
-### "Play me that tune again" — both END lemons, held 2 s (2026-09-15)
+### "Play me that tune again" — ONE lemon, five times (2026-09-15)
 
 The theme **is** the clue: the ten-note code is hidden in the tune the level
-opens with. Until now a player who half-remembered it had to reset the board or
-win the level to hear it again. Sergio: *"si el usuario toca la tecla 1 y la
-tecla 7 a la vez durante 2 segundos, suene de nuevo la musiquita de ese nivel,
-para que el usuario pueda recordar cómo era."*
+opens with, so a player who half-remembers it had to reset the board or win the
+level to hear it again.
 
-Hold **lemon 1 and lemon 7 together**. The bar becomes a charge meter with a
-rising chirp — the same language as the two button holds — and at two seconds
-the level's own theme plays again. In free play it replays the mode's own
-announcement instead: the entry sweep and do-re-mi-fa-sol-la-si.
+**This gesture moved once, and why is the interesting part.** It shipped as
+*hold the two END lemons together for two seconds* — a good gesture built on the
+one thing this keyboard cannot do. Sergio, after playing it: *"creo que es
+físicamente imposible detectar correctamente la pulsación de varias teclas a la
+vez. Por lo cual vamos a cambiar el paradigma."* He is right, and the reason is
+the same shared return path that makes the chord hard: two fingers are in each
+other's way, so each dips shallower than one.
 
-Three things make it safe to ask:
+So it is built out of the one input this piano has read perfectly since 2019:
+**one lemon, pressed and released.** Press the same lemon **five times in a row**
+and the level plays its theme again. **The note you just played is press one** —
+so in practice it is four more taps on the lemon under your finger.
 
-- **The two ends are the one pair nobody plays by accident.** They are as far
-  apart as this keyboard goes and no melody here wants both at once.
-- **Both ends together is a question, not a note.** It is checked before the
-  input layer turns a finger into a guess, so neither lemon sounds and neither
-  is scored.
-- **…and it undoes the press it arrived on.** If you reach lemon 7 a moment
-  after lemon 1, that first press has already been scored — so the gesture puts
-  the progress bar back exactly where that press found it (the same snapshot
-  trick the buttons use for the sensitivity knob). Only a press of lemon 1 or
-  lemon 7 arms that snapshot; any other lemon throws it away, or the game would
-  roll backwards. Asking a question must not cost you the game. Letting go
-  early cancels with the same bump every other held gesture uses — and leaves
-  the undo in place, because touching both ends is never a move.
+- **Nothing simultaneous, nothing to disambiguate.** No thresholds beyond the
+  ones that already work.
+- **It changes nothing about the game.** Presses two to five are repeats, which
+  already score nothing and cost nothing; the first is an ordinary press,
+  because the player chose to touch a lemon. Afterwards the progress bar comes
+  back exactly as it was — *"el juego continúa por donde estaba"*.
+- **There is an obvious free move**: drum the lemon the game has *just
+  accepted*. Then every one of the five is a repeat and the hint costs nothing
+  at all.
+- **The keys are dead while it plays**, because `playLevelIntro()` is blocking,
+  and the lemon still under the finger has to be let go before it counts as
+  anything again.
+- **A pause resets it.** More than `THEME_REPEAT_GAP_MS` (1.5 s) between two
+  presses and the count starts over, so drumming is a decision rather than an
+  accident, and a lemon poked twice a minute apart never adds up to a request.
 
-**What it costs:** lemon 1 + lemon 7 can no longer be played as a chord in free
-play. That is the widest interval the keyboard has, and it is the price of
-putting the gesture on the pair nobody hits by accident.
+**Game only, and that is not an omission.** Free play exists precisely so the
+same lemon can be played over and over — it is the mode's whole point and the
+one rule the game has that an instrument must not — so counting repeats there
+would take the mode away to give it a hint it has no use for.
 
-**It is shadow-proof**, which the host test insisted on before the fruit could:
-"both ends are over the threshold" is not enough, because on a rig where one
-finger's shadow is bigger than `touchMargin` that is true every time anybody
-plays anything — and the piano would stop and offer to replay the theme on every
-note. So the two ends must also be the **two deepest** channels, judged by the
-same ratio the chord uses. The rest of the firmware survives such a rig because
-`strongestKey()` only ever takes the deepest channel; this does the same sort of
-thing.
+**And the widest chord is back.** With the gesture off the two end lemons,
+lemon 1 + lemon 7 is once again available as a chord in free play.
 
 ### The overlaps, and why they do not collide
 
@@ -258,6 +259,11 @@ one is a named test case. The whole map, at the keyboard:
 | **hold + 3 s** | **free play ⇄ the level** | (3 s leaves the wheel) |
 | **hold − 3 s** | **the level wheel** | (3 s leaves the wheel) |
 | **both, 1 s** | smart adjust: learn the margin from a real touch | accept, at any overlap |
+
+…and one gesture that is not on the buttons at all: **the same lemon five times
+in a row replays the level's theme** (game only). It shares nothing with the
+list above — different limb of the instrument entirely — which is exactly why it
+was moved onto the keyboard after the two-lemon version proved undetectable.
 
 The two worth knowing:
 
@@ -307,10 +313,12 @@ the whole filter.
 | Check | Status |
 |---|---|
 | Diagram renders, 0 DRC violations | ✅ `python3 tools/wiring_diagrams.py v5.5` — 64 nets, 0 hard violations (2026-09-06) |
-| Firmware builds (all five envs) | ✅ `pio run` per env, 2026-09-09 — 537 B RAM (26.2 %), 15 450 B flash (50.3 %) |
-| Host tests: gestures + whole firmware | ✅ `firmware/test/run.sh`, 2026-09-09 — **97 + 56 checks, 0 failed**. Mutation-checked: breaking the free-play scale, dropping the margin restore, or moving the arming line each turns it red |
+| Firmware builds (all five envs) | ✅ `pio run` per env, 2026-09-15 — 562 B RAM (27.4 %), 17 806 B flash (58.0 %) |
+| Host tests: gestures + whole firmware | ✅ `firmware/test/run.sh`, 2026-09-15 — **107 + 162 checks, 0 failed**. Mutation-checked: breaking the free-play scale, dropping the margin restore, or moving the arming line each turns it red |
+| Flashed to the board | ✅ 2026-09-15, `/dev/ttyUSB0` env `nanoatmega328` — 17 806 bytes written **and verified** by avrdude; boots, calibrates seven baselines, announces `Level 1` |
+| Every level's lemons are in its own key | ✅ `test_every_level_plays_in_its_own_key` — every one of the 28 key notes must be a note that level's own theme plays, and the four codes must still resolve to the numbers the booklet prints |
 | Emulation, the game | ✅ V5's circuit and specs, verified there ([emulation/README.md](emulation/README.md)); the filter itself is analog supply hardware and **not emulatable** |
 | Emulation, free play (`emulation/piano-mode.yaml`) | ⬜ **written, not yet run** — the Velxio harness is not installed on the machine this was written on. Compile-checked (`pio run -e emulation-freeplay`) and the spec parses, but no `--mode verify` has passed on it |
 | The mode wheel in the browser | ⛔ **impossible on purpose** — ten LEDs + buzzer + key 7 use every digital line, so the two buttons have no pins. Covered by the host tests instead |
-| Free play / the wheel on real hardware | ⬜ pending — written and validated with the board unplugged, at the owner's request; flash it and play it |
+| Free play / the wheel on real hardware | 🔄 **in progress** — played on 2026-09-15 and four rounds of his reports acted on (the idle badge, the repeat cue, the wave, the level tunings, and the theme-reminder gesture moving off two simultaneous lemons). Still open: whether the chord comes reliably now that gate 1 is fixed, and whether 14 ms/frame makes the wave feel syrupy |
 | Filter measured on the real board | ⬜ pending — build it and re-run the [V5 bench sampler](../v5-led-bar/HARDWARE.md#why-the-keyboard-is-pulled-up-again-measured-2026-07-27--28) during a switch-flipping session |

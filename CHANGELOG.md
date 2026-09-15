@@ -2,6 +2,80 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-15 (night) — "play me that tune again" moves off two lemons and onto one
+
+*"Creo que es físicamente imposible detectar correctamente la pulsación de
+varias teclas a la vez. Por lo cual vamos a cambiar el paradigma."*
+
+The theme reminder shipped an hour ago as **hold the two END lemons together for
+two seconds**. It was a good gesture built on the one thing this keyboard cannot
+do — the same shared return path that makes the chord hard (every lemon's
+current goes home through the player's body and the GND clip, so two fingers are
+in each other's way and each dips shallower than one). Sergio called it, and he
+is right: a gesture must not be built on the input the hardware is worst at.
+
+**So it is built out of the input this piano has read perfectly since 2019: one
+lemon, pressed and released.** Five presses of the same lemon in a row and the
+level plays its theme again. Nothing simultaneous, nothing to disambiguate, no
+threshold that is not already load-bearing.
+
+### How it behaves
+
+- **The note you just played is press one.** In practice it is four more taps on
+  the lemon already under your finger — which is what he described: *"pulsa
+  cuatro veces cualquier nota… pulsa, suelta y pulsa de nuevo hasta cinco
+  veces"*.
+- **It changes nothing about the game**, which is the part he asked for in as
+  many words (*"el juego continúa por donde estaba"*). Presses two to five are
+  repeats, which already score nothing and cost nothing; the first is an
+  ordinary press, because the player chose to touch a lemon. `playThemeReminder()`
+  does not touch `currentStep`, and `restoreIdleDisplay()` puts the same count of
+  LEDs back on the bar.
+- **There is an obvious free move**: drum the lemon the game has *just accepted*.
+  Then all five are repeats and the hint costs nothing at all. Deliberately not
+  enforced — no snapshot, no undo, no rewinding a wrong note — because a gesture
+  that gives you your progress back after a mistake is a gesture that trivialises
+  the game. The rule is "asking changes nothing", not "asking un-does things".
+- **The keys are dead while it plays**, because `playLevelIntro()` blocks
+  (*"se desactivan las teclas temporalmente"*), and the lemon still under the
+  finger has to be let go before it counts as anything again — capped at 4 s so
+  a channel that never reads clear cannot hang the piano.
+- **A pause resets the count.** More than `THEME_REPEAT_GAP_MS` (1.5 s) between
+  two presses and it starts over, so drumming is a decision and a lemon poked
+  twice a minute apart never adds up to a request.
+
+**Game only, and that is not an omission.** Free play exists precisely so the
+same lemon can be played over and over — the mode's whole point, and the one
+rule the game has that an instrument must not. Counting repeats there would take
+the mode away to give it a hint it has no use for. The test asserts it: eight
+taps on one lemon in free play are eight notes and not one byte of a theme.
+
+### What came back
+
+**The widest chord.** With the gesture off the two end lemons, **lemon 1 +
+lemon 7 is available again** in free play — the widest interval this keyboard
+has, lost for about an hour.
+
+And the code got smaller rather than bigger: `bothEndsDown()`,
+`serviceThemeReminder()`, the `stepBeforePress`/`countedBeforePress` snapshot,
+the arming meter's trip outside the buttons-only region, and two constants are
+all gone, replaced by three variables and an eleven-line counter in the press
+branch. **17 806 B** against the 18 050 B of the version it replaces.
+
+### Evidence
+
+- **All five envs build.** `nanoatmega328` 17 806 B flash / 58.0 %, 562 B RAM /
+  27.4 %.
+- **Host tests: 107 + 162 checks, 0 failed.** Test 25 rewritten around the new
+  gesture, and it pins the awkward cases as well as the happy one: four taps are
+  not five; a different lemon in the middle starts the run over and the fifth of
+  the *new* run is what fires; a 2.5 s pause breaks it; free play counts nothing.
+  The replay is still asserted **edge for edge** against the boot announcement
+  via `FakeBoard::pinWrites[BUZZER]` — not "a tune played", *that* tune.
+- **Flashed and verified**: `/dev/ttyUSB0`, 17 806 bytes written and verified;
+  boots, calibrates (margin 34 on a noisy bench this time) and announces
+  `Level 1`.
+
 ## 2026-09-15 (evening) — the wave is the whole display, and the theme can be asked for
 
 Two more from Sergio, straight after playing the last build.

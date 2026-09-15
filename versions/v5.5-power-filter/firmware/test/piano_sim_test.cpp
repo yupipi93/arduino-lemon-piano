@@ -923,63 +923,89 @@ static void test_free_play_wave_starts_at_the_key() {
 }
 
 // ── 25 ──────────────────────────────────────────────────────────────────────
-// Sergio, 2026-09-15: "si el usuario toca la tecla 1 y la tecla 7 a la vez
-// durante 2 segundos, suene de nuevo la musiquita de ese nivel, para que el
-// usuario pueda recordar cómo era". The theme is the clue — the code is hidden
-// in it — so the thing this must not do is charge the player for asking.
-static void test_both_ends_replay_the_theme() {
-  section("25. Both end lemons, held two seconds, play the theme again");
+// Sergio wanted a way to hear the level's tune again, and the FIRST version of
+// it — hold the two end lemons together — was a good gesture built on the one
+// thing this keyboard cannot do. He called it: "creo que es físicamente
+// imposible detectar correctamente la pulsación de varias teclas a la vez. Por
+// lo cual vamos a cambiar el paradigma." So it is five presses of ONE lemon
+// now: nothing simultaneous, nothing to disambiguate.
+//
+// The two things this has to guarantee are that it FIRES and that it costs
+// nothing — "el juego continúa por donde estaba".
+static void test_five_taps_replay_the_theme() {
+  section("25. Five taps on one lemon replay the theme, and change nothing");
   boot();
-  // setup() announces level 1 with its theme, and a theme is BIT-BANGED — so
-  // the buzzer's edge count straight after boot IS one playing of the Overworld
-  // intro, and the reminder has to produce the same number again.
+  // A theme is bit-banged, so the buzzer's edge count straight after boot IS
+  // one playing of the level-1 intro. The replay has to match it exactly.
   const unsigned long oneIntro = board.pinWrites[BUZZER];
-  ok(oneIntro > 1000, "the boot announcement drove the buzzer for a whole tune",
-     std::to_string(oneIntro) + " edges");
 
   const int code[10] = {5, 4, 5, 6, 1, 4, 1, 0, 2, 3};
   touchKey(code[0]);
   touchKey(code[1]);
-  eqInt(litLeds(), 2, "the game is two notes in");
-
-  const unsigned long beforeAsking = board.pinWrites[BUZZER];
-  size_t sm = serialMark();
-  board.touched[0] = true; board.touched[6] = true;
-  runFor(900);
-  ok(serialSince(sm, "both ends held"), "holding both ends asks the question");
-  const int meter = litLeds();
-  ok(meter > 0 && meter < LED_COUNT,
-     "  ...and the bar becomes a charge meter while it fills",
-     std::to_string(meter) + " lit");
-  ok(!serialSince(sm, "OK 3/10") && !serialSince(sm, "WRONG"),
-     "  ...and neither lemon was taken as a guess");
-
-  runFor(2000);
-  ok(serialSince(sm, "playing the theme again"), "at two seconds the theme plays");
-  const unsigned long replayed = board.pinWrites[BUZZER] - beforeAsking;
-  eqInt((long) replayed, (long) oneIntro,
-        "  ...and it is the SAME tune, edge for edge, that level 1 opened with");
-
-  board.touched[0] = false; board.touched[6] = false; runFor(800);
-  eqInt(currentStep, 2, "  ...the progress is exactly where it was");
-  eqInt(litLeds(), 2, "  ...and so is the bar");
-
-  sm = serialMark();
   touchKey(code[2]);
-  ok(serialSince(sm, "OK 3/10"), "and the game carries on from note 3");
+  eqInt(litLeds(), 3, "the game is three notes in");
 
-  // Letting go early costs nothing either — and it must not cost the guess the
-  // first of the two lemons made on its way in.
-  boot();
-  touchKey(code[0]);
-  eqInt(litLeds(), 1, "one correct note");
+  // Drum the lemon the game has just accepted. THE NOTE YOU JUST PLAYED IS
+  // PRESS ONE — that is the whole shape of the gesture, and it is what Sergio
+  // described: "pulsa cuatro veces cualquier nota... pulsa, suelta y pulsa de
+  // nuevo hasta cinco veces". So four MORE taps here, not five. Drumming the
+  // accepted lemon also means every one of them is a repeat, which scores
+  // nothing and costs nothing — the obvious move for a player who wants the
+  // hint for free.
+  const unsigned long before = board.pinWrites[BUZZER];
+  size_t sm = serialMark();
+  for (int i = 0; i < 4; i++) touchKey(code[2]);
+
+  ok(serialSince(sm, "playing the theme again"), "the fifth tap asks for the theme");
+  eqInt((long) (board.pinWrites[BUZZER] - before), (long) oneIntro,
+        "  ...and it is the SAME tune, edge for edge, that level 1 opened with");
+  eqInt(currentStep, 3, "  ...the game kept its place");
+  eqInt(litLeds(), 3, "  ...and so did the bar");
+  ok(!serialSince(sm, "WRONG"), "  ...nothing was punished");
+  ok(!serialSince(sm, "OK 4/10"), "  ...and nothing was scored either");
+
   sm = serialMark();
-  board.touched[0] = true; runFor(200);      // lemon 1 -- wrong for step 2, but...
-  board.touched[6] = true; runFor(700);      // ...lemon 7 arrives: it is a question
-  ok(serialSince(sm, "both ends held"), "reaching the second lemon late still asks it");
-  board.touched[0] = false; board.touched[6] = false; runFor(600);
-  ok(serialSince(sm, "theme reminder cancelled"), "  ...and letting go early cancels it");
-  eqInt(currentStep, 1, "  ...with the progress put back, not spent on a wrong note");
+  touchKey(code[3]);
+  ok(serialSince(sm, "OK 4/10"), "and the game carries on from note 4");
+
+  // FOUR is not five, and a different lemon in between starts the count over.
+  boot();
+  sm = serialMark();
+  for (int i = 0; i < 4; i++) touchKey(0);
+  ok(!serialSince(sm, "playing the theme again"), "four taps are not five");
+  touchKey(1);
+  for (int i = 0; i < 4; i++) touchKey(0);
+  ok(!serialSince(sm, "playing the theme again"),
+     "  ...and a different lemon in the middle starts the run again");
+  touchKey(0);
+  ok(serialSince(sm, "playing the theme again"),
+     "  ...the fifth of the NEW run is what fires it");
+
+  // ...and so does a long enough pause: drumming has to be a decision.
+  boot();
+  sm = serialMark();
+  for (int i = 0; i < 4; i++) touchKey(0);
+  runFor(2500);                       // longer than THEME_REPEAT_GAP_MS
+  touchKey(0);
+  ok(!serialSince(sm, "playing the theme again"),
+     "a pause longer than the gap breaks the run too");
+
+  // FREE PLAY MUST NEVER COUNT REPEATS. Playing one lemon over and over is the
+  // entire point of the mode, so five taps there are five notes and nothing else.
+  boot();
+  toggleFreePlayByHold();
+  const unsigned long quiet = board.pinWrites[BUZZER];
+  sm = serialMark();
+  size_t tm = toneMark();
+  for (int i = 0; i < 8; i++) touchKey(2);
+  ok(!serialSince(sm, "playing the theme again"),
+     "free play: eight taps on one lemon ask for nothing");
+  eqInt((long) (board.pinWrites[BUZZER] - quiet), 0,
+        "  ...not a single note of a theme was played");
+  int mi = 0;
+  std::vector<int> t = tonesSince(tm);
+  for (size_t i = 0; i < t.size(); i++) if (t[i] == NOTE_E5) mi++;
+  eqInt(mi, 8, "  ...they were eight notes, which is what an instrument is for");
 }
 
 int main(int argc, char **argv) {
@@ -1011,7 +1037,7 @@ int main(int argc, char **argv) {
   test_every_level_plays_in_its_own_key();
   test_level_four_still_wins();
   test_free_play_wave_starts_at_the_key();
-  test_both_ends_replay_the_theme();
+  test_five_taps_replay_the_theme();
 
   printf("\n%d checks, \033[%sm%d failed\033[0m\n\n",
          checks, failures ? "31" : "32", failures);

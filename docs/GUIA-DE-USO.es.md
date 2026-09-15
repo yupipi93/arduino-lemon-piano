@@ -109,17 +109,22 @@ En modo libre los siete limones son sencillamente las notas de toda la vida:
 
 ### ¿Se te ha olvidado cómo iba la melodía? Pídela otra vez
 
-**Mantén el limón 1 y el limón 7 a la vez durante dos segundos.** La barra se
-llena como un cargador, un pitido sube con ella, y el nivel te vuelve a tocar su
+**Toca el mismo limón cinco veces seguidas** y el nivel te vuelve a tocar su
 melodía, la misma con la que empezó. En esa melodía está escondida la clave
 secreta, así que esto es el botón de pista.
 
-No te cuesta nada. Tocar los dos extremos a la vez nunca es una jugada: no suena
-ninguno de los dos limones, no se cuenta ninguno, y si habías tocado el limón 1
-un momento antes de llegar al 7, esa pulsación se te devuelve. Si sueltas antes
-de los dos segundos, no pasa absolutamente nada.
+**La nota que acabas de tocar cuenta como la primera**, así que en la práctica
+son cuatro toques más sobre el limón que ya tienes debajo del dedo. Toca,
+suelta, vuelve a tocar; sin pararte, porque si dejas más de segundo y medio
+entre dos toques la cuenta empieza de cero.
 
-En modo libre te repite la presentación del propio modo: el barrido y la escala.
+No molesta al juego: las luces vuelven exactamente como estaban y sigues por
+donde ibas. Y hay una forma de que te salga gratis: **repite el limón que el
+juego acaba de aceptar.** Tocar dos veces el mismo limón nunca cuenta para
+nada, así que hecho de esa manera la pista no te cuesta absolutamente nada.
+
+En modo libre no está, a propósito: tocar un limón una y otra vez es
+precisamente para lo que existe el modo libre.
 
 ## 5. Elegir modo
 

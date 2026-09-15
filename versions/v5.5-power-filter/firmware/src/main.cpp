@@ -283,25 +283,40 @@ const int CHORD_HOLD_RATIO_PCT = 55;
 const unsigned long CHORD_CONFIRM_MS = 24;   // ...held this long before it opens
 const unsigned long CHORD_SWAP_MS = 10;      // buzzer handover, per voice
 
-// ── "play me that tune again": both END lemons, held (2026-09-15) ───────────
-// Sergio: "si el usuario toca la tecla 1 y la tecla 7 a la vez durante 2
-// segundos, suene de nuevo la musiquita de ese nivel, para que el usuario pueda
-// recordar cómo era". The theme IS the clue — the ten-note code is hidden in
-// it — so a player who half-remembers it currently has to reset the board or
-// win the level to hear it again. Now they can just ask.
+// ── "play me that tune again": ONE lemon, five times (2026-09-15, evening) ──
+// The theme IS the clue — the ten-note code is hidden in it — so a player who
+// half-remembers it had to reset the board or win the level to hear it again.
 //
-// The two ENDS, because they are the one pair nobody plays by accident: they
-// are as far apart as this keyboard goes, and no melody here asks for both at
-// once. Two seconds, because it has to be a decision rather than a slip.
+// THIS GESTURE HAS MOVED ONCE ALREADY, and why is worth keeping. It was "hold
+// the two END lemons together for two seconds", which was a good gesture and an
+// impossible one: detecting two lemons at once on this keyboard is the thing
+// Sergio had already found does not work — every lemon's current goes home
+// through one shared element, the player's body and the GND clip, so two
+// fingers are in each other's way and each dips shallower than one. He called
+// it: "creo que es físicamente imposible detectar correctamente la pulsación de
+// varias teclas a la vez. Por lo cual vamos a cambiar el paradigma."
 //
-// It opens by UNDOING the press it arrived on. Pressing a lemon is a guess, and
-// the first of the two ends will already have been scored by the time the
-// second one lands — so the reminder puts the progress bar back exactly where
-// that press found it (stepBeforePress / countedBeforePress, the same snapshot
-// trick the buttons use for the sensitivity knob). Asking a question must not
-// cost you the game.
-const unsigned long THEME_REMINDER_MS = 2000;   // both ends held this long
-const unsigned long THEME_TICK_MS = 500;        // a rising chirp every half second
+// So it is built out of the one thing this keyboard reads perfectly: ONE lemon,
+// pressed and released. Five presses of the same lemon in a row and the level
+// plays its theme again. Nothing simultaneous, nothing to disambiguate — just
+// the input the piano has been getting right since 2019.
+//
+// GAME ONLY, and that is not an omission. Free play exists precisely so that
+// the same lemon can be played over and over — it is the mode's whole point and
+// the one rule the game has that an instrument must not — so counting repeats
+// there would take the mode away to give it a hint it has no use for.
+//
+// It changes nothing about the game. Presses two to five are repeats, which
+// already score nothing and cost nothing; the first one is an ordinary press
+// with ordinary consequences, because the player chose to touch a lemon. And
+// the player who wants the theme for free already has the obvious move: drum
+// the lemon the game has just accepted, which is a repeat from the very first
+// press. Afterwards the progress bar comes back exactly as it was — the tune
+// resets nothing, which is the part Sergio asked for in as many words.
+const uint8_t THEME_REPEAT_PRESSES = 5;          // presses of one lemon, in a row
+const unsigned long THEME_REPEAT_GAP_MS = 1500;  // ...none further apart than this,
+                                  // so drumming is a decision and a lemon poked
+                                  // twice a minute apart never adds up to one
 
 // ── Free play announces itself with a SWEEP (2026-09-15) ────────────────────
 // It replaces the two-end idle shape that used to mark the mode: see
@@ -695,16 +710,9 @@ bool chordOnSecond = false;             // which voice has the buzzer right now
 bool repeatBarOn = false;               // the whole bar is lit for a repeated lemon
 
 // ── "play me that tune again" ──────────────────────────────────────────────
-unsigned long reminderSince = 0;        // when both ends first read down (0 = they do not)
-unsigned long reminderTickAt = 0;       // last charge chirp
-int  stepBeforePress = -1;              // the progress an END lemon's press found
-int  countedBeforePress = -1;           // ...and the key it found accepted, to put back
-                                        // -1 = nothing to undo (see the note at
-                                        // THEME_REMINDER_MS): only a press of
-                                        // lemon 1 or lemon 7 can be the first
-                                        // half of the gesture, so only those
-                                        // arm the snapshot, and any other lemon
-                                        // throws it away.
+int  repeatRunKey = -1;                 // the lemon being pressed over and over
+uint8_t repeatRunCount = 0;             // how many presses in a row it has had
+unsigned long repeatRunAt = 0;          // when the last of them landed
 int  chordLeaving = -1;                 // 0 = the first voice looks gone, 1 = the second
 
 int  baseline[KEY_COUNT];      // each key's resting level (measured, then tracked)
@@ -751,13 +759,11 @@ void announceMenuItem();
 void acceptMenuItem();
 void cancelMenu();
 void showMenuItem(uint8_t item, bool on);
+void showArmBar(uint8_t pct);
+void soundArmTick(uint8_t pct);
 void playMenuPreview(uint8_t item);
 static bool menuInterrupt();
 #endif
-void showArmBar(uint8_t pct);
-void soundArmTick(uint8_t pct);
-bool bothEndsDown();
-bool serviceThemeReminder();
 void playThemeReminder();
 void showMarginOnBar();
 void showFreePlayIdle();
@@ -875,10 +881,6 @@ void loop() {
     restoreIdleDisplay();
   }
 
-  // BOTH END LEMONS AT ONCE is a question, not a note — and it has to be asked
-  // before the input below turns a finger into a guess. See serviceThemeReminder().
-  if (serviceThemeReminder()) return;
-
   const int keyboardOffset = (level - 1) * KEY_COUNT;
 
 //################################
@@ -929,6 +931,25 @@ void loop() {
     pressedNote = keys[justPressed + keyboardOffset];
     activeKey = justPressed;
 
+    // ── FIVE TAPS ON ONE LEMON: "play me that tune again" ──────────────────
+    // Counted before anything sounds or scores, so the fifth press is the
+    // request rather than a note. Game only — see THEME_REPEAT_PRESSES for why
+    // free play must never count repeats.
+    if (!freePlay()) {
+      const unsigned long now = millis();
+      if (justPressed == repeatRunKey && (now - repeatRunAt) <= THEME_REPEAT_GAP_MS) {
+        repeatRunCount++;
+      } else {
+        repeatRunKey = justPressed;   // a different lemon, or too long a pause
+        repeatRunCount = 1;
+      }
+      repeatRunAt = now;
+      if (repeatRunCount >= THEME_REPEAT_PRESSES) {
+        playThemeReminder();
+        return;
+      }
+    }
+
     // ── FREE PLAY: no lock, no guess, no penalty ───────────────────────────
     // Everything below this block exists to stop flaky fruit contact from
     // machine-gunning the GAME. An instrument wants the opposite: the same
@@ -970,16 +991,6 @@ void loop() {
     // it simply does not score, does not advance and — this is the part that
     // changed — does not COST anything either. It says so in light, not in noise.
     if (justPressed != lastCountedKey) {
-      // ...remembering what this press found, but ONLY for the two lemons the
-      // both-ends gesture is made of: if this turns out to be its first half it
-      // has to be taken back, and if it is any other lemon there is nothing to
-      // take back and a stale snapshot would roll the game backwards.
-      if (justPressed == 0 || justPressed == (int) KEY_COUNT - 1) {
-        stepBeforePress = currentStep;
-        countedBeforePress = lastCountedKey;
-      } else {
-        stepBeforePress = -1;
-      }
       lastCountedKey = justPressed;
       handleGuess();
     } else {
@@ -1631,14 +1642,7 @@ void serviceMenu() {
   }
 }
 
-#endif  // !VELXIO_EMULATION
-
-// ── the charge meter, shared by every gesture that has to be HELD ──────────
-// Two of them now: the three-second button holds, and the two-second both-ends
-// lemon hold that replays the theme. It lives outside the buttons-only region
-// because the second one is made of keys, which every build has.
-//
-// How much of the hold is done, as a bar that fills.
+// The charge meter: how much of the three-second hold is done.
 void showArmBar(uint8_t pct) {
   uint8_t lit = (uint8_t) (((uint16_t) pct * LED_COUNT) / 100);
   if (lit > LED_COUNT) lit = LED_COUNT;
@@ -1658,6 +1662,7 @@ void soundArmTick(uint8_t pct) {
                    (int) (((long) (ARM_TICK_HIGH - ARM_TICK_LOW) * pct) / 100);
   playTone(freq, ARM_TICK_MS);
 }
+#endif  // !VELXIO_EMULATION
 
 // The ten-LED bar doubles as a SENSITIVITY METER: how many LEDs are lit shows
 // where the knob sits across the useful range on fruit (a margin of MARGIN_MIN
@@ -2021,98 +2026,44 @@ void playKeyWave(int key) {
 //################################
 //#####  PLAY IT AGAIN ###########
 //################################
-// The rules are at THEME_REMINDER_MS, up in the constants. This is the machine.
+// The rules are at THEME_REPEAT_PRESSES, up in the constants. This is the
+// machine, and there is almost none of it — which is the point of building the
+// gesture out of single presses instead of simultaneous ones.
 
-// Are lemon 1 and lemon 7 both being held? Judged by each key's own dip, not by
-// strongestKey(), because this gesture is precisely the case where there is no
-// single strongest key and picking one would be the wrong question.
+// Play the level's theme again and hand the game straight back. The keys are
+// dead while it plays because playLevelIntro() is blocking, which is exactly
+// what "se desactivan las teclas temporalmente" asks for; the only thing that
+// needs saying afterwards is that the lemon still under the finger must be let
+// go before it counts as anything. The wait is capped so a channel that never
+// reads clear cannot hang the piano.
 //
-// "Both are over the threshold" is NOT enough, and the host test said so before
-// the fruit could: the channels are coupled, so on a rig where one finger casts
-// a shadow bigger than touchMargin, BOTH ends read down every time anybody
-// plays anything — and the piano would stop dead and offer to replay the theme
-// on every note. The rest of the firmware survives that kind of rig because
-// strongestKey() only ever takes the DEEPEST channel; this has to do the same
-// sort of thing.
-//
-// So the two ends must also be the two deepest: if any middle lemon is dipping
-// comparably (the same ratio the chord uses), what is on the fruit is a hand or
-// a single finger's shadows, not this gesture, and the answer is no.
-bool bothEndsDown() {
-  const int d0 = keyDip(0), dN = keyDip(KEY_COUNT - 1);
-  if (d0 < touchMargin || dN < touchMargin) return false;
-  const int weaker = d0 < dN ? d0 : dN;
-  for (uint8_t i = 1; i < KEY_COUNT - 1; i++) {
-    if ((long) keyDip(i) * 100 >= (long) weaker * CHORD_MIN_RATIO_PCT) return false;
-  }
-  return true;
-}
-
-// Returns true when it owns this loop — the caller must do nothing else, since
-// while the two ends are down there is no note to play and no guess to score.
-bool serviceThemeReminder() {
-  if (!bothEndsDown()) {
-    if (reminderSince) {          // let go before the two seconds were up
-      reminderSince = 0;
-      log(F("== theme reminder cancelled"));
-      soundLimit();               // the same bump every other cancelled hold uses
-      restoreIdleDisplay();
-    }
-    return false;
-  }
-
-  const unsigned long now = millis();
-  if (reminderSince == 0) {
-    reminderSince = now;
-    reminderTickAt = 0;
-    // Whatever was sounding stops, and whatever the press that got us here did
-    // to the game is undone. Asking a question must not cost you the game.
-    stopKeyTone();
-    activeKey = -1;
-    releaseSeenAt = 0;
-    repeatBarOn = false;
-    clearChord();
-    if (stepBeforePress >= 0) {   // ...only if an END lemon's press set it
-      currentStep = stepBeforePress;
-      lastCountedKey = countedBeforePress;
-      stepBeforePress = -1;       // spent: a second arming must not rewind further
-    }
-    ledMeterUntil = 0;            // the bar is the charge meter from here
-    log(F("== both ends held - keep holding to hear the theme again"));
-  }
-
-  const unsigned long held = now - reminderSince;
-  if (held >= THEME_REMINDER_MS) {
-    playThemeReminder();
-    reminderSince = 0;
-    return true;
-  }
-  uint8_t pct = (uint8_t) ((held * 100) / THEME_REMINDER_MS);
-  showArmBar(pct);
-  if (reminderTickAt == 0 || (now - reminderTickAt) >= THEME_TICK_MS) {
-    reminderTickAt = now;
-    soundArmTick(pct);
-  }
-  return true;
-}
-
-// Play the mode's own announcement again — the level's theme, or free play's
-// scale and its sweep — and then wait for the fruit to be let go, so the two
-// lemons that asked the question do not turn into notes the moment it is
-// answered. The wait is capped: a channel that never reads clear must not be
-// able to hang the piano.
+// NOTHING about the game is touched: currentStep is whatever the player had,
+// and restoreIdleDisplay() puts that same count of LEDs back on the bar.
 void playThemeReminder() {
-  log(F("== playing the theme again"));
-  allLedsOff();
-  playLevelIntro();
-  const unsigned long giveUpAt = millis() + 4000;
-  while (bothEndsDown() && (long) (giveUpAt - millis()) > 0) {
-    // hold here; the player is still touching both ends
+  if (serialEnabled) {
+    Serial.print(F("== lemon ")); Serial.print(repeatRunKey + 1);
+    Serial.print(F(" x")); Serial.print(repeatRunCount);
+    Serial.println(F(" - playing the theme again (the game keeps its place)"));
   }
+  stopKeyTone();
+  activeKey = -1;
+  releaseSeenAt = 0;
+  repeatBarOn = false;
+  clearChord();
+  ledMeterUntil = 0;
+  allLedsOff();
+
+  playLevelIntro();
+
+  const unsigned long giveUpAt = millis() + 4000;
+  while (keyStillDown(repeatRunKey) && (long) (giveUpAt - millis()) > 0) {
+    // hold here; the finger that asked is still on the fruit
+  }
+  repeatRunKey = -1;              // the run is spent: five more presses, five more
+  repeatRunCount = 0;
+  repeatRunAt = 0;
   lastCountedKey = -1;            // whatever they play next is a fresh move
-  stepBeforePress = -1;
-  countedBeforePress = -1;
-  restoreIdleDisplay();
+  restoreIdleDisplay();           // ...on the progress bar they came in with
 }
 
 // Whatever the bar should be showing when nothing is sounding and no meter is
