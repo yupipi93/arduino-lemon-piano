@@ -2,6 +2,40 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-15 (later) — the bank says `ICP`, and the fault flipped from too little current to too much
+
+Natalia took the trigger to the bench and came back with two facts that move the
+diagnosis further than any amount of reasoning about it would have:
+
+1. **The trigger alone keeps the UGREEN Nexode's output up.** A few mA, far
+   under any low-load threshold, and it does not drop. That closes the open
+   question from this morning's doc — the decoy really does hold the port open at
+   5 V — and it **removes the low-load timeout from the list of suspects
+   entirely**. The bleeder resistor may never be needed.
+2. **Attach the PCB and the bank shows `ICP` and cuts.** A code on the screen is
+   a *protection trip*, and a trip means too much current, not too little. The
+   fault we were chasing has inverted.
+
+So the doc grew the branch that actually matters now, and it leads with the
+cheapest cause: **reversed polarity**. `D1`'s cathode is on `/VIN` and its anode
+on `/GND` (`pcb/docs/NETLIST.md` nets 2 and 3), so a swapped pigtail forward-biases
+the TVS into a 0.7 V diode straight across the bank — a short, instantaneous and
+repeatable, which is exactly the shape of the symptom. `D2` keeps it away from
+the Nano, so the board fails safe and the bank's code is the alarm. Three
+unpowered checks (which screw is `+`, a frayed strand across the terminal, Ω
+across `J1` — *with the warning that the reversed-probe reading is `D1` conducting
+and not a fault*), then a diode test on `D1` itself before trusting it again.
+
+If polarity is clean it is the inrush into `C1 ‖ C3` = 940 µF, and the first
+attempt costs nothing: **land the screw terminal before plugging the USB-C in**,
+so the bank ramps VBUS into the capacitance on its own soft-start instead of
+being hot-plugged onto a discharged 940 µF. Only then C1 470 → 220 µF.
+
+`ICP` itself is left honest: UGREEN does not publish the expansion and searching
+found only their generic "unusual code = protection mode" FAQ. The doc reads it
+as a current protection and says it is not verified, because the actionable half
+— trip, not timeout — does not depend on the acronym.
+
 ## 2026-09-15 (late) — the power bank switches itself off, and the PD trigger is only half the answer
 
 Natalia asked for the DIP code that gets 5 V out of the PD/QC trigger module in

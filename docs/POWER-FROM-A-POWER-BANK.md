@@ -30,8 +30,16 @@ Distinguish them by **when** it dies, before changing anything:
 | Symptom | Cause | Fix |
 |---|---|---|
 | Runs a few seconds, then off | **low-load timeout** | raise the draw (bleeder / keep-alive LED), or the bank's own low-current mode |
+| **Bank shows a protection code (`ICP`) and drops the instant the board is attached** | **reversed polarity** — `D1`'s anode is on `/GND` and its cathode on `/VIN`, so a swapped pigtail forward-biases the TVS: a 0.7 V diode straight across the bank | swap the two wires; `J1` pad 1 = `+` | 
 | Never comes up; bank blinks and drops instantly | **inrush** — `C1 ‖ C3` = 940 µF looks like a short to a boost whose protection reacts in < 50 µs | drop C1 to 220 µF (`fc` is set by C3, not C1) |
 | Comes up at 5 V but the bank never registers a device | **no PD contract** — a two-wire USB-A pigtail has no CC lines, so nothing negotiates | a USB-C **to USB-C** path with a trigger in it |
+
+> **`ICP` is a protection trip, not a shutdown.** UGREEN does not publish the
+> expansion (searched 2026-09-15; their own FAQ only says an unusual code means
+> the bank has entered protection mode). Read it as a *current* protection: the
+> bank saw something it judged an overload or a short and opened the output. The
+> distinction that matters is that a low-load timeout is silent and a trip is
+> not — a code on the screen means too much current, never too little.
 
 ## The trigger module: `mod-pd-trigger-dip100w`
 
@@ -64,14 +72,61 @@ conducts continuously, cooks, and then the ATmega sees 9 V on AVcc.
 terminal with the Fluke 79 III — before the wires ever reach `J1`.** Polarity at
 the header is ADR-025's: `J1` pad 1 = `+`, pad 2 = `GND`, silk `5V IN + −`.
 
-### The 5 V setting is the one where the trigger may do nothing
+### The 5 V setting: the doubt is resolved, the trigger DOES hold the port open
 
-This is the honest caveat. A USB-C source already offers 5 V by default, so a
-decoy asked for 5 V may simply take vSafe5V and never send an explicit Request —
-in which case the bank sees the same "nothing negotiated" it saw with a bare
-pigtail, and **the shutdown is unchanged**. Whether this particular unmarked
-board opens an explicit 5 V contract is not documented by the seller and has not
-been verified here. It is cheap to find out, and the meter says so directly.
+The worry was that a decoy asked for 5 V might simply take vSafe5V and never
+send an explicit Request, leaving the bank as unaware of the load as a bare
+two-wire pigtail does.
+
+**Observed 2026-09-15 (Natalia, UGREEN Nexode 100 W): with the trigger alone on
+the bank — a few mA of load, far under any low-load threshold — the output stays
+up.** So whatever the trigger does on CC is enough to keep the port open, and
+the low-load timeout is off the list of faults for this piano. (Duration of the
+observation not recorded; if the bank ever drops after a long idle, re-open
+this.)
+
+## Reversed polarity is the first thing to rule out, and it is free
+
+`D1` is wired cathode to `/VIN`, anode to `/GND` (`pcb/docs/NETLIST.md`, nets 2
+and 3). At the correct polarity it sits under its 5.8 V standoff and does
+nothing. **Swap the two wires and it is forward-biased: a 0.7 V silicon diode
+directly across the power bank**, which is a short by any protection circuit's
+definition, and the reason the trip is instantaneous and repeatable rather than
+delayed. `D2` blocks the reverse path, so the Nano and everything behind it never
+sees it — the design fails exactly as intended, and the bank's code is the alarm.
+
+Three checks, none of which need the board powered:
+
+1. **Which screw is which.** Trigger on the bank, nothing on the terminal, Fluke
+   on DC volts across the two screws: the red probe on the screw that reads
+   **+5 V** is the wire that goes to `J1` **pad 1** (silk `5V IN + −`).
+2. **Stray strand.** A chopped pigtail frays; one whisker bridging the two screws
+   is the same trip with none of the theory. Look at it under the microscope.
+3. **Short on the board.** Everything disconnected, Fluke on Ω, **red on `J1`
+   pad 1, black on pad 2**: the reading starts low and climbs as the meter charges
+   `C1`/`C3`, settling in the kΩ. Near 0 Ω that does not move = a real short.
+   **With the probes the other way round a low reading is normal** — that is `D1`
+   conducting, not a fault. Do not diagnose from the reversed reading.
+
+If the polarity *was* reversed, check `D1` survived before trusting it again:
+diode test should read ~0.7 V one way and open the other. Shorted both ways means
+it took the hit and needs replacing (`semi-p6ke6-8a`, 40 in stock) — the board is
+unprotected without it.
+
+## If polarity is fine: it is the inrush
+
+Then the 940 µF is what the bank is objecting to, and the order of operations is
+the free test: **tighten the wires into the screw terminal first, with the
+trigger unplugged, and only then plug the USB-C into the bank.** A cold start
+lets the bank ramp VBUS into the capacitance on its own soft-start; hot-plugging
+a discharged 940 µF onto an already-established 5 V rail is the worst case there
+is, and it is what happens when the terminal is landed last.
+
+If it still trips, drop **C1** from 470 µF to 220 µF (the electrolytic
+assortment kit has it). C1 is the one that matters here: it sits right behind the
+Schottky with nothing but `D2` between it and the source, while `L1` limits how
+fast `C3` can be asked for current. The filter does not suffer — `fc` is set by
+C3.
 
 ## Measure it — KWS-X1 in line
 
