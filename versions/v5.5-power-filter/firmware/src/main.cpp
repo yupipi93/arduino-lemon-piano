@@ -283,6 +283,26 @@ const int CHORD_HOLD_RATIO_PCT = 55;
 const unsigned long CHORD_CONFIRM_MS = 24;   // ...held this long before it opens
 const unsigned long CHORD_SWAP_MS = 10;      // buzzer handover, per voice
 
+// ── "play me that tune again": both END lemons, held (2026-09-15) ───────────
+// Sergio: "si el usuario toca la tecla 1 y la tecla 7 a la vez durante 2
+// segundos, suene de nuevo la musiquita de ese nivel, para que el usuario pueda
+// recordar cómo era". The theme IS the clue — the ten-note code is hidden in
+// it — so a player who half-remembers it currently has to reset the board or
+// win the level to hear it again. Now they can just ask.
+//
+// The two ENDS, because they are the one pair nobody plays by accident: they
+// are as far apart as this keyboard goes, and no melody here asks for both at
+// once. Two seconds, because it has to be a decision rather than a slip.
+//
+// It opens by UNDOING the press it arrived on. Pressing a lemon is a guess, and
+// the first of the two ends will already have been scored by the time the
+// second one lands — so the reminder puts the progress bar back exactly where
+// that press found it (stepBeforePress / countedBeforePress, the same snapshot
+// trick the buttons use for the sensitivity knob). Asking a question must not
+// cost you the game.
+const unsigned long THEME_REMINDER_MS = 2000;   // both ends held this long
+const unsigned long THEME_TICK_MS = 500;        // a rising chirp every half second
+
 // ── Free play announces itself with a SWEEP (2026-09-15) ────────────────────
 // It replaces the two-end idle shape that used to mark the mode: see
 // showFreePlayIdle() for why that shape had to go, and playFreePlayEntrySweep()
@@ -673,6 +693,18 @@ unsigned long chordReleaseSeenAt = 0;   // same confirmed-release rule as active
 unsigned long chordSwapAt = 0;          // last buzzer handover
 bool chordOnSecond = false;             // which voice has the buzzer right now
 bool repeatBarOn = false;               // the whole bar is lit for a repeated lemon
+
+// ── "play me that tune again" ──────────────────────────────────────────────
+unsigned long reminderSince = 0;        // when both ends first read down (0 = they do not)
+unsigned long reminderTickAt = 0;       // last charge chirp
+int  stepBeforePress = -1;              // the progress an END lemon's press found
+int  countedBeforePress = -1;           // ...and the key it found accepted, to put back
+                                        // -1 = nothing to undo (see the note at
+                                        // THEME_REMINDER_MS): only a press of
+                                        // lemon 1 or lemon 7 can be the first
+                                        // half of the gesture, so only those
+                                        // arm the snapshot, and any other lemon
+                                        // throws it away.
 int  chordLeaving = -1;                 // 0 = the first voice looks gone, 1 = the second
 
 int  baseline[KEY_COUNT];      // each key's resting level (measured, then tracked)
@@ -719,11 +751,14 @@ void announceMenuItem();
 void acceptMenuItem();
 void cancelMenu();
 void showMenuItem(uint8_t item, bool on);
-void showArmBar(uint8_t pct);
-void soundArmTick(uint8_t pct);
 void playMenuPreview(uint8_t item);
 static bool menuInterrupt();
 #endif
+void showArmBar(uint8_t pct);
+void soundArmTick(uint8_t pct);
+bool bothEndsDown();
+bool serviceThemeReminder();
+void playThemeReminder();
 void showMarginOnBar();
 void showFreePlayIdle();
 void showPitchBar(int key);
@@ -840,6 +875,10 @@ void loop() {
     restoreIdleDisplay();
   }
 
+  // BOTH END LEMONS AT ONCE is a question, not a note — and it has to be asked
+  // before the input below turns a finger into a guess. See serviceThemeReminder().
+  if (serviceThemeReminder()) return;
+
   const int keyboardOffset = (level - 1) * KEY_COUNT;
 
 //################################
@@ -898,8 +937,8 @@ void loop() {
     if (freePlay()) {
       startKeyTone(pressedNote);
       ledMeterUntil = 0;             // the note owns the bar now, not the meter
-      playKeyWave(justPressed);      // a wave breaking outward from that lemon
-      showPitchBar(justPressed);     // ...settling on the note's own height
+      playKeyWave(justPressed);      // a wave breaking outward from that lemon,
+                                     // and then darkness: the wave IS the display
       if (serialEnabled) {
         Serial.print(F("~ key ")); Serial.print(justPressed + 1);
         Serial.print(F("  ")); Serial.print(pressedNote); Serial.println(F(" Hz"));
@@ -931,6 +970,16 @@ void loop() {
     // it simply does not score, does not advance and — this is the part that
     // changed — does not COST anything either. It says so in light, not in noise.
     if (justPressed != lastCountedKey) {
+      // ...remembering what this press found, but ONLY for the two lemons the
+      // both-ends gesture is made of: if this turns out to be its first half it
+      // has to be taken back, and if it is any other lemon there is nothing to
+      // take back and a stale snapshot would roll the game backwards.
+      if (justPressed == 0 || justPressed == (int) KEY_COUNT - 1) {
+        stepBeforePress = currentStep;
+        countedBeforePress = lastCountedKey;
+      } else {
+        stepBeforePress = -1;
+      }
       lastCountedKey = justPressed;
       handleGuess();
     } else {
@@ -1582,7 +1631,14 @@ void serviceMenu() {
   }
 }
 
-// The charge meter: how much of the three-second hold is done.
+#endif  // !VELXIO_EMULATION
+
+// ── the charge meter, shared by every gesture that has to be HELD ──────────
+// Two of them now: the three-second button holds, and the two-second both-ends
+// lemon hold that replays the theme. It lives outside the buttons-only region
+// because the second one is made of keys, which every build has.
+//
+// How much of the hold is done, as a bar that fills.
 void showArmBar(uint8_t pct) {
   uint8_t lit = (uint8_t) (((uint16_t) pct * LED_COUNT) / 100);
   if (lit > LED_COUNT) lit = LED_COUNT;
@@ -1602,7 +1658,6 @@ void soundArmTick(uint8_t pct) {
                    (int) (((long) (ARM_TICK_HIGH - ARM_TICK_LOW) * pct) / 100);
   playTone(freq, ARM_TICK_MS);
 }
-#endif  // !VELXIO_EMULATION
 
 // The ten-LED bar doubles as a SENSITIVITY METER: how many LEDs are lit shows
 // where the knob sits across the useful range on fruit (a margin of MARGIN_MIN
@@ -1891,7 +1946,7 @@ void endChord() {
   releaseSeenAt = 0;            // the surviving note was never let go
   if (activeKey < 0) return;
   tone(BUZZER, noteForKey(activeKey));
-  showPitchBar(activeKey);
+  allLedsOff();               // one voice draws no standing light any more
   if (serialEnabled) {
     Serial.print(F("~~ chord ends - key ")); Serial.print(activeKey + 1);
     Serial.println(F(" alone"));
@@ -1909,7 +1964,7 @@ void promoteChordVoice() {
   activeKey = survivor;
   pressedNote = noteForKey(survivor);
   startKeyTone(pressedNote);
-  showPitchBar(survivor);
+  allLedsOff();               // ...and the same when it is the lower voice that left
   if (serialEnabled) {
     Serial.print(F("~~ chord ends - key ")); Serial.print(survivor + 1);
     Serial.println(F(" holds on"));
@@ -1942,6 +1997,14 @@ void clearChord() {
 // key 4 is shorter than the wave from key 1. That is the honest version: the
 // light stops when it runs out of bar, the way a wave does when it runs out of
 // pond. The note is already sounding underneath it.
+//
+// AND IT IS THE WHOLE DISPLAY (2026-09-15, same evening). Until an hour ago the
+// wave was followed by the pitch meter — key 1 holding one LED lit, key 7
+// holding all ten — and the two read as one confused thing: "están solapados",
+// a wave that runs and then a block of light that stays. Sergio asked for the
+// static half to go and only the wave to remain. So the bar goes dark behind
+// it, which also means the wave is the ONLY thing a played note draws, and the
+// motion he described is the whole vocabulary of the mode.
 void playKeyWave(int key) {
   const int8_t centre = (int8_t) ledForKey(key);
   const int8_t reach = (centre > (int8_t) (LED_COUNT - 1 - centre))
@@ -1952,6 +2015,104 @@ void playKeyWave(int key) {
     if (centre + r < (int8_t) LED_COUNT) digitalWrite(LED_PINS[centre + r], HIGH);
     delay(FREE_WAVE_STEP_MS);
   }
+  allLedsOff();          // the wave leaves the pond as it found it
+}
+
+//################################
+//#####  PLAY IT AGAIN ###########
+//################################
+// The rules are at THEME_REMINDER_MS, up in the constants. This is the machine.
+
+// Are lemon 1 and lemon 7 both being held? Judged by each key's own dip, not by
+// strongestKey(), because this gesture is precisely the case where there is no
+// single strongest key and picking one would be the wrong question.
+//
+// "Both are over the threshold" is NOT enough, and the host test said so before
+// the fruit could: the channels are coupled, so on a rig where one finger casts
+// a shadow bigger than touchMargin, BOTH ends read down every time anybody
+// plays anything — and the piano would stop dead and offer to replay the theme
+// on every note. The rest of the firmware survives that kind of rig because
+// strongestKey() only ever takes the DEEPEST channel; this has to do the same
+// sort of thing.
+//
+// So the two ends must also be the two deepest: if any middle lemon is dipping
+// comparably (the same ratio the chord uses), what is on the fruit is a hand or
+// a single finger's shadows, not this gesture, and the answer is no.
+bool bothEndsDown() {
+  const int d0 = keyDip(0), dN = keyDip(KEY_COUNT - 1);
+  if (d0 < touchMargin || dN < touchMargin) return false;
+  const int weaker = d0 < dN ? d0 : dN;
+  for (uint8_t i = 1; i < KEY_COUNT - 1; i++) {
+    if ((long) keyDip(i) * 100 >= (long) weaker * CHORD_MIN_RATIO_PCT) return false;
+  }
+  return true;
+}
+
+// Returns true when it owns this loop — the caller must do nothing else, since
+// while the two ends are down there is no note to play and no guess to score.
+bool serviceThemeReminder() {
+  if (!bothEndsDown()) {
+    if (reminderSince) {          // let go before the two seconds were up
+      reminderSince = 0;
+      log(F("== theme reminder cancelled"));
+      soundLimit();               // the same bump every other cancelled hold uses
+      restoreIdleDisplay();
+    }
+    return false;
+  }
+
+  const unsigned long now = millis();
+  if (reminderSince == 0) {
+    reminderSince = now;
+    reminderTickAt = 0;
+    // Whatever was sounding stops, and whatever the press that got us here did
+    // to the game is undone. Asking a question must not cost you the game.
+    stopKeyTone();
+    activeKey = -1;
+    releaseSeenAt = 0;
+    repeatBarOn = false;
+    clearChord();
+    if (stepBeforePress >= 0) {   // ...only if an END lemon's press set it
+      currentStep = stepBeforePress;
+      lastCountedKey = countedBeforePress;
+      stepBeforePress = -1;       // spent: a second arming must not rewind further
+    }
+    ledMeterUntil = 0;            // the bar is the charge meter from here
+    log(F("== both ends held - keep holding to hear the theme again"));
+  }
+
+  const unsigned long held = now - reminderSince;
+  if (held >= THEME_REMINDER_MS) {
+    playThemeReminder();
+    reminderSince = 0;
+    return true;
+  }
+  uint8_t pct = (uint8_t) ((held * 100) / THEME_REMINDER_MS);
+  showArmBar(pct);
+  if (reminderTickAt == 0 || (now - reminderTickAt) >= THEME_TICK_MS) {
+    reminderTickAt = now;
+    soundArmTick(pct);
+  }
+  return true;
+}
+
+// Play the mode's own announcement again — the level's theme, or free play's
+// scale and its sweep — and then wait for the fruit to be let go, so the two
+// lemons that asked the question do not turn into notes the moment it is
+// answered. The wait is capped: a channel that never reads clear must not be
+// able to hang the piano.
+void playThemeReminder() {
+  log(F("== playing the theme again"));
+  allLedsOff();
+  playLevelIntro();
+  const unsigned long giveUpAt = millis() + 4000;
+  while (bothEndsDown() && (long) (giveUpAt - millis()) > 0) {
+    // hold here; the player is still touching both ends
+  }
+  lastCountedKey = -1;            // whatever they play next is a fresh move
+  stepBeforePress = -1;
+  countedBeforePress = -1;
+  restoreIdleDisplay();
 }
 
 // Whatever the bar should be showing when nothing is sounding and no meter is

@@ -84,8 +84,8 @@ In free play the seven lemons are simply the notes you were taught at school:
 - **Every note breaks a wave.** Touch a lemon and a wave of light runs out from
   that lemon's own place on the bar: lemon 1 sends it left to right, lemon 7
   sends it right to left, and a lemon in the middle opens it both ways at once.
-- Once the wave has passed, the lights are a **pitch meter**: low notes light a
-  little of the bar, high notes light all of it.
+- And that is **all** the lights do here: the wave passes and the bar goes dark
+  again. Nothing stays lit while you hold a note.
 - **Two lemons at once sound as two notes.** Hold a second lemon along with the
   first and you get the interval, with the bar showing two separate lights, one
   for each note. Let either one go and the other keeps sounding. It takes two
@@ -96,6 +96,21 @@ In free play the seven lemons are simply the notes you were taught at school:
 - Going into free play is announced by the bar itself: two lights run in from
   the ends, meet, open out until the whole bar is lit, and then go out — and
   then the piano plays you the scale.
+
+### Forgotten how the tune went? Ask for it again
+
+**Hold lemon 1 and lemon 7 at the same time for two seconds.** The bar fills up
+like a charge meter, a chirp climbs with it, and then the level plays you its
+theme again — the same one it opened with. The melody is where the secret code
+is hidden, so this is the hint button.
+
+It costs you nothing. Touching both ends at once is never a move: neither lemon
+sounds, neither is counted, and if you had already touched lemon 1 a moment
+before lemon 7 arrived, that press is given back to you. Let go before the two
+seconds and nothing happens at all.
+
+In free play it replays the mode's own opening instead — the sweep and the
+scale.
 
 ## 5. Choosing a mode
 

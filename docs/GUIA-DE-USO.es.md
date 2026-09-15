@@ -94,8 +94,8 @@ En modo libre los siete limones son sencillamente las notas de toda la vida:
   sitio que ese limón ocupa en la barra: el limón 1 la manda de izquierda a
   derecha, el 7 de derecha a izquierda, y uno del medio la abre hacia los dos
   lados a la vez.
-- Cuando la ola ha pasado, las luces son un **medidor de altura**: las notas
-  graves encienden poca barra, las agudas la encienden entera.
+- Y eso es **todo** lo que hacen las luces aquí: pasa la ola y la barra se
+  vuelve a apagar. No se queda nada encendido mientras mantienes la nota.
 - **Dos limones a la vez suenan como dos notas.** Mantén un segundo limón junto
   al primero y suena el intervalo, con la barra enseñando dos luces separadas,
   una por nota. Suelta cualquiera de los dos y el otro sigue sonando. Hacen
@@ -106,6 +106,20 @@ En modo libre los siete limones son sencillamente las notas de toda la vida:
 - Entrar en modo libre lo anuncia la propia barra: dos luces entran desde los
   extremos, se encuentran, se abren hasta encender la barra entera y se apagan
   — y después el piano te toca la escala.
+
+### ¿Se te ha olvidado cómo iba la melodía? Pídela otra vez
+
+**Mantén el limón 1 y el limón 7 a la vez durante dos segundos.** La barra se
+llena como un cargador, un pitido sube con ella, y el nivel te vuelve a tocar su
+melodía, la misma con la que empezó. En esa melodía está escondida la clave
+secreta, así que esto es el botón de pista.
+
+No te cuesta nada. Tocar los dos extremos a la vez nunca es una jugada: no suena
+ninguno de los dos limones, no se cuenta ninguno, y si habías tocado el limón 1
+un momento antes de llegar al 7, esa pulsación se te devuelve. Si sueltas antes
+de los dos segundos, no pasa absolutamente nada.
+
+En modo libre te repite la presentación del propio modo: el barrido y la escala.
 
 ## 5. Elegir modo
 

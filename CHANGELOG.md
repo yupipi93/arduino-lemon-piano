@@ -2,6 +2,102 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-15 (evening) — the wave is the whole display, and the theme can be asked for
+
+Two more from Sergio, straight after playing the last build.
+
+### 1. Free play's bar only ever MOVES now
+
+*"Quita el estático. El estático de que cuando pulsas la tecla 1 se enciende el
+primer LED y cuando tocas la 7 se encienden todos. Solo quiero que salga la
+onda, el barrido… están solapados."*
+
+The pitch meter and the wave were both drawing on the same ten LEDs, one after
+the other, and they read as one confused thing: a wave that runs and then a
+block of light that stays. The static half is gone. In free play the bar is now
+**dark, a wave, dark again** — the wave is the only thing a played note ever
+draws, and `playKeyWave()` ends with `allLedsOff()` so the pond is left as it
+was found.
+
+The two places a single note could still leave a standing light went with it:
+when a chord narrows to one voice (either way round), the bar goes dark rather
+than falling back to the pitch bar. `showPitchBar()` survives for exactly one
+caller — the scale that announces the mode, where the bar climbing *is* the
+animation.
+
+Worth noting what is deliberately kept: the chord's **two lone LEDs**. That is
+the one standing shape left in free play, and it is the one worth keeping still
+— it is the only way to see that two notes are sounding.
+
+### 2. Both END lemons, held two seconds, replay the level's theme
+
+*"Si el usuario toca la tecla 1 y la tecla 7 a la vez durante 2 segundos, suene
+de nuevo la musiquita de ese nivel. Para que el usuario pueda recordar cómo
+era."*
+
+The theme **is** the clue — the ten-note code is hidden in it — so a player who
+half-remembers it had to reset the board or win the level to hear it again. Now
+they can ask. Hold lemon 1 and lemon 7 together: the bar becomes a charge meter
+with a rising chirp (the same language as the two button holds), and at two
+seconds `playLevelIntro()` runs again. In free play that replays the mode's own
+announcement, sweep and scale.
+
+**The two ends, because they are the one pair nobody plays by accident** — as
+far apart as this keyboard goes, and no melody here asks for both at once.
+
+**And it must not cost anything to ask**, which is most of the work:
+
+- It is checked **before the input layer turns a finger into a guess**
+  (`serviceThemeReminder()` returns true and owns the loop), so when both land
+  in the same scan neither lemon sounds and neither is scored.
+- When the second lemon arrives *late*, the first has already been scored — so
+  the gesture **undoes it**, putting `currentStep` and `lastCountedKey` back to
+  what that press found. Only a press of lemon 1 or lemon 7 arms that snapshot;
+  any other lemon sets it to −1, or a stale snapshot would roll the game
+  backwards on the next arming. Same trick the buttons already use for the
+  sensitivity knob (`marginBeforePlus`).
+- Letting go early cancels with the same bump every other held gesture uses, and
+  **leaves the undo in place**: touching both ends is never a move.
+
+**It had to be made shadow-proof, and the host test said so before the fruit
+could.** The first version asked "are both ends over `touchMargin`?" — which, on
+a rig where one finger's shadow is bigger than the margin, is true *every time
+anybody plays anything*. Ten existing tests went red at once: the piano stopped
+on every note to offer the theme. The rest of the firmware survives such a rig
+because `strongestKey()` only ever takes the deepest channel, so `bothEndsDown()`
+now does the same sort of thing — the two ends must also be the **two deepest**,
+judged by the same ratio the chord uses. A middle lemon dipping comparably means
+a hand on the fruit, not this gesture.
+
+**What it costs:** lemon 1 + lemon 7 is no longer available as a chord in free
+play. It is the widest interval the keyboard has, and it is the price of putting
+the gesture on the pair nobody hits by accident. Said out loud here and in the
+version README rather than left to be discovered.
+
+### The fake board learned to hear a bit-banged tune
+
+Asserting "it replayed the level's own music" was impossible until now: themes
+go through `playSong()` → `buzz()`, which **toggles the buzzer pin by hand**
+rather than calling `tone()` (that is what the 2019 code did, and what the piezo
+is wired for), so `board.tones` never saw a single note of one. `FakeBoard` now
+counts raw writes per pin, and that turns out to be a sharper instrument than
+expected: the buzzer's edge count straight after boot **is** one playing of the
+level-1 intro, so the test asserts the reminder produced **the same number
+again, edge for edge**. Not "a tune played" — *that* tune.
+
+### Evidence
+
+- **All five envs build.** `nanoatmega328` 18 050 B flash / 58.8 %, 567 B RAM /
+  27.7 %.
+- **Host tests: 107 + 161 checks, 0 failed**, up from 107 + 145. Test 7 rewritten
+  (the free-play bar has no standing state at all now), test 25 added.
+- **Flashed and verified**: `/dev/ttyUSB0`, 18 050 bytes written and verified;
+  the board boots, calibrates (margin 18 on a quiet bench) and announces
+  `Level 1`.
+- **Still needs fingers on fruit**: whether two seconds is the right hold, and
+  whether the chord comes now that gate 1 is fixed. Both are single constants,
+  and `-DDEBUG_TOUCH` prints the dips for the second one.
+
 ## 2026-09-15 (later) — the levels play in their own key, and the light moves where it should
 
 Four reports from Sergio after playing the morning's build, all in

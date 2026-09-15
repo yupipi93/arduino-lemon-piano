@@ -132,9 +132,13 @@ to travel down, which is why they read as a run across the whole bar, and no key
 is special-cased. It is the motion that used to mark a repeated lemon in the
 game, moved to where an instrument can use it.
 
-The LED bar changes job with it: once the wave has passed, while the note sounds
-it is a **pitch meter** (key 1 lights one LED, key 7 lights all ten), and when
-nothing is sounding it is **dark** (2026-09-15). It used to show its two ends lit, as a badge for the mode
+**And the wave is the whole display.** For an hour it was followed by a pitch
+meter — key 1 holding one LED lit, key 7 holding all ten — and the two read as
+one confused thing: a wave that runs, then a block of light that stays.
+*"Están solapados."* The static half is gone, so in free play the bar **only
+ever moves**: dark, a wave, dark again. It also means the chord's two lone LEDs
+are the one standing shape left in the mode, which is exactly the shape worth
+keeping still (2026-09-15). It used to show its two ends lit, as a badge for the mode
 — but that badge never went away: it sat inside every pitch reading, looking
 like part of it. Now every LED that is lit was lit by a finger, and the mode
 announces itself **once, as an animation**: on the way in, two lights walk in
@@ -197,6 +201,48 @@ brought back as a gesture:
 
 A preview is cut off the instant the wheel turns again, so browsing runs at the
 speed of the hand, not of the tunes.
+
+### "Play me that tune again" — both END lemons, held 2 s (2026-09-15)
+
+The theme **is** the clue: the ten-note code is hidden in the tune the level
+opens with. Until now a player who half-remembered it had to reset the board or
+win the level to hear it again. Sergio: *"si el usuario toca la tecla 1 y la
+tecla 7 a la vez durante 2 segundos, suene de nuevo la musiquita de ese nivel,
+para que el usuario pueda recordar cómo era."*
+
+Hold **lemon 1 and lemon 7 together**. The bar becomes a charge meter with a
+rising chirp — the same language as the two button holds — and at two seconds
+the level's own theme plays again. In free play it replays the mode's own
+announcement instead: the entry sweep and do-re-mi-fa-sol-la-si.
+
+Three things make it safe to ask:
+
+- **The two ends are the one pair nobody plays by accident.** They are as far
+  apart as this keyboard goes and no melody here wants both at once.
+- **Both ends together is a question, not a note.** It is checked before the
+  input layer turns a finger into a guess, so neither lemon sounds and neither
+  is scored.
+- **…and it undoes the press it arrived on.** If you reach lemon 7 a moment
+  after lemon 1, that first press has already been scored — so the gesture puts
+  the progress bar back exactly where that press found it (the same snapshot
+  trick the buttons use for the sensitivity knob). Only a press of lemon 1 or
+  lemon 7 arms that snapshot; any other lemon throws it away, or the game would
+  roll backwards. Asking a question must not cost you the game. Letting go
+  early cancels with the same bump every other held gesture uses — and leaves
+  the undo in place, because touching both ends is never a move.
+
+**What it costs:** lemon 1 + lemon 7 can no longer be played as a chord in free
+play. That is the widest interval the keyboard has, and it is the price of
+putting the gesture on the pair nobody hits by accident.
+
+**It is shadow-proof**, which the host test insisted on before the fruit could:
+"both ends are over the threshold" is not enough, because on a rig where one
+finger's shadow is bigger than `touchMargin` that is true every time anybody
+plays anything — and the piano would stop and offer to replay the theme on every
+note. So the two ends must also be the **two deepest** channels, judged by the
+same ratio the chord uses. The rest of the firmware survives such a rig because
+`strongestKey()` only ever takes the deepest channel; this does the same sort of
+thing.
 
 ### The overlaps, and why they do not collide
 

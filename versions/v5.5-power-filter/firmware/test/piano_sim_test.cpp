@@ -244,22 +244,31 @@ static void test_free_play_repeats_and_never_scores() {
 // of the mode. Sergio killed it on 2026-09-15: it was still sitting there under
 // every note the player pressed, inside the pitch reading, looking like part of
 // it. Free play idles DARK now, so every lit LED was lit by a finger.
-static void test_free_play_pitch_bar() {
-  section("7. FREE PLAY: the bar is a pitch meter, and it idles DARK");
+// The bar in free play has NO standing state at all as of 2026-09-15: it idles
+// dark, a note draws a wave and then dark again. Sergio removed the pitch meter
+// that used to sit under the wave — "quita el estático... están solapados" —
+// so the only thing the bar ever does here is move. What each key's wave looks
+// like is test 24's job; this one pins that nothing stays behind.
+static void test_free_play_bar_never_stands_still() {
+  section("7. FREE PLAY: the bar only ever MOVES — nothing is left standing");
   boot();
   toggleFreePlayByHold();
   ok(ledPattern() == "..........", "idle: nothing is lit at all", ledPattern());
 
-  // Each note opens with the wave (playKeyWave), so the pitch bar is what the
-  // bar settles on a moment later, not what it shows instantly.
-  board.touched[0] = true; runFor(400);
-  eqInt(litLeds(), 1, "the lowest lemon settles on one LED");
+  size_t tm = toneMark();
+  board.touched[0] = true; runFor(500);
+  ok(ledPattern() == "..........",
+     "the lowest lemon: the wave passes and leaves the bar dark", ledPattern());
+  ok(!tonesSince(tm).empty(), "  ...while its note is still sounding");
   board.touched[0] = false; runFor(300);
 
-  board.touched[6] = true; runFor(400);
-  eqInt(litLeds(), 10, "the highest settles on all ten");
+  tm = toneMark();
+  board.touched[6] = true; runFor(500);
+  ok(ledPattern() == "..........",
+     "the highest lemon: same, no block of light left behind", ledPattern());
+  ok(!tonesSince(tm).empty(), "  ...and it too is still sounding");
   board.touched[6] = false; runFor(300);
-  ok(ledPattern() == "..........", "  ...and it goes dark again, every time", ledPattern());
+  ok(ledPattern() == "..........", "  ...and it is dark once let go", ledPattern());
 }
 
 static void test_cancel_changes_nothing() {
@@ -697,7 +706,7 @@ static void test_two_lemons_sound_as_two_notes() {
      t.empty() ? "no tone" : "ended on " + std::to_string(t.back()));
   tm = toneMark(); runFor(300);
   eqInt((long) tonesSince(tm).size(), 0, "  ...and it sustains: not one note re-struck");
-  eqInt(litLeds(), 1, "  ...and the bar is key 1's pitch bar again");
+  eqInt(litLeds(), 0, "  ...and the bar is dark again, like any single note");
   board.touched[0] = false; runFor(300);
   ok(ledPattern() == "..........", "  ...and dark once both are let go", ledPattern());
 
@@ -713,7 +722,7 @@ static void test_two_lemons_sound_as_two_notes() {
      "lifting the LOWER lemon promotes the upper one instead of stopping",
      t.empty() ? "no tone" : "ended on " + std::to_string(t.back()));
   ok(serialSince(sm, "holds on"), "  ...and the log says which voice held on");
-  eqInt(litLeds(), 7, "  ...and the bar is key 5's pitch bar");
+  eqInt(litLeds(), 0, "  ...and the bar is dark, like any single note");
   board.touched[4] = false; runFor(300);
 }
 
@@ -737,7 +746,7 @@ static void test_one_finger_is_never_a_chord() {
   ok(onlyFa, "one finger, one note, held - whatever the neighbours are doing",
      std::to_string(t.size()) + " tones, not all F5");
   ok(!serialSince(sm, "~~ chord"), "  ...no second voice was opened");
-  eqInt(litLeds(), 5, "  ...and the bar is the pitch bar, filled from the left");
+  eqInt(litLeds(), 0, "  ...and the bar is dark: one finger leaves no standing light");
   board.touched[3] = false; runFor(300);
 
   // A DEEPER shadow: 8 counts against the finger's 12 clears the absolute floor
@@ -906,8 +915,71 @@ static void test_free_play_wave_starts_at_the_key() {
   board.touched[3] = true; runFor(400);
   film = framesSince(fm);
   ok(filmHas(film, "...#.#...."), "key 4: the wave parts in both directions");
-  ok(filmHas(film, "#........#"), "  ...and both fronts reach the ends together");
+  // Key 4 sits at LED 5 of ten, so the two fronts are NOT symmetric about the
+  // bar: the left one runs out after four steps and the right one keeps going.
+  // "#.......#." is that fourth step, which no end key can draw.
+  ok(filmHas(film, "#.......#."), "  ...both fronts travelling, off-centre as they are");
   board.touched[3] = false; runFor(300);
+}
+
+// ── 25 ──────────────────────────────────────────────────────────────────────
+// Sergio, 2026-09-15: "si el usuario toca la tecla 1 y la tecla 7 a la vez
+// durante 2 segundos, suene de nuevo la musiquita de ese nivel, para que el
+// usuario pueda recordar cómo era". The theme is the clue — the code is hidden
+// in it — so the thing this must not do is charge the player for asking.
+static void test_both_ends_replay_the_theme() {
+  section("25. Both end lemons, held two seconds, play the theme again");
+  boot();
+  // setup() announces level 1 with its theme, and a theme is BIT-BANGED — so
+  // the buzzer's edge count straight after boot IS one playing of the Overworld
+  // intro, and the reminder has to produce the same number again.
+  const unsigned long oneIntro = board.pinWrites[BUZZER];
+  ok(oneIntro > 1000, "the boot announcement drove the buzzer for a whole tune",
+     std::to_string(oneIntro) + " edges");
+
+  const int code[10] = {5, 4, 5, 6, 1, 4, 1, 0, 2, 3};
+  touchKey(code[0]);
+  touchKey(code[1]);
+  eqInt(litLeds(), 2, "the game is two notes in");
+
+  const unsigned long beforeAsking = board.pinWrites[BUZZER];
+  size_t sm = serialMark();
+  board.touched[0] = true; board.touched[6] = true;
+  runFor(900);
+  ok(serialSince(sm, "both ends held"), "holding both ends asks the question");
+  const int meter = litLeds();
+  ok(meter > 0 && meter < LED_COUNT,
+     "  ...and the bar becomes a charge meter while it fills",
+     std::to_string(meter) + " lit");
+  ok(!serialSince(sm, "OK 3/10") && !serialSince(sm, "WRONG"),
+     "  ...and neither lemon was taken as a guess");
+
+  runFor(2000);
+  ok(serialSince(sm, "playing the theme again"), "at two seconds the theme plays");
+  const unsigned long replayed = board.pinWrites[BUZZER] - beforeAsking;
+  eqInt((long) replayed, (long) oneIntro,
+        "  ...and it is the SAME tune, edge for edge, that level 1 opened with");
+
+  board.touched[0] = false; board.touched[6] = false; runFor(800);
+  eqInt(currentStep, 2, "  ...the progress is exactly where it was");
+  eqInt(litLeds(), 2, "  ...and so is the bar");
+
+  sm = serialMark();
+  touchKey(code[2]);
+  ok(serialSince(sm, "OK 3/10"), "and the game carries on from note 3");
+
+  // Letting go early costs nothing either — and it must not cost the guess the
+  // first of the two lemons made on its way in.
+  boot();
+  touchKey(code[0]);
+  eqInt(litLeds(), 1, "one correct note");
+  sm = serialMark();
+  board.touched[0] = true; runFor(200);      // lemon 1 -- wrong for step 2, but...
+  board.touched[6] = true; runFor(700);      // ...lemon 7 arrives: it is a question
+  ok(serialSince(sm, "both ends held"), "reaching the second lemon late still asks it");
+  board.touched[0] = false; board.touched[6] = false; runFor(600);
+  ok(serialSince(sm, "theme reminder cancelled"), "  ...and letting go early cancels it");
+  eqInt(currentStep, 1, "  ...with the progress put back, not spent on a wrong note");
 }
 
 int main(int argc, char **argv) {
@@ -921,7 +993,7 @@ int main(int argc, char **argv) {
   test_wheel_reaches_every_level_and_wraps();
   test_free_play_mapping();
   test_free_play_repeats_and_never_scores();
-  test_free_play_pitch_bar();
+  test_free_play_bar_never_stands_still();
   test_cancel_changes_nothing();
   test_accept_restarts_the_chosen_level();
   test_opening_the_menu_gives_the_knob_back();
@@ -939,6 +1011,7 @@ int main(int argc, char **argv) {
   test_every_level_plays_in_its_own_key();
   test_level_four_still_wins();
   test_free_play_wave_starts_at_the_key();
+  test_both_ends_replay_the_theme();
 
   printf("\n%d checks, \033[%sm%d failed\033[0m\n\n",
          checks, failures ? "31" : "32", failures);

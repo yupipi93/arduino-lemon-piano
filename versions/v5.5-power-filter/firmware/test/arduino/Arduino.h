@@ -97,12 +97,23 @@ struct FakeBoard {
     }
     ledFrames.push_back(f);
   }
+  // ── every pin write, counted (2026-09-15) ───────────────────────────────
+  // THE THEMES ARE BIT-BANGED. playSong() drives the buzzer pin by hand
+  // (buzz(), in main.cpp) instead of going through tone(), because that is what
+  // the 2019 code did and what the piezo is wired for — so `tones` above never
+  // sees a single note of a level theme, and until now no test could tell
+  // whether a tune had played at all. This counts raw writes per pin, which is
+  // the only trace a bit-banged song leaves: pinWrites[BUZZER] after a theme is
+  // twice its cycle count, and two playings of the SAME theme leave the same
+  // number. That is what makes "it replayed the level's own music" assertable.
+  unsigned long pinWrites[PIN_COUNT];
+
   std::string serial;
   bool traceSerial = false;
 
   FakeBoard() {
     for (int i = 0; i < KEY_COUNT_; i++) { baseline[i] = 1022; touched[i] = false; }
-    for (int i = 0; i < PIN_COUNT; i++) { pinState[i] = LOW; pinMode_[i] = INPUT; }
+    for (int i = 0; i < PIN_COUNT; i++) { pinState[i] = LOW; pinMode_[i] = INPUT; pinWrites[i] = 0; }
   }
 
   uint32_t ms() const { return (uint32_t) (micros_ / 1000); }
@@ -195,6 +206,7 @@ inline void pinMode(uint8_t pin, uint8_t mode) {
 }
 inline void digitalWrite(uint8_t pin, uint8_t v) {
   if (pin >= FakeBoard::PIN_COUNT) return;
+  board.pinWrites[pin]++;
   const uint8_t was = board.pinState[pin];
   board.pinState[pin] = v;
   if (was != v) board.noteLedFrame(pin);
