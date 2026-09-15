@@ -120,9 +120,24 @@ widest chord this keyboard has.
   regression suite (`versions/README.md`), and free play has always been tested
   there rather than in the browser — the emulation has no pins left for the two
   buttons.
-- **Not yet flashed** at the time of writing: the Nano is not plugged into
-  quantumpc (no `/dev/ttyUSB*`, nothing on `lsusb`). `firmware.hex` is built and
-  waiting; see the flash note below if this line is still here.
+- **Flashed to the board**, `/dev/ttyUSB0`, env `nanoatmega328` (the Nano was
+  plugged in while this was being written — it had not been at the start):
+  17 348 bytes written and **verified** by avrdude, and the boot log came back
+  over the serial monitor: banner, seven baselines, an auto margin, `Level 1`.
+  What that proves is that the firmware runs; the two features themselves need
+  fingers on fruit, which is TODO 21 and 22.
+
+```
+  key 1 baseline=1017 noise=15 -> threshold=985      auto margin=32
+  ...                                                (worst noise 16 x 2)
+  key 7 baseline=1018 noise=16 -> threshold=986      Level 1
+```
+
+  Note the margin: **32 counts** on a bench where nothing is hanging off the
+  pins. The chord's absolute gate is `touchMargin + 2`, so it scales with
+  whatever calibration decides on the day rather than being a number tuned to
+  one rig — which is the only form of that gate that survives the fruit
+  changing. The ratio gate does not depend on the margin at all.
 
 Docs updated in step: the version README, `docs/USER-GUIDE.md`,
 `docs/GUIA-DE-USO.es.md`, and TODO items 18 (its two-ends question is answered),
