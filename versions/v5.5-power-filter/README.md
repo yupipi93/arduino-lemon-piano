@@ -119,9 +119,36 @@ is only believed after `RELEASE_CONFIRM_MS` (90 ms) of silence. Let go properly
 and touch again and it sounds again; four deliberate taps are still four notes.
 
 The LED bar changes job with it: while a note sounds it is a **pitch meter**
-(key 1 lights one LED, key 7 lights all ten), and when nothing is sounding it
-shows **only its two ends lit** — a shape the game's left-filling bar can never
-produce, so one glance says "this is the instrument, there is nothing to win".
+(key 1 lights one LED, key 7 lights all ten), and when nothing is sounding it is
+**dark** (2026-09-15). It used to show its two ends lit, as a badge for the mode
+— but that badge never went away: it sat inside every pitch reading, looking
+like part of it. Now every LED that is lit was lit by a finger, and the mode
+announces itself **once, as an animation**: on the way in, two lights walk in
+from the ends of the bar, meet in the middle, open back out until all ten are
+lit, and then empty to nothing — after which do-re-mi-fa-sol-la-si plays and the
+bar is left dark for the player.
+
+**TWO LEMONS AT ONCE SOUND AS TWO NOTES** (2026-09-15) — free play only. Hold a
+second lemon with the first and both notes sound. There is one buzzer and
+`tone()` makes exactly one square wave, so the two voices take turns every
+`CHORD_SWAP_MS` (10 ms): fast enough that the ear stops hearing an alternation
+and starts hearing an interval — the same arpeggio trick every mono sound chip
+has used for chords since 1983. The **bar shows two lone LEDs**, one at each
+note's place, which is a shape one finger cannot draw. Let either lemon go and
+what is left is simply the note that is left.
+
+The hard part is not the sound, it is **deciding that there really are two
+fingers**: the channels are coupled, so one finger already drags its neighbours
+part of the way down, and a single note that warbles like two would ruin every
+note anyone plays. So the second lemon has to pass three gates — an absolute dip
+deeper than a normal touch, a dip at least 70 % of the one the first finger is
+making, and being the *only* key that does both (three lemons' worth of signal
+is a hand laid across the fruit, not a chord) — and then hold still for 24 ms.
+The free-play log prints both dips every time a chord opens, so the real ratio
+on real fruit can be read off a serial monitor rather than guessed at twice.
+The game is deliberately untouched: it recognises a guess by comparing one
+frequency against the secret sequence, so a chord there is not a richer guess,
+it is an unanswerable question.
 
 Free play is **not a level**. Winning never advances into it.
 

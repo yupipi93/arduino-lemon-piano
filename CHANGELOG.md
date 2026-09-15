@@ -2,6 +2,134 @@
 
 Append-only log of significant changes. Newest first.
 
+## 2026-09-15 — free play opens with a sweep, and two lemons sound as two notes
+
+Two asks from Sergio, both about FREE PLAY, both in
+`versions/v5.5-power-filter/firmware/`.
+
+### 1. The two end LEDs are gone, and the mode announces itself instead
+
+Free play used to idle with **its two ends lit** — a shape the game's
+left-filling bar can never draw, so one glance said "this is the instrument".
+It worked as a badge and failed as a display: it never went away. Press a lemon,
+the pitch bar climbs, and those two LEDs are still sitting inside the reading
+pretending to be part of it. *"Al tocar y que se vayan encendiendo los LEDs de
+la escala se queda un poco raro... que no se queden esos dos LEDs encendidos de
+los extremos."*
+
+So the badge became an **event**. `playFreePlayEntrySweep()` runs once, on the
+way in, in three beats:
+
+1. two lights walk in from the ends and meet in the middle — the old idle shape,
+   collected up and carried away,
+2. they open back out, filling the bar to all ten,
+3. and the bar empties from the outside in, to nothing.
+
+It ends **dark**, which is exactly where free play now lives, so the animation
+hands over to the mode instead of being switched off by it. Then do-re-mi-fa-sol-
+la-si plays as it always did, and the bar stays dark until a finger lights it.
+`showFreePlayIdle()` is one `allLedsOff()` now.
+
+**The scale also stopped being abortable.** `playFreePlayFlourish()` gave up the
+moment either button read down — a leftover from when it doubled as the wheel's
+preview for free play, which it has not done since free play left the wheel on
+2026-09-13. The only button that can be down while it plays is the **+** that
+just asked for the mode, so the check did nothing but cut the announcement short
+for anyone who holds a button a beat longer than three seconds. *"Y como siempre
+toques la melodía."* It plays to the end now.
+
+### 2. Two lemons at once sound as two notes
+
+*"Cuando el usuario toque dos notas a la vez, esto se detecte y toque la nota
+correspondiente a ambas notas."* Free play only — the game recognises a guess by
+comparing **one** frequency against the secret sequence, so a chord there is not
+a richer guess, it is an unanswerable question. The game's code is untouched.
+
+**Sounding it** is the easy half. `tone()` owns Timer2 and Timer2 makes exactly
+one square wave, so the two voices take turns every `CHORD_SWAP_MS` (10 ms):
+50 handovers a second, above the ~20 Hz where the ear stops hearing an
+alternation and starts hearing an interval, and slow enough that C5 still gets
+five whole cycles to establish its pitch. `tone()` reprograms OCR2A in place
+rather than restarting the pin, so a handover costs no click. It is the Game
+Boy's arpeggio trick.
+
+**Deciding there are two fingers** is the hard half, and it is the whole of the
+work. A touch on this keyboard is 3-4 ADC counts and the channels are coupled:
+one finger already drags its neighbours part of the way down, which is why
+`strongestKey()` picks a winner by depth instead of taking the first channel
+over its threshold. A rule that asked "are two channels below threshold?" would
+hear a chord on every single note anyone played — and **a false chord is far
+worse than a missed one**, because a note that warbles like two ruins every note
+in the mode. So `chordPartnerFor()` is deliberately hard to please. Three gates,
+all of which the second lemon must pass:
+
+| | gate | why |
+|---|---|---|
+| 1 | dip ≥ `touchMargin + CHORD_EXTRA_COUNTS` (2) | coupling crumbs sit just over the plain margin |
+| 2 | dip ≥ `CHORD_MIN_RATIO_PCT` (70 %) of the first finger's dip | a second finger is the same ORDER as the first; a shadow is a fraction of it. **This is the gate that separates the two cases** |
+| 3 | it is the ONLY key that passes 1 and 2 | three lemons' worth of signal is a hand laid across the fruit, not a chord — refuse the lot |
+
+…and then the survivor holds still for `CHORD_CONFIRM_MS` (24 ms), so a spike on
+the way into a single touch cannot open a second voice for one scan.
+
+**Letting go needed the same idea, and that was the bug worth catching.** The
+first version asked `keyStillDown()` about the second voice and would have held
+a chord until BOTH fingers left: lift one lemon while the other is held and its
+channel does not come back to its resting level, it falls back to the *shadow*
+of the one still down — which is deeper than the release threshold. What does
+collapse the instant a finger lifts is the **ratio** between the two dips, so
+that is what is watched, with hysteresis (opens at 70 %, lets go under 55 %) and
+the same 90 ms confirmation a single note gets. Either voice may be the one that
+leaves: let the lower lemon go and the upper one is **promoted** to the note
+under the finger rather than the sound stopping, which is what every instrument
+does. While a chord is up it owns the release decision for both of its voices —
+`loop()` hands over to `serviceChord()` and does not second-guess it.
+
+`trackBaselines()` now skips the second voice too, or a chord held past
+`STUCK_MS` would have re-baselined the lemon underneath it.
+
+**The bar shows two lone LEDs**, one at each note's place. A single note fills
+the bar from the left, so two separated points is a shape one finger cannot
+draw — the light says "two" before the ear has finished deciding. It is also,
+on purpose, the shape the idle bar used to wear: keys 1 and 7 are simply the
+widest chord this keyboard has.
+
+### Evidence
+
+- **All five PlatformIO envs build**: `nanoatmega328` (the flashed one) at
+  **17 348 B flash / 56.5 %** and **555 B RAM / 27.1 %**, up from 15 570 B /
+  50.7 % and 536 B / 26.2 %. `nanoatmega328new`, `nanoatmega328-debug`,
+  `emulation` and `emulation-freeplay` green.
+- **Host tests: 107 + 122 checks, 0 failed** (`firmware/test/run.sh`), up from
+  107 + 107. Three new scenarios, and the fake board grew the thing they needed:
+  **`FakeBoard::couplingDepth`**, a model of one finger shadowing the other
+  channels. It is 0 by default, so every test written before today still sees
+  the clean board it was written for; the chord tests set it, and a chord rule
+  that only worked on an idealised board would not be a chord rule.
+  - *19* — the sweep's three beats are asserted from the LED **film**, not the
+    final pin states, because an animation is invisible to a snapshot; plus the
+    bar ends dark and the scale still plays all seven notes.
+  - *20* — both notes take turns on the one buzzer; the bar is `#.....#...`;
+    releasing either voice leaves the other **sustaining**, not re-struck.
+  - *21* — the expensive failure, three ways: a shadow too shallow (fails gate
+    1), a shadow deep enough to clear the floor but not the ratio (8 counts
+    against a finger's 12 — 67 % against the 70 % needed), and three fingers at
+    once (fails gate 3). No chord opens in any of them.
+- **Not run here**: the Velxio `--mode verify`. The harness repo is not on this
+  machine, which is also why TODO 19 is still open. The host tests are V5.5's
+  regression suite (`versions/README.md`), and free play has always been tested
+  there rather than in the browser — the emulation has no pins left for the two
+  buttons.
+- **Not yet flashed** at the time of writing: the Nano is not plugged into
+  quantumpc (no `/dev/ttyUSB*`, nothing on `lsusb`). `firmware.hex` is built and
+  waiting; see the flash note below if this line is still here.
+
+Docs updated in step: the version README, `docs/USER-GUIDE.md`,
+`docs/GUIA-DE-USO.es.md`, and TODO items 18 (its two-ends question is answered),
+21, 22 and 23. The organiser's booklet is still accurate — it never described
+the idle bar — but it now describes less than the piano does; that is TODO 23,
+worth a line at the next reprint rather than a reprint of its own.
+
 ## 2026-09-14 — the organiser's booklet, built and printed
 
 One A4 sheet, black and white, both sides, folding down the middle into an A5.

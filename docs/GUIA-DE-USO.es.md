@@ -91,9 +91,16 @@ En modo libre los siete limones son sencillamente las notas de toda la vida:
   funcionando; sólo ignora el parpadeo de un dedo que nunca se fue.
 - Las luces pasan a ser un **medidor de altura**: las notas graves encienden
   poca barra, las agudas la encienden entera.
-- Cuando no estás tocando, la barra enseña **sólo sus dos extremos encendidos**.
-  Esa forma significa "esto es el piano". La barra del juego nunca puede tener
-  ese aspecto.
+- **Dos limones a la vez suenan como dos notas.** Mantén un segundo limón junto
+  al primero y suena el intervalo, con la barra enseñando dos luces separadas,
+  una por nota. Suelta cualquiera de los dos y el otro sigue sonando. Hacen
+  falta dos toques de verdad: un dedo apoyado cerca del limón vecino no vale, y
+  eso es a propósito.
+- Cuando no estás tocando, la barra está **apagada**. Toda luz que veas la ha
+  encendido tu dedo.
+- Entrar en modo libre lo anuncia la propia barra: dos luces entran desde los
+  extremos, se encuentran, se abren hasta encender la barra entera y se apagan
+  — y después el piano te toca la escala.
 
 ## 5. Elegir modo
 

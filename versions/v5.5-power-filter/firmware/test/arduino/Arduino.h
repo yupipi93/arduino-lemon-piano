@@ -152,9 +152,27 @@ struct FakeBoard {
     return (uint32_t) ((micros_ / 1000) % dropoutEveryMs) < dropoutMs;
   }
 
+  // ── coupling between channels (2026-09-15) ──────────────────────────────
+  // The lemons sit in a row, touching each other, and the player is the return
+  // path for all of them: one finger on one lemon already drags the OTHER
+  // channels part of the way down. That is why strongestKey() picks a winner by
+  // depth instead of taking the first channel over its threshold — and it is
+  // the entire difficulty of telling "two fingers" from "one finger and its
+  // shadows" (chordPartnerFor() in main.cpp).
+  //
+  // A ghost dips by couplingDepth, a finger by touchDepth. Zero by default, so
+  // every test written before this one sees the clean board it was written for;
+  // the chord tests set it and are the reason it exists.
+  int couplingDepth = 0;
+  bool anyTouched() const {
+    for (int i = 0; i < KEY_COUNT_; i++) if (touched[i]) return true;
+    return false;
+  }
+
   int settledValue(int k) {
     int v = baseline[k] - nextNoise();
     if (touched[k] && !contactBroken()) v -= touchDepth;
+    else if (couplingDepth > 0 && !contactBroken() && anyTouched()) v -= couplingDepth;
     return v < 0 ? 0 : v;
   }
   // Called on every pin change; records a frame only when it was a bar LED.

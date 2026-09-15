@@ -82,8 +82,16 @@ In free play the seven lemons are simply the notes you were taught at school:
   only ignores the flicker of a finger that never left.
 - The lights become a **pitch meter**: low notes light a little of the bar, high
   notes light all of it.
-- When you are not playing, the bar shows **only its two ends lit**. That shape
-  means "this is the piano". The game's bar can never look like that.
+- **Two lemons at once sound as two notes.** Hold a second lemon along with the
+  first and you get the interval, with the bar showing two separate lights, one
+  for each note. Let either one go and the other keeps sounding. It takes two
+  deliberate touches — a finger resting near a neighbouring lemon will not do
+  it, on purpose.
+- When you are not playing, the bar is **dark**. Every light you see was put
+  there by your own finger.
+- Going into free play is announced by the bar itself: two lights run in from
+  the ends, meet, open out until the whole bar is lit, and then go out — and
+  then the piano plays you the scale.
 
 ## 5. Choosing a mode
 

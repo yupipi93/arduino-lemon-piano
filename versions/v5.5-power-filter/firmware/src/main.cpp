@@ -3,6 +3,8 @@
    Board rebuilt 2026-07-28: GND-clip keyboard, two sensitivity buttons, no
    restart and no game-select switch.
    2026-09-09: FREE PLAY + the MODE WHEEL (see "THE MODE WHEEL" below).
+   2026-09-15: free play OPENS WITH A SWEEP and then leaves the bar DARK, and
+   TWO LEMONS AT ONCE sound as two notes (see "TWO LEMONS AT ONCE" below).
 
    CODE 1 (Mario Main Theme):  6,5,6,7,2,5,2,1,3,4
    CODE 2 (Mario Underworld) :  3,6,1,4,2,5,3,6,1,4
@@ -48,6 +50,16 @@
    (C5..B5), there is no code to find, no wrong note, and — unlike the game —
    THE SAME LEMON MAY BE PLAYED OVER AND OVER, which is the whole point of an
    instrument and exactly what the game's repeat filter forbids.
+
+   TWO LEMONS AT ONCE (2026-09-15) — in FREE PLAY only, a second lemon held
+   together with the first is detected and both notes sound. One buzzer cannot
+   hold two frequencies, so the chord is played the way every mono chip has
+   played one since 1983: the two notes swap the buzzer every CHORD_SWAP_MS,
+   fast enough that the ear fuses them into an interval. What is hard here is
+   not the sound but the DECISION — the channels are coupled, so one finger
+   already drags its neighbours down, and a false chord (one finger warbling
+   like two) is far worse than a missed one. chordPartnerFor() is where that
+   judgement lives and it is deliberately hard to please.
 
    Three gestures now share two buttons, so the decision layer was lifted out
    into include/ui_gestures.h — plain C++ with no Arduino in it, driven through
@@ -199,6 +211,63 @@ const unsigned long SUSTAIN_CAP_MS = 2000;  // how long the wrong tone waits for
 // LASTS counts as letting go. It has to stay well under a deliberate re-tap
 // (about 150 ms hand-to-hand at speed) or fast playing would lose notes.
 const unsigned long RELEASE_CONFIRM_MS = 90;
+
+// ── TWO LEMONS AT ONCE, in free play (2026-09-15) ───────────────────────────
+// Sergio: "cuando el usuario toque dos notas a la vez... toque la nota
+// correspondiente a ambas notas". Two problems, and the second is the hard one.
+//
+// SOUNDING two notes on one piezo: tone() owns Timer2 and Timer2 makes exactly
+// one square wave, so a real chord is impossible. The two voices take turns
+// instead, CHORD_SWAP_MS each. At 10 ms that is 50 handovers a second — above
+// the ~20 Hz where the ear stops hearing two alternating notes and starts
+// hearing one shimmering interval, and slow enough that C5 still gets five
+// whole cycles to establish its pitch. It is the Game Boy's arpeggio trick, and
+// tone() reprograms OCR2A in place rather than restarting the pin, so the
+// handover costs no click.
+//
+// DECIDING that there are two fingers is the part that needs care. A touch is
+// 3-4 counts on this keyboard and the channels are coupled: one finger already
+// pulls its neighbours part of the way down (which is why strongestKey() exists
+// at all). So a rule that just asks "are two channels below threshold?" would
+// hear a chord every time anyone plays a single note — and a single note that
+// warbles like two is much worse than a chord that occasionally fails to
+// trigger. Hence THREE independent gates, all of which the second key must pass:
+//
+//   1. an ABSOLUTE floor stricter than a normal touch: touchMargin +
+//      CHORD_EXTRA_COUNTS. Coupling crumbs sit just over the plain margin.
+//   2. a RATIO against the finger already down: a second finger makes a dip of
+//      the same ORDER as the first, while coupling is a fraction of it. This is
+//      the gate that actually separates the two cases.
+//   3. EXACTLY ONE key may pass 1 and 2. Three lemons' worth of signal is a
+//      hand laid across the fruit, not a chord — refuse the lot.
+//
+// ...and then the survivor has to hold still for CHORD_CONFIRM_MS, so a spike
+// on the way into a single touch cannot open a second voice for one scan.
+//
+// The two numbers are deliberately conservative and they are the tuning knobs:
+// the free-play log prints the dip of BOTH voices every time a chord opens, so
+// the real ratio on real fruit can be read off a serial monitor rather than
+// guessed at a second time.
+const int CHORD_EXTRA_COUNTS = 2;      // gate 1: deeper than a single touch needs
+const int CHORD_MIN_RATIO_PCT = 70;    // gate 2: share of the first finger's dip
+// ...and the ratio it takes to KEEP a voice, which is lower than the one it took
+// to open it — a Schmitt trigger, for the same reason TOUCH_HYSTERESIS is one.
+// This number is also how a chord is LET GO, and that is not a detail: while two
+// lemons are held, lifting one does not return its channel to its resting level,
+// because the finger still on the other one goes on shadowing it. An absolute
+// threshold would therefore never see the release at all (it would hold a chord
+// until BOTH fingers left). What collapses the moment a finger lifts is the
+// RATIO between the two dips, so that is what is watched.
+const int CHORD_HOLD_RATIO_PCT = 55;
+const unsigned long CHORD_CONFIRM_MS = 24;   // ...held this long before it opens
+const unsigned long CHORD_SWAP_MS = 10;      // buzzer handover, per voice
+
+// ── Free play announces itself with a SWEEP (2026-09-15) ────────────────────
+// It replaces the two-end idle shape that used to mark the mode: see
+// showFreePlayIdle() for why that shape had to go, and playFreePlayEntrySweep()
+// for what the animation says.
+const int FREE_ENTRY_STEP_MS = 34;   // one frame of the entry animation
+const int FREE_ENTRY_HOLD_MS = 90;   // the full bar's beat before it goes dark
 
 // A repeated lemon SOUNDS and says "that did not count" with light instead.
 // One LED from the right end to the left, at this pace, then the progress bar
@@ -525,6 +594,10 @@ int  level = 1;                // 1..LEVEL_COUNT, or FREE_PLAY (the mode wheel)
 // The single question everything else asks: is this an instrument or a game?
 static inline bool freePlay() { return level == FREE_PLAY; }
 
+// Which note lemon k plays in the mode we are in. Every row of `keys` is the
+// same length, so the mode IS the offset.
+static inline int noteForKey(int k) { return keys[(level - 1) * KEY_COUNT + k]; }
+
 // Where holding + puts you back. Free play is a detour, not a destination: the
 // level you were playing waits for you, and a player who never chose a level
 // gets level 1, which is what "a switch between free play and level 1" means
@@ -540,6 +613,15 @@ int  lastCountedKey = -1;      // last key the GAME accepted; pressing it again
                                // sounds, shows the repeat sweep, and scores
                                // nothing until a DIFFERENT key is played
 int  pressedNote = 0;          // last note played
+
+// ── the second voice (free play only) ──────────────────────────────────────
+int  chordKey = -1;            // the lemon sharing the buzzer, or -1 for none
+int  chordCandidate = -1;      // one that is passing the gates but not yet held
+unsigned long chordCandidateSince = 0;
+unsigned long chordReleaseSeenAt = 0;   // same confirmed-release rule as activeKey
+unsigned long chordSwapAt = 0;          // last buzzer handover
+bool chordOnSecond = false;             // which voice has the buzzer right now
+int  chordLeaving = -1;                 // 0 = the first voice looks gone, 1 = the second
 
 int  baseline[KEY_COUNT];      // each key's resting level (measured, then tracked)
 int  noiseLevel[KEY_COUNT];    // peak-to-peak idle noise, from calibration
@@ -593,6 +675,16 @@ static bool menuInterrupt();
 void showMarginOnBar();
 void showFreePlayIdle();
 void showPitchBar(int key);
+void showChordBar(int a, int b);
+void playFreePlayEntrySweep();
+int  keyDip(uint8_t i);
+int  chordPartnerFor(int a);
+void serviceChord();
+void serviceChordTone();
+void startChord(int partner);
+void endChord();
+void promoteChordVoice();
+void clearChord();
 void restoreIdleDisplay();
 void playFreePlayFlourish(bool lights);
 void playTone(int freq, int ms);
@@ -701,8 +793,15 @@ void loop() {
   // channels are coupled, so a single finger lifts several of them over their
   // thresholds and any "first index wins" scan would flip between them.
   if (activeKey >= 0) {
+    // TWO LEMONS SOUNDING: the chord answers for both of them, including which
+    // one was let go. It cannot be decided here, because keyStillDown() is an
+    // absolute threshold and a lifted finger does not cross one while the other
+    // finger is still shadowing its channel — see serviceChord().
+    if (chordKey >= 0) { serviceChord(); return; }
+
     if (keyStillDown(activeKey)) {
       releaseSeenAt = 0;   // whatever that was, it was not letting go
+      serviceChord();      // free play only: a SECOND lemon may join this note
       return;              // still held: the note is sounding, nothing to decide
     }
     // It read clear — but ONE scan is not a release (see RELEASE_CONFIRM_MS).
@@ -1043,6 +1142,7 @@ void trackBaselines() {
 
   for (uint8_t i = 0; i < KEY_COUNT; i++) {
     if ((int) i == activeKey) continue;              // sounding: leave it alone
+    if ((int) i == chordKey) continue;               // ...and so is this one
     int v = readKey(i);
     if (v > thresholdFor(i)) {
       touchedSince[i] = 0;
@@ -1494,13 +1594,18 @@ void showRepeatSweep() {
 }
 
 // ── What the bar means in FREE PLAY ─────────────────────────────────────────
-// Idle: the two ENDS lit and nothing between them. The game's bar always fills
-// from the left, so a gap in the middle is a shape no game state can produce —
-// one glance says "this is the instrument, there is nothing to win here".
+// Idle: DARK — and that is the change of 2026-09-15. It used to be the two ENDS
+// lit, a shape the game's left-filling bar can never make, so one glance said
+// "this is the instrument". The trouble is that it never went away: press a
+// lemon, the pitch bar climbs, and those two end LEDs are still sitting there
+// inside the reading, pretending to be part of it. Sergio: "se queda un poco
+// raro... que no se queden esos dos LEDs encendidos de los extremos".
+//
+// He is right, and the dark bar is the better instrument anyway: every LED that
+// is lit was lit by a finger, and nothing else. What announces the mode instead
+// is playFreePlayEntrySweep() — once, loudly, and then out of the way.
 void showFreePlayIdle() {
   allLedsOff();
-  digitalWrite(LED_PINS[0], HIGH);
-  digitalWrite(LED_PINS[LED_COUNT - 1], HIGH);
 }
 
 // Sounding: the bar is a PITCH meter. Key 1 lights one LED and key 7 lights all
@@ -1516,6 +1621,235 @@ void showPitchBar(int key) {
   }
 }
 
+// Where one key's light sits at the TOP of its pitch bar: key 1 -> LED 1, key 7
+// -> LED 10, and the five in between spread over 0,1,3,4,6,7,9.
+static uint8_t ledForKey(int key) {
+  uint8_t lit = (uint8_t) ((((uint16_t) key + 1) * LED_COUNT) / KEY_COUNT);
+  if (lit < 1) lit = 1;
+  if (lit > LED_COUNT) lit = LED_COUNT;
+  return (uint8_t) (lit - 1);
+}
+
+// TWO lemons sounding: two LONE LEDs, one at each note's place on the bar, and
+// nothing else. A single note fills the bar from the left, so "two separated
+// points" is a shape one finger can never draw — the light says "two" before
+// the ear has finished deciding what it is hearing. It is also, on purpose,
+// the shape the mode's idle bar used to wear: the two ends, keys 1 and 7, are
+// simply the widest chord this keyboard has.
+void showChordBar(int a, int b) {
+  allLedsOff();
+  digitalWrite(LED_PINS[ledForKey(a)], HIGH);
+  digitalWrite(LED_PINS[ledForKey(b)], HIGH);
+}
+
+// ── free play, announcing itself in light (2026-09-15) ──────────────────────
+// The mode used to be marked by a STANDING shape (both ends lit), which meant
+// the announcement was still on the bar an hour later, underneath every note.
+// This says the same thing as an EVENT instead, and an event can end:
+//
+//   1. two lights walk in from the ends and meet in the middle — the old idle
+//      shape, collected up and carried away,
+//   2. they open back out, filling the bar to all ten: "the whole keyboard is
+//      yours now",
+//   3. and the bar empties from the outside in, to nothing.
+//
+// It ends DARK, which is exactly where free play then lives, so the animation
+// hands over to the mode instead of being switched off by it. Nothing sounds
+// under it: the scale flourish plays straight afterwards and that is the mode's
+// voice — two announcements on top of each other would be neither.
+void playFreePlayEntrySweep() {
+  const uint8_t half = (LED_COUNT + 1) / 2;
+  allLedsOff();
+  for (uint8_t i = 0; i < half; i++) {            // 1. in from both ends
+    allLedsOff();
+    digitalWrite(LED_PINS[i], HIGH);
+    digitalWrite(LED_PINS[LED_COUNT - 1 - i], HIGH);
+    delay(FREE_ENTRY_STEP_MS);
+  }
+  for (int8_t i = (int8_t) half - 1; i >= 0; i--) {  // 2. back out, filling
+    digitalWrite(LED_PINS[i], HIGH);
+    digitalWrite(LED_PINS[LED_COUNT - 1 - i], HIGH);
+    delay(FREE_ENTRY_STEP_MS);
+  }
+  delay(FREE_ENTRY_HOLD_MS);
+  for (uint8_t i = 0; i < half; i++) {            // 3. ...and away to nothing
+    digitalWrite(LED_PINS[i], LOW);
+    digitalWrite(LED_PINS[LED_COUNT - 1 - i], LOW);
+    delay(FREE_ENTRY_STEP_MS);
+  }
+  allLedsOff();
+}
+
+
+//################################
+//#####  TWO LEMONS AT ONCE ######
+//################################
+// The rules and the reasoning are at CHORD_EXTRA_COUNTS, up in the constants.
+// This is only the machinery.
+
+// How far below its own resting level this channel is sitting, in ADC counts.
+// The dip, not the reading, is the only number worth comparing between keys:
+// the baselines differ per key and drift all day, the dips do not.
+int keyDip(uint8_t i) {
+  int d = baseline[i] - readKey(i);
+  return d < 0 ? 0 : d;
+}
+
+// Is exactly one OTHER lemon being held as deliberately as the one already
+// sounding? Returns it, or -1 for "no, that is one finger and its shadows".
+int chordPartnerFor(int a) {
+  const int dipA = keyDip((uint8_t) a);
+  if (dipA <= 0) return -1;
+  const int floorCounts = touchMargin + CHORD_EXTRA_COUNTS;   // gate 1
+  int best = -1, bestDip = 0, passed = 0;
+  for (uint8_t i = 0; i < KEY_COUNT; i++) {
+    if ((int) i == a) continue;
+    const int d = keyDip(i);
+    if (d < floorCounts) continue;                            // gate 1
+    if ((long) d * 100 < (long) dipA * CHORD_MIN_RATIO_PCT) continue;   // gate 2
+    passed++;
+    if (d > bestDip) { bestDip = d; best = (int) i; }
+  }
+  if (passed != 1) return -1;                                 // gate 3
+  return best;
+}
+
+// Called every loop while a lemon is held. Outside free play it does nothing at
+// all: the game recognises a guess by comparing ONE frequency against the
+// secret sequence, so a chord there is not a richer guess, it is an unanswerable
+// question. Two notes are an instrument's idea, and free play is the instrument.
+void serviceChord() {
+  if (!freePlay()) return;
+  if (activeKey < 0) return;
+
+  if (chordKey >= 0) {
+    // Already a chord, and now the only question is whether it still is. Both
+    // voices are judged AGAINST EACH OTHER rather than against a threshold: a
+    // lifted lemon keeps reading low while the other finger shadows it, so the
+    // only thing that reliably changes is that the two dips stop being
+    // comparable. Whichever one falls away is the one that left — and it can be
+    // either of them, so a chord is as happy to lose its lower voice as its
+    // upper one.
+    const int dipA = keyDip((uint8_t) activeKey);
+    const int dipB = keyDip((uint8_t) chordKey);
+    int leaving = -1;
+    if (dipB < touchMargin) leaving = 1;                 // gone outright
+    else if (dipA < touchMargin) leaving = 0;
+    else if ((long) dipB * 100 < (long) dipA * CHORD_HOLD_RATIO_PCT) leaving = 1;
+    else if ((long) dipA * 100 < (long) dipB * CHORD_HOLD_RATIO_PCT) leaving = 0;
+
+    if (leaving < 0) {                                   // both still there
+      chordReleaseSeenAt = 0;
+      chordLeaving = -1;
+      serviceChordTone();
+      return;
+    }
+    // ...and a release still has to prove itself, exactly as a single note's
+    // does: through 1 MOhm a resting finger reads clear for a scan or two
+    // without going anywhere, and a chord that flickers on that is worse than
+    // no chord at all.
+    if (chordReleaseSeenAt == 0 || leaving != chordLeaving) {
+      chordReleaseSeenAt = millis();
+      chordLeaving = leaving;
+    }
+    if ((millis() - chordReleaseSeenAt) < RELEASE_CONFIRM_MS) { serviceChordTone(); return; }
+    if (leaving == 1) endChord(); else promoteChordVoice();
+    return;
+  }
+
+  const int cand = chordPartnerFor(activeKey);
+  if (cand < 0) { chordCandidate = -1; chordCandidateSince = 0; return; }
+  if (cand != chordCandidate) {              // a new claim: start its clock
+    chordCandidate = cand;
+    chordCandidateSince = millis();
+    return;
+  }
+  if ((millis() - chordCandidateSince) < CHORD_CONFIRM_MS) return;
+  startChord(cand);
+}
+
+// The handover. tone() reprograms the running timer rather than stopping it, so
+// this is a frequency change on a note that never breaks — which is why the
+// alternation reads as one shimmering interval instead of two notes taking
+// turns. Nothing here waits: the swap happens on whichever loop first crosses
+// the deadline, and the loop while a key is held is a few hundred microseconds.
+void serviceChordTone() {
+  if (chordKey < 0 || activeKey < 0) return;
+  if ((millis() - chordSwapAt) < CHORD_SWAP_MS) return;
+  chordSwapAt = millis();
+  chordOnSecond = !chordOnSecond;
+  tone(BUZZER, noteForKey(chordOnSecond ? chordKey : activeKey));
+}
+
+void startChord(int partner) {
+  chordKey = partner;
+  chordCandidate = -1;
+  chordCandidateSince = 0;
+  chordReleaseSeenAt = 0;
+  chordSwapAt = 0;              // ...so the first handover happens immediately
+  chordOnSecond = false;
+  showChordBar(activeKey, chordKey);
+  ledMeterUntil = 0;            // the chord owns the bar now, not the meter
+  if (serialEnabled) {
+    // The dips are printed because they are the tuning evidence: gate 2 is a
+    // ratio between these two numbers, and this is the only place the real one
+    // on real fruit can be read off.
+    Serial.print(F("~~ chord ")); Serial.print(activeKey + 1);
+    Serial.print(F("+")); Serial.print(chordKey + 1);
+    Serial.print(F("  ")); Serial.print(noteForKey(activeKey));
+    Serial.print(F("+")); Serial.print(noteForKey(chordKey));
+    Serial.print(F(" Hz  dips ")); Serial.print(keyDip((uint8_t) activeKey));
+    Serial.print(F("/")); Serial.println(keyDip((uint8_t) chordKey));
+  }
+  serviceChordTone();
+}
+
+// The second finger left; the first is still down. Back to one voice, with the
+// buzzer handed straight back rather than stopped — the remaining note was
+// never released, so it must not be re-articulated either.
+void endChord() {
+  chordKey = -1;
+  chordReleaseSeenAt = 0;
+  chordLeaving = -1;
+  chordOnSecond = false;
+  releaseSeenAt = 0;            // the surviving note was never let go
+  if (activeKey < 0) return;
+  tone(BUZZER, noteForKey(activeKey));
+  showPitchBar(activeKey);
+  if (serialEnabled) {
+    Serial.print(F("~~ chord ends - key ")); Serial.print(activeKey + 1);
+    Serial.println(F(" alone"));
+  }
+}
+
+// The FIRST finger left and the second is still down: the chord does not end,
+// it narrows. The survivor becomes the note under the finger, keeping its own
+// minimum length so a chord broken a millisecond after it opened still leaves a
+// note you can hear.
+void promoteChordVoice() {
+  const int survivor = chordKey;
+  clearChord();
+  releaseSeenAt = 0;            // the surviving note was never let go
+  activeKey = survivor;
+  pressedNote = noteForKey(survivor);
+  startKeyTone(pressedNote);
+  showPitchBar(survivor);
+  if (serialEnabled) {
+    Serial.print(F("~~ chord ends - key ")); Serial.print(survivor + 1);
+    Serial.println(F(" holds on"));
+  }
+}
+
+void clearChord() {
+  chordKey = -1;
+  chordLeaving = -1;
+  chordCandidate = -1;
+  chordCandidateSince = 0;
+  chordReleaseSeenAt = 0;
+  chordSwapAt = 0;
+  chordOnSecond = false;
+}
+
 // Whatever the bar should be showing when nothing is sounding and no meter is
 // up. One place, because there are now two answers and three callers.
 void restoreIdleDisplay() {
@@ -1526,18 +1860,23 @@ void restoreIdleDisplay() {
 }
 
 // FREE PLAY announcing itself: the seven lemons, left to right, as a rising
-// scale with the pitch bar climbing under it. It is the preview on the wheel
-// AND the intro when the mode starts, because the most honest description of
-// "the keys are do re mi fa sol la si" is to play do re mi fa sol la si.
+// scale with the pitch bar climbing under it, because the most honest
+// description of "the keys are do re mi fa sol la si" is to play do re mi fa
+// sol la si.
+//
+// IT PLAYS TO THE END NOW (2026-09-15). It used to give up the moment either
+// button read down, from the days when it was also the wheel's preview for free
+// play and a turn of the wheel had to cut it off. Free play left the wheel on
+// 2026-09-13, so the only button that can still be down while this plays is the
+// + that just asked for the mode — and cutting the announcement short because
+// the player has not let go of the button yet is the opposite of announcing it.
+// Sergio, 2026-09-15: "y como siempre toques la melodía".
 void playFreePlayFlourish(bool lights) {
   const int base = (FREE_PLAY - 1) * KEY_COUNT;
   for (uint8_t i = 0; i < KEY_COUNT; i++) {
     if (lights) showPitchBar((int) i);
     playTone(keys[base + i], 85);
     delay(15);
-#ifndef VELXIO_EMULATION
-    if (menuInterrupt()) return;   // the player already turned the wheel on
-#endif
   }
   delay(SFX_TAIL_MS);
 }
@@ -1548,6 +1887,7 @@ void playFreePlayFlourish(bool lights) {
 void resetBoard() {
   currentStep = 0;
   pressedNote = 0;
+  clearChord();
   lastCountedKey = -1;   // a new round may legitimately open with the key that
                          // ended the last one
   stopKeyTone();
@@ -1598,6 +1938,7 @@ void playTone(int freq, int ms) {
 void hushBuzzer() {
   stopKeyTone();
   activeKey = -1;
+  clearChord();
   delay(SFX_GAP_MS);
 }
 
@@ -1743,9 +2084,10 @@ void playVictory() {
 void playLevelIntro() {
   hushBuzzer();               // silence + a beat, safe even if nothing was sounding
   if (freePlay()) {           // not a level: the scale IS the announcement
+    playFreePlayEntrySweep();   // ...opened by a sweep that says the mode changed
     playFreePlayFlourish(true);
     delay(SFX_TAIL_MS);
-    showFreePlayIdle();
+    showFreePlayIdle();         // ...and then the bar is dark until a finger
     return;
   }
   switch (level) {

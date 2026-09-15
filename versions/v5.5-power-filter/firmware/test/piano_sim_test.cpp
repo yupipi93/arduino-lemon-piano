@@ -81,6 +81,11 @@ static bool sawBackwardsSweep(const std::vector<std::string> &f) {
   }
   return steps >= LED_COUNT - 2;                // it walked most of the bar
 }
+// Did the bar ever wear this exact shape during the film?
+static bool filmHas(const std::vector<std::string> &f, const std::string &shape) {
+  for (size_t i = 0; i < f.size(); i++) if (f[i] == shape) return true;
+  return false;
+}
 static size_t serialMark() { return board.serial.size(); }
 static bool serialSince(size_t mark, const char *needle) {
   return board.serial.find(needle, mark) != std::string::npos;
@@ -247,11 +252,15 @@ static void test_free_play_repeats_and_never_scores() {
   eqInt(level, FREE_PLAY, "  ...it is still the piano");
 }
 
+// The idle bar used to be "#........#", the two ends lit, and that was the mark
+// of the mode. Sergio killed it on 2026-09-15: it was still sitting there under
+// every note the player pressed, inside the pitch reading, looking like part of
+// it. Free play idles DARK now, so every lit LED was lit by a finger.
 static void test_free_play_pitch_bar() {
-  section("7. FREE PLAY: the bar is a pitch meter, and its idle shape is unique");
+  section("7. FREE PLAY: the bar is a pitch meter, and it idles DARK");
   boot();
   toggleFreePlayByHold();
-  ok(ledPattern() == "#........#", "idle: only the two ends are lit", ledPattern());
+  ok(ledPattern() == "..........", "idle: nothing is lit at all", ledPattern());
 
   board.touched[0] = true; runFor(150);
   eqInt(litLeds(), 1, "the lowest lemon lights one LED");
@@ -260,7 +269,7 @@ static void test_free_play_pitch_bar() {
   board.touched[6] = true; runFor(150);
   eqInt(litLeds(), 10, "the highest lights all ten");
   board.touched[6] = false; runFor(200);
-  ok(ledPattern() == "#........#", "  ...and it goes back to the idle shape", ledPattern());
+  ok(ledPattern() == "..........", "  ...and it goes dark again, every time", ledPattern());
 }
 
 static void test_cancel_changes_nothing() {
@@ -623,6 +632,145 @@ static void test_repeat_sounds_but_scores_nothing() {
   eqInt(litLeds(), 0, "  ...and its bar stays blank, unlike a repeat's");
 }
 
+// ── 19 ──────────────────────────────────────────────────────────────────────
+// The mode no longer marks itself with a standing shape, so it has to mark
+// itself with an EVENT. The sweep is that event, and this pins the three beats
+// of it plus the thing it exists to guarantee: that it ends on a dark bar.
+static void test_free_play_opens_with_a_sweep() {
+  section("19. FREE PLAY opens with a sweep, and hands over a DARK bar");
+  boot();
+  size_t fm = frameMark();
+  toggleFreePlayByHold();
+  std::vector<std::string> film = framesSince(fm);
+
+  ok(filmHas(film, "#........#"),
+     "the two ends light up first - the old idle shape, as a frame this time");
+  ok(filmHas(film, "....##...."),
+     "  ...the two lights walk in and meet in the middle");
+  ok(filmHas(film, "##########"),
+     "  ...then open back out until the whole bar is lit");
+  ok(ledPattern() == "..........",
+     "  ...and when the scale has finished, the bar is dark", ledPattern());
+
+  // ...and the melody still plays. The sweep is additive: it was never meant to
+  // replace the scale that says what the seven lemons are.
+  const int scale[7] = {NOTE_C5, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_G5, NOTE_A5, NOTE_B5};
+  size_t tm = toneMark();
+  boot();
+  tm = toneMark();
+  toggleFreePlayByHold();
+  std::vector<int> t = tonesSince(tm);
+  int at = 0;
+  for (size_t i = 0; i < t.size() && at < 7; i++) if (t[i] == scale[at]) at++;
+  eqInt(at, 7, "  ...and do re mi fa sol la si still plays on the way in");
+}
+
+// ── 20 ──────────────────────────────────────────────────────────────────────
+// Sergio, 2026-09-15: "cuando el usuario toque dos notas a la vez... toque la
+// nota correspondiente a ambas notas". One buzzer, two notes: they take turns
+// fast enough to fuse. These run with couplingDepth SET, because a chord rule
+// that only works on an idealised board is not a chord rule.
+static void test_two_lemons_sound_as_two_notes() {
+  section("20. FREE PLAY: two lemons at once sound as two notes");
+  boot();
+  board.touchDepth = 12;
+  board.couplingDepth = 5;          // one finger already shadows the others
+  toggleFreePlayByHold();
+
+  size_t sm = serialMark(), tm = toneMark();
+  board.touched[0] = true;  runFor(80);      // do
+  board.touched[4] = true;  runFor(400);     // ...and sol laid on top of it
+  std::vector<int> t = tonesSince(tm);
+  int lo = 0, hi = 0;
+  for (size_t i = 0; i < t.size(); i++) {
+    if (t[i] == NOTE_C5) lo++;
+    if (t[i] == NOTE_G5) hi++;
+  }
+  ok(lo >= 5 && hi >= 5, "both notes take turns on the one buzzer",
+     "C5 x" + std::to_string(lo) + ", G5 x" + std::to_string(hi));
+  ok(serialSince(sm, "~~ chord 1+5"), "  ...and the log names both lemons");
+  ok(ledPattern() == "#.....#...",
+     "  ...and the bar shows TWO lone LEDs, one per note", ledPattern());
+
+  // Lift the upper voice: what is left is the note that is left. The chord goes
+  // on alternating through the release-confirm window (a resting finger reads
+  // clear for a scan or two without moving), so what is pinned here is where it
+  // LANDS: the last thing the buzzer was told, and then silence from the
+  // firmware — the surviving note sustains instead of being re-struck.
+  sm = serialMark(); tm = toneMark();
+  board.touched[4] = false; runFor(300);
+  t = tonesSince(tm);
+  ok(!t.empty() && t.back() == NOTE_C5,
+     "letting the upper lemon go leaves the lower one sounding alone",
+     t.empty() ? "no tone" : "ended on " + std::to_string(t.back()));
+  tm = toneMark(); runFor(300);
+  eqInt((long) tonesSince(tm).size(), 0, "  ...and it sustains: not one note re-struck");
+  eqInt(litLeds(), 1, "  ...and the bar is key 1's pitch bar again");
+  board.touched[0] = false; runFor(300);
+  ok(ledPattern() == "..........", "  ...and dark once both are let go", ledPattern());
+
+  // ...and the other way round: lifting the LOWER voice promotes the upper one.
+  sm = serialMark();
+  board.touched[0] = true;  runFor(80);
+  board.touched[4] = true;  runFor(300);
+  ok(serialSince(sm, "~~ chord 1+5"), "a second chord opens the same way");
+  tm = toneMark();
+  board.touched[0] = false; runFor(300);
+  t = tonesSince(tm);
+  ok(!t.empty() && t.back() == NOTE_G5,
+     "lifting the LOWER lemon promotes the upper one instead of stopping",
+     t.empty() ? "no tone" : "ended on " + std::to_string(t.back()));
+  ok(serialSince(sm, "holds on"), "  ...and the log says which voice held on");
+  eqInt(litLeds(), 7, "  ...and the bar is key 5's pitch bar");
+  board.touched[4] = false; runFor(300);
+}
+
+// ── 21 ──────────────────────────────────────────────────────────────────────
+// The expensive failure. A single note that warbles like two would ruin every
+// note anyone plays, so the three gates in chordPartnerFor() are pinned here
+// one at a time: a shadow too shallow, a shadow deep enough to pass the floor
+// but not the ratio, and a whole hand across the fruit.
+static void test_one_finger_is_never_a_chord() {
+  section("21. FREE PLAY: one finger and its shadows is never a chord");
+  boot();
+  board.touchDepth = 12;
+  board.couplingDepth = 5;            // shallow shadow: fails the absolute floor
+  toggleFreePlayByHold();
+
+  size_t sm = serialMark(), tm = toneMark();
+  board.touched[3] = true; runFor(600);
+  std::vector<int> t = tonesSince(tm);
+  bool onlyFa = !t.empty();
+  for (size_t i = 0; i < t.size(); i++) if (t[i] != NOTE_F5) onlyFa = false;
+  ok(onlyFa, "one finger, one note, held - whatever the neighbours are doing",
+     std::to_string(t.size()) + " tones, not all F5");
+  ok(!serialSince(sm, "~~ chord"), "  ...no second voice was opened");
+  eqInt(litLeds(), 5, "  ...and the bar is the pitch bar, filled from the left");
+  board.touched[3] = false; runFor(300);
+
+  // A DEEPER shadow: 8 counts against the finger's 12 clears the absolute floor
+  // and is still refused, because 67 % is under the 70 % a real finger makes.
+  board.couplingDepth = 8;
+  sm = serialMark(); tm = toneMark();
+  board.touched[3] = true; runFor(600);
+  t = tonesSince(tm);
+  onlyFa = !t.empty();
+  for (size_t i = 0; i < t.size(); i++) if (t[i] != NOTE_F5) onlyFa = false;
+  ok(onlyFa, "a shadow deep enough to pass the floor is still refused by the ratio");
+  ok(!serialSince(sm, "~~ chord"), "  ...still one note");
+  board.touched[3] = false; runFor(300);
+
+  // Three real fingers: that is a hand laid across the fruit, not a chord, and
+  // the answer is one note rather than a guess at which two were meant.
+  board.couplingDepth = 5;
+  sm = serialMark();
+  board.touched[0] = true;
+  board.touched[2] = true;
+  board.touched[4] = true; runFor(500);
+  ok(!serialSince(sm, "~~ chord"), "three lemons at once open no chord at all");
+  board.touched[0] = board.touched[2] = board.touched[4] = false; runFor(300);
+}
+
 int main(int argc, char **argv) {
   if (argc > 1 && std::string(argv[1]) == "-v") board.traceSerial = true;
   printf("\n\033[1mLemon Piano V5.5 — firmware on a fake board\033[0m\n");
@@ -646,6 +794,9 @@ int main(int argc, char **argv) {
   test_held_fruit_sounds_once();
   test_bar_counts_sensitivity();
   test_repeat_sounds_but_scores_nothing();
+  test_free_play_opens_with_a_sweep();
+  test_two_lemons_sound_as_two_notes();
+  test_one_finger_is_never_a_chord();
 
   printf("\n%d checks, \033[%sm%d failed\033[0m\n\n",
          checks, failures ? "31" : "32", failures);

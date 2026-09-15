@@ -78,11 +78,12 @@ named. New hardware belongs in a new version directory, not in this list — see
   Everything about them was designed and validated with the board unplugged
   (`versions/v5.5-power-filter/firmware/test/run.sh`, 97 + 56 checks green,
   mutation-checked). What a host test cannot judge: whether **3 s** is the right
-  hold, whether the charge chirp is reassuring or annoying, whether an 8-note
-  preview is too long to browse five modes, and whether the two-ends-lit idle
-  bar actually reads as "this is the piano" to someone who has not read the
-  guide. All four numbers are single constants — `GES_MENU_HOLD_MS`,
-  `GES_MENU_ARM_MS`, `MENU_PREVIEW_NOTES`, `MENU_BLINK_ON_MS`.
+  hold, whether the charge chirp is reassuring or annoying, and whether an
+  8-note preview is too long to browse five modes. All three numbers are single
+  constants — `GES_MENU_HOLD_MS`, `GES_MENU_ARM_MS`, `MENU_PREVIEW_NOTES`.
+  (The fourth question here used to be whether the two-ends-lit idle bar read as
+  "this is the piano". It was answered on 2026-09-15: it read as clutter under
+  the pitch meter, and free play idles dark now.)
 - [ ] **19. Run `emulation/piano-mode.yaml`.** Written on a machine without the
   Velxio harness, so it has never had a `--mode verify` pass. It parses and its
   build compiles; that is all that is currently claimed for it.
@@ -91,6 +92,28 @@ named. New hardware belongs in a new version directory, not in this list — see
   would fix that, at the cost of a write per mode change — deliberately not done
   without the owner asking, since "it forgets" may well be the right behaviour
   for a toy that lives on a shelf.
+
+- [ ] **21. Tune the chord gates on real fruit** (2026-09-15). Two lemons at
+  once now sound as two notes in free play, and the whole difficulty is telling
+  two fingers from one finger and the shadow it casts on its neighbours. The
+  gates were chosen from the physics and pinned by a host test that models the
+  coupling (`test_one_finger_is_never_a_chord`), but the real ratio between a
+  finger's dip and a shadow's has never been measured on the fruit. It does not
+  have to be guessed at either: `startChord()` prints **both dips** every time a
+  chord opens, so a serial monitor and ten minutes of playing give the number.
+  The knobs are `CHORD_MIN_RATIO_PCT` (70 %, opening), `CHORD_HOLD_RATIO_PCT`
+  (55 %, letting go) and `CHORD_EXTRA_COUNTS` (2). **A false chord is much worse
+  than a missed one** — a single note that warbles like two ruins every note —
+  so if anything moves, it moves up.
+- [ ] **22. Does the chord swap rate sound right?** `CHORD_SWAP_MS` is 10 ms,
+  chosen so the alternation sits above the ~20 Hz where the ear stops hearing
+  two notes taking turns, while still giving C5 five whole cycles per turn. On a
+  piezo with a 2-4 kHz mechanical resonance that is a calculation, not a
+  listening test. One constant.
+- [ ] **23. The organiser's booklet does not mention the chord.**
+  `docs/cartilla/` is still accurate — it never described the idle bar — but it
+  now describes less than the piano does. Worth a line in the MODO LIBRE row
+  next time it is reprinted, not worth a reprint on its own.
 
 ## Nice-to-have (new ideas, not blocking)
 
