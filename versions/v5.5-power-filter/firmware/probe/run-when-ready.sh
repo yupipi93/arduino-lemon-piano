@@ -48,10 +48,10 @@ if [ ! -x "$APPROVALS" ]; then
 fi
 
 "$APPROVALS" ask piano-probe "$ID" \
-  --title "🍋 ¿Puedes tocar el piano ahora?" \
-  --question "La placa ya está programada. Cuando estés delante y puedas tocar los limones ${SECS} segundos seguidos, dale a empezar y grabo. Si ahora no puedes, dale a ahora no y lo dejo — no corre prisa y no hay que repetir nada." \
-  --approve-label "Estoy delante, graba" \
-  --reject-label "Ahora no puedo" \
+  --title "🍋 Can you play the piano now?" \
+  --question "The board is programmed. When you are at the board and can touch the lemons for ${SECS} seconds in a row, tap I am here and I record. If you cannot now, tap not now and I leave it. There is no rush, and nothing needs to be repeated." \
+  --approve-label "I am here, record" \
+  --reject-label "Not now" \
   --ttl-hours 24 || exit 1
 
 echo "Asked. Waiting up to ${TIMEOUT_MIN} min for the answer — nothing is recording yet."
