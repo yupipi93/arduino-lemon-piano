@@ -1,0 +1,10 @@
+# Python packages the repo's scripts import, pinned to exact versions.
+#   pip install -r requirements.txt
+# pcb/tools/*.py (yaml.safe_load only)
+PyYAML==6.0.3
+# pcb/tools/build_schematic.py (needs Python >= 3.10)
+kicad-sch-api==0.5.6
+# versions/v5.5-power-filter/firmware/probe/capture.py
+pyserial==3.5
+# Not from PyPI: pcbnew comes with KiCad; pcb_designer and wirewright are the sibling
+# repos ../eda-pcb-designer and ../eda-wirewright, put on sys.path by the scripts.
